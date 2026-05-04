@@ -1,0 +1,176 @@
+#
+# output verbosity
+# ------------------------------------------
+#/control/verbose 1
+#/run/verbose 1
+#/tracking/verbose 1
+
+# MT settings
+# ------------------------------------------
+/run/numberOfThreads 1
+
+# importance biasing 
+# ------------------------------------------
+/dcs-monitor/det/useBiasing true
+
+# CLYC detector
+# ------------------------------------------
+/dcs-monitor/det/setPosition 0 0 -1400 mm
+#/dcs-monitor/det/setPosition 0 0 0 mm
+/dcs-monitor/det/setRotation 0 0 0
+/dcs-monitor/det/clyc/add
+#/dcs-monitor/det/clyc/addByCrystalCenter
+# geom parameters
+# CLYC scintillator
+/dcs-monitor/det/clyc/setCrystalMaterial CLYC
+/dcs-monitor/det/clyc/setCrystalRadius 12.5 mm
+/dcs-monitor/det/clyc/setCrystalLength 25.0 mm
+# aluminum casing
+/dcs-monitor/det/clyc/setAlumMaterial G4_Al
+/dcs-monitor/det/clyc/setAlumThickness 0.5 mm
+#/dcs-monitor/det/clyc/setAlumThickness 0.0 mm
+# LiF collimator
+/dcs-monitor/det/clyc/setLiFMaterial LiF
+#/dcs-monitor/det/clyc/setLiFColInnerRadius 15.0 mm
+#/dcs-monitor/det/clyc/setLiFColOuterRadius 17.5 mm
+#/dcs-monitor/det/clyc/setLiFColLength 50.0 mm
+/dcs-monitor/det/clyc/setLiFColLength 0.0 mm
+# Pb collimator
+/dcs-monitor/det/clyc/setPbMaterial G4_Pb
+#/dcs-monitor/det/clyc/setPbColInnerRadius 17.5 mm
+#/dcs-monitor/det/clyc/setPbColOuterRadius 22.5 mm
+/dcs-monitor/det/clyc/setPbColLength 50.0 mm
+#/dcs-monitor/det/clyc/setPbColLength 0.0 mm
+# PEHD collimator
+/dcs-monitor/det/clyc/setPEHDMaterial G4_POLYETHYLENE
+#/dcs-monitor/det/clyc/setPEHDColInnerRadius 22.5 mm
+#/dcs-monitor/det/clyc/setPEHDColOuterRadius 27.5 mm
+/dcs-monitor/det/clyc/setPEHDColLength 50.0 mm
+#/dcs-monitor/det/clyc/setPEHDColLength 0.0 mm
+# PE plug
+#/dcs-monitor/det/clyc/setPEPlugLipRadius 27.5 mm
+#/dcs-monitor/det/clyc/setPEPlugInnerRadius 14.5 mm
+/dcs-monitor/det/clyc/setPEPlugLipLength 10.0 mm
+/dcs-monitor/det/clyc/setPEPlugInnerLength 35.0 mm
+#/dcs-monitor/det/clyc/setPEPlugLipLength 0.0 mm
+#/dcs-monitor/det/clyc/setPEPlugInnerLength 0.0 mm
+
+# CASTOR 440/84 pos 1
+# ------------------------------------------
+/dcs-monitor/det/setPosition 0 0 0 m
+/dcs-monitor/det/setRotation -90 0 0
+/dcs-monitor/det/castor440/add
+
+# CASTOR 440/84 pos 2
+# ------------------------------------------
+#/dcs-monitor/det/setPosition 2.00 0 -3.46 m
+#/dcs-monitor/det/setRotation -90 0 0
+#/dcs-monitor/det/castor440/add
+
+# CASTOR 440/84 pos 3
+# ------------------------------------------
+#/dcs-monitor/det/setPosition -2.00 0 -3.46 m
+#/dcs-monitor/det/setRotation -90 0 0
+#/dcs-monitor/det/castor440/add
+
+# initialize the run
+# ------------------------------------------
+/run/initialize
+
+# setup long threshold for radioactive decay
+# ------------------------------------------
+/process/had/rdm/thresholdForVeryLongDecayTime 1e60 year
+
+# sources
+
+# planar source (GPS)
+# ------------------------------------------
+#/dcs-monitor/gun/sourceMode GPS
+#/gps/particle neutron
+#/gps/ene/mono 1.0 MeV
+#/gps/particle gamma
+#/gps/ene/mono 0.662 MeV
+#/gps/pos/type Plane
+#/gps/pos/shape Square
+#/gps/pos/centre 0 0 -1330 mm
+#/gps/pos/halfx 5 cm
+#/gps/pos/halfy 5 cm
+#/gps/ang/type iso
+#/gps/ang/mintheta 135 deg
+#/gps/ang/maxtheta 180 deg
+
+# point/conic source (GPS)
+# ------------------------------------------
+#/dcs-monitor/gun/sourceMode GPS
+# radioactive ion
+#/gps/particle ion
+#/gps/ion 98 252 0 0 # Cf252
+#/gps/ion 11 22 0 0  # Na22
+#/gps/energy 0 MeV
+#/gps/pos/type Point
+# gamma ray
+#/gps/particle gamma
+#/gps/ene/type Mono
+#/gps/ene/min 0 MeV
+#/gps/ene/mono 0.662 MeV
+##/gps/pos/type Point
+#/gps/pos/centre 0 0 0 mm
+#/gps/ang/type iso
+#/gps/ang/mintheta 0 deg
+#/gps/ang/maxtheta 180 deg
+##/gps/ang/mintheta 0 deg
+##/gps/ang/maxtheta 45 deg
+
+# castor source
+# ------------------------------------------
+#/dcs-monitor/gun/sourceMode CASTOR440_surface
+## radioactive ion
+#/gun/particle ion
+##/gun/ion 98 252 0 0 # Cf252
+##/gun/ion 11 22 0 0  # Na22
+#/gun/ion 27 60 # Co60
+#/gun/energy 0 eV
+## gamma ray
+##/gun/particle gamma
+##/gun/energy 0.662 MeV
+
+# castor fuel source
+# ------------------------------------------
+#/dcs-monitor/gun/sourceMode CASTOR440_fuel
+#/dcs-monitor/gun/caskNum 0
+#/dcs-monitor/gun/fuelNum 20
+#/gun/particle gamma
+#/gun/energy 1.332 MeV
+
+# castor fuel source, geometry bias for CLYC
+# ------------------------------------------
+/dcs-monitor/gun/sourceMode CASTOR440_fuel_biased
+/dcs-monitor/gun/caskNum 0
+/dcs-monitor/gun/fuelNum 20
+/gun/particle gamma
+/gun/energy 1.332 MeV
+
+# root output
+# ------------------------------------------
+#/analysis/setFileName fuel20_1332keV_2e9
+/analysis/setFileName tmp
+
+# select visualization
+# ------------------------------------------
+#/control/execute vis_vrml.mac
+/control/execute vis_ogl.mac
+#/control/execute vis.mac
+
+# add vis filtering
+# ------------------------------------------
+#/control/execute vis_filterSD.mac
+
+# start the run
+# ------------------------------------------
+#/run/beamOn        5750000000000
+#/run/beamOn        575000000
+#/run/beamOn         2000000000 # max
+#/run/beamOn         2147483647 # max
+/run/beamOn         1
+
+

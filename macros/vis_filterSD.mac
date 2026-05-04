@@ -1,0 +1,7 @@
+# Draw hits at end of event:
+/vis/scene/add/hits
+# Draw only hits in SD
+/vis/scene/add/trajectories rich
+/vis/filtering/trajectories/create/encounteredVolumeFilter
+/vis/filtering/trajectories/encounteredVolumeFilter-0/active true
+/vis/filtering/trajectories/encounteredVolumeFilter-0/add av_1_impr_1_ScintiLog_pv_0
