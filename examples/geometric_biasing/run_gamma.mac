@@ -1,0 +1,137 @@
+#
+# output verbosity
+# ------------------------------------------
+#/control/verbose 1
+#/run/verbose 1
+#/tracking/verbose 1
+
+# MT settings
+# ------------------------------------------
+/run/numberOfThreads 60
+
+# importance biasing 
+# ------------------------------------------
+/dcs-monitor/det/useBiasing true
+/dcs-monitor/det/setBiasingShells   20     
+# Optional: customize extents
+#/dcs-monitor/det/setBiasingInnerRadius   800 mm
+#/dcs-monitor/det/setBiasingOuterRadius  1330 mm
+#/dcs-monitor/det/setBiasingInnerHeight  3500 mm   # spans fuel/cavity
+
+# CLYC detector
+# ------------------------------------------
+/dcs-monitor/det/setPosition 0 0 -1400 mm
+#/dcs-monitor/det/setPosition 0 0 0 mm
+/dcs-monitor/det/setRotation 0 0 0
+/dcs-monitor/det/clyc/add
+#/dcs-monitor/det/clyc/addByCrystalCenter
+# geom parameters
+# CLYC scintillator
+/dcs-monitor/det/clyc/setCrystalMaterial CLYC
+/dcs-monitor/det/clyc/setCrystalRadius 12.5 mm
+/dcs-monitor/det/clyc/setCrystalLength 25.0 mm
+# aluminum casing
+/dcs-monitor/det/clyc/setAlumMaterial G4_Al
+/dcs-monitor/det/clyc/setAlumThickness 0.5 mm
+#/dcs-monitor/det/clyc/setAlumThickness 0.0 mm
+# LiF collimator
+/dcs-monitor/det/clyc/setLiFMaterial LiF
+#/dcs-monitor/det/clyc/setLiFColInnerRadius 15.0 mm
+#/dcs-monitor/det/clyc/setLiFColOuterRadius 17.5 mm
+#/dcs-monitor/det/clyc/setLiFColLength 50.0 mm
+/dcs-monitor/det/clyc/setLiFColLength 0.0 mm
+# Pb collimator
+/dcs-monitor/det/clyc/setPbMaterial G4_Pb
+#/dcs-monitor/det/clyc/setPbColInnerRadius 17.5 mm
+#/dcs-monitor/det/clyc/setPbColOuterRadius 22.5 mm
+/dcs-monitor/det/clyc/setPbColLength 50.0 mm
+#/dcs-monitor/det/clyc/setPbColLength 0.0 mm
+# PEHD collimator
+/dcs-monitor/det/clyc/setPEHDMaterial G4_POLYETHYLENE
+#/dcs-monitor/det/clyc/setPEHDColInnerRadius 22.5 mm
+#/dcs-monitor/det/clyc/setPEHDColOuterRadius 27.5 mm
+/dcs-monitor/det/clyc/setPEHDColLength 50.0 mm
+#/dcs-monitor/det/clyc/setPEHDColLength 0.0 mm
+# PE plug
+#/dcs-monitor/det/clyc/setPEPlugLipRadius 27.5 mm
+#/dcs-monitor/det/clyc/setPEPlugInnerRadius 14.5 mm
+/dcs-monitor/det/clyc/setPEPlugLipLength 10.0 mm
+/dcs-monitor/det/clyc/setPEPlugInnerLength 35.0 mm
+#/dcs-monitor/det/clyc/setPEPlugLipLength 0.0 mm
+#/dcs-monitor/det/clyc/setPEPlugInnerLength 0.0 mm
+
+# CASTOR 440/84 pos 1
+# ------------------------------------------
+/dcs-monitor/det/setPosition 0 0 0 m
+/dcs-monitor/det/setRotation -90 0 0
+/dcs-monitor/det/castor440/add
+
+# initialize the run
+# ------------------------------------------
+/run/initialize
+
+# setup long threshold for radioactive decay
+# ------------------------------------------
+/process/had/rdm/thresholdForVeryLongDecayTime 1e60 year
+
+# runs
+
+# castor fuel source, NO geometry bias for CLYC
+# ------------------------------------------
+/dcs-monitor/gun/sourceMode CASTOR440_fuel 
+/dcs-monitor/gun/caskNum 0
+/dcs-monitor/gun/fuelNum 18
+/gun/particle gamma
+/gun/energy 2 MeV
+/analysis/setFileName fuel18_gamma-2MeV_unbiased_1e8
+/run/beamOn         100000000
+
+
+# castor fuel source, geometry bias for CLYC, 10 cm
+# ------------------------------------------
+/dcs-monitor/gun/sourceMode CASTOR440_fuel_biased
+/dcs-monitor/gun/clycBoundingRadius 10 cm 
+/dcs-monitor/gun/caskNum 0
+/dcs-monitor/gun/fuelNum 18
+/gun/particle gamma
+/gun/energy 2 MeV
+/analysis/setFileName fuel18_gamma-2MeV_biased-10cm_1e8
+/run/beamOn         100000000
+
+
+# castor fuel source, geometry bias for CLYC, 25 cm
+# ------------------------------------------
+/dcs-monitor/gun/sourceMode CASTOR440_fuel_biased
+/dcs-monitor/gun/clycBoundingRadius 25 cm 
+/dcs-monitor/gun/caskNum 0
+/dcs-monitor/gun/fuelNum 18
+/gun/particle gamma
+/gun/energy 2 MeV
+/analysis/setFileName fuel18_gamma-2MeV_biased-25cm_1e8
+/run/beamOn         100000000
+
+
+# castor fuel source, geometry bias for CLYC, 50 cm
+# ------------------------------------------
+/dcs-monitor/gun/sourceMode CASTOR440_fuel_biased
+/dcs-monitor/gun/clycBoundingRadius 50 cm 
+/dcs-monitor/gun/caskNum 0
+/dcs-monitor/gun/fuelNum 18
+/gun/particle gamma
+/gun/energy 2 MeV
+/analysis/setFileName fuel18_gamma-2MeV_biased-50cm_1e8
+/run/beamOn         100000000
+
+
+# castor fuel source, geometry bias for CLYC, 100 cm
+# ------------------------------------------
+/dcs-monitor/gun/sourceMode CASTOR440_fuel_biased
+/dcs-monitor/gun/clycBoundingRadius 100 cm 
+/dcs-monitor/gun/caskNum 0
+/dcs-monitor/gun/fuelNum 18
+/gun/particle gamma
+/gun/energy 2 MeV
+/analysis/setFileName fuel18_gamma-2MeV_biased-100cm_1e8
+/run/beamOn         100000000
+
+
