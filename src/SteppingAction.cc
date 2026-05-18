@@ -82,6 +82,33 @@ void SteppingAction::UserSteppingAction(const G4Step* aStep)
     //           << G4endl;
     //}
     //// -------------------------------------------------
+    
+    //// --- TEMPORARY MONITOR FOR NEUTRON CAPTURE ---
+    //const G4VProcess* process = aStep->GetPostStepPoint()->GetProcessDefinedStep();
+    //G4String procName = process ? process->GetProcessName() : "None";
+    //if(procName.find("nCapture") != G4String::npos ||
+    //   procName.find("neutronInelastic") != G4String::npos ||
+    //   procName.find("neutronHPInelastic") != G4String::npos) {
+    //    G4Track* track = aStep->GetTrack();
+    //    G4StepPoint* pre  = aStep->GetPreStepPoint();
+    //    G4StepPoint* post = aStep->GetPostStepPoint();
+    //    if(post->GetMaterial()->GetName() == "LiF") {
+    //    //if(post->GetMaterial()->GetName() != "G4_POLYETHYLENE") {
+    //    //if(1) {
+    //        G4cout << "=== Neutron Capture ===" << G4endl;
+    //        G4cout << "  TrackID      : " << track->GetTrackID() << G4endl;
+    //        G4cout << "  ParentID     : " << track->GetParentID() << G4endl;
+    //        G4cout << "  Kinetic E    : " << pre->GetKineticEnergy()/eV << " eV" << G4endl;
+    //        G4cout << "  Position     : " << post->GetPosition()/cm << " cm" << G4endl;
+    //        G4cout << "  Time         : " << post->GetGlobalTime()/ns << " ns" << G4endl;
+    //        G4cout << "  Volume       : "
+    //               << post->GetTouchableHandle()->GetVolume()->GetName() << G4endl;
+    //        G4cout << "  Material     : "
+    //               << post->GetMaterial()->GetName() << G4endl;
+    //        G4cout << "  Process      : " << procName << G4endl;
+    //    }
+    //}
+    //// -------------------------------------------------
 
     G4ParticleDefinition* particle = aStep->GetTrack()->GetDefinition();
     G4String volName = aStep->GetPreStepPoint()->GetPhysicalVolume()->GetName();

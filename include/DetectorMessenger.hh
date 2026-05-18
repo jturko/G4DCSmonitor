@@ -82,7 +82,7 @@ class DetectorMessenger : public G4UImessenger
     G4UIcmdWithADoubleAndUnit* fSetCLYCCrystalRadiusCmd = nullptr;
     G4UIcmdWithADoubleAndUnit* fSetCLYCCrystalLengthCmd = nullptr;
     // aluminum dims
-    G4UIcmdWithADoubleAndUnit* fSetCLYCAlumThicknessCmd = nullptr;
+    G4UIcmdWithADoubleAndUnit* fSetCLYCCasingThicknessCmd = nullptr;
     // LiF collimator dims
     G4UIcmdWithADoubleAndUnit* fSetCLYCLiFColInnerRadiusCmd = nullptr;
     G4UIcmdWithADoubleAndUnit* fSetCLYCLiFColOuterRadiusCmd = nullptr;
@@ -92,9 +92,9 @@ class DetectorMessenger : public G4UImessenger
     G4UIcmdWithADoubleAndUnit* fSetCLYCPbColOuterRadiusCmd = nullptr;
     G4UIcmdWithADoubleAndUnit* fSetCLYCPbColLengthCmd = nullptr;
     // PEHD collimator dims
-    G4UIcmdWithADoubleAndUnit* fSetCLYCPEHDColInnerRadiusCmd = nullptr;
-    G4UIcmdWithADoubleAndUnit* fSetCLYCPEHDColOuterRadiusCmd = nullptr;
-    G4UIcmdWithADoubleAndUnit* fSetCLYCPEHDColLengthCmd = nullptr;
+    G4UIcmdWithADoubleAndUnit* fSetCLYCPEColInnerRadiusCmd = nullptr;
+    G4UIcmdWithADoubleAndUnit* fSetCLYCPEColOuterRadiusCmd = nullptr;
+    G4UIcmdWithADoubleAndUnit* fSetCLYCPEColLengthCmd = nullptr;
     // PE plug dims
     G4UIcmdWithADoubleAndUnit* fSetCLYCPEPlugLipRadiusCmd = nullptr;
     G4UIcmdWithADoubleAndUnit* fSetCLYCPEPlugInnerRadiusCmd = nullptr;
@@ -102,10 +102,11 @@ class DetectorMessenger : public G4UImessenger
     G4UIcmdWithADoubleAndUnit* fSetCLYCPEPlugInnerLengthCmd = nullptr;
     // materials
     G4UIcmdWithAString* fSetCLYCCrystalMaterialNameCmd = nullptr;
-    G4UIcmdWithAString* fSetCLYCAlumMaterialNameCmd = nullptr;
-    G4UIcmdWithAString* fSetCLYCLiFMaterialNameCmd = nullptr;
-    G4UIcmdWithAString* fSetCLYCPbMaterialNameCmd = nullptr;
-    G4UIcmdWithAString* fSetCLYCPEHDMaterialNameCmd = nullptr;
+    G4UIcmdWithAString* fSetCLYCCasingMaterialNameCmd = nullptr;
+    G4UIcmdWithAString* fSetCLYCLiFColMaterialNameCmd = nullptr;
+    G4UIcmdWithAString* fSetCLYCPbColMaterialNameCmd = nullptr;
+    G4UIcmdWithAString* fSetCLYCPEColMaterialNameCmd = nullptr;
+    G4UIcmdWithAString* fSetCLYCPEPlugMaterialNameCmd = nullptr;
 
     // castor 440
     G4UIcmdWithoutParameter* fAddCASTOR440Cmd = nullptr;

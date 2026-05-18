@@ -33,47 +33,48 @@
 
 GeometryCLYC::GeometryCLYC() :
     fCLYCAssembly(NULL),
-    fCLYCCrystalLog(NULL),
-    fAlumCasingLog(NULL),
+    fCrystalLog(NULL),
+    fCasingLog(NULL),
     fLiFCollimatorLog(NULL),
     fPbCollimatorLog(NULL),
-    fPEHDCollimatorLog(NULL),
+    fPECollimatorLog(NULL),
     fPEPlugLog(NULL)
 {
-    fCLYCCrystalRadius = 25./2 * mm;
-    fCLYCCrystalLength = 25. * mm;
-    fAlumCasingThickness = 0.5 * mm;
-    
-    fLiFCollimatorInnerRadius = -1. * mm;
-    fLiFCollimatorOuterRadius = -1. * mm;
-    fLiFCollimatorLength = -1. * mm;
+    fCrystalRadius = 25./2 * mm;
+    fCrystalLength = 25. * mm;
+    fCasingThickness = 0.5 * mm;
     
     fPbCollimatorInnerRadius = 29.4/2. * mm;
     fPbCollimatorOuterRadius = 40./2. * mm;
     fPbCollimatorLength = 50. * mm;
     
-    fPEHDCollimatorInnerRadius = 40./2. * mm;
-    fPEHDCollimatorOuterRadius = 50./2. * mm;
-    fPEHDCollimatorLength = 50. * mm;
+    fLiFCollimatorInnerRadius = -1. * mm;
+    fLiFCollimatorOuterRadius = -1. * mm;
+    fLiFCollimatorLength = -1. * mm;
+    
+    fPECollimatorInnerRadius = 40./2. * mm;
+    fPECollimatorOuterRadius = 50./2. * mm;
+    fPECollimatorLength = 50. * mm;
 
     fPEPlugInnerRadius = 29./2. * mm;
     fPEPlugLipRadius = 50./2. * mm;
     fPEPlugInnerLength = 35. * mm;
     fPEPlugLipLength = 10. * mm; 
 
-    fCLYCCrystalMatName = "CLYC";
-    fAlumMatName = "G4_Al";
-    fPbMatName = "G4_Pb";
-    fLiFMatName = "LiF";
-    fPEHDMatName = "G4_POLYETHYLENE";
+    fCrystalMatName = "CLYC";
+    fCasingMatName = "G4_Al";
+    fPbColMatName = "G4_Pb";
+    fLiFColMatName = "LiF";
+    fPEColMatName = "G4_POLYETHYLENE";
+    fPEPlugMatName = "G4_POLYETHYLENE";
 
     G4double alpha = 1.0; 
-    fCLYCCrystalColour = G4Colour(0.0, 1.0, 0.0, 0.5); // Green
-    fAlumColour        = G4Colour(0.5, 0.5, 0.5, alpha); // Grey
-    fLiFColour         = G4Colour(0.5, 1.0, 0.0, alpha); // Green-yellow-ish
-    fPbColour          = G4Colour(0.6, 0.4, 0.2, alpha); // Brown
-    fPEHDColour        = G4Colour(0.0, 1.0, 1.0, alpha); // Cyan
-    fPEPlugColour      = G4Colour(1.0, 1.0, 0.0, alpha); // Yellow
+    fCrystalColour = G4Colour(0.0, 1.0, 0.0, 0.5); // Green
+    fCasingColour  = G4Colour(0.5, 0.5, 0.5, alpha); // Grey
+    fPbColColour   = G4Colour(0.6, 0.4, 0.2, alpha); // Brown
+    fLiFColColour  = G4Colour(0.6, 0.0, 0.6, alpha); // Magenta-ish
+    fPEColColour   = G4Colour(0.0, 1.0, 1.0, alpha); // Cyan
+    fPEPlugColour  = G4Colour(1.0, 1.0, 0.0, alpha); // Yellow
 
 }
 
@@ -88,14 +89,15 @@ G4int GeometryCLYC::Build()
     G4double startPhi = 0.0*deg, endPhi = 360.0*deg;
     G4ThreeVector move;
     G4RotationMatrix* rotate = NULL;
-    G4bool onlyBuildCLYC = false;
+    G4bool onlyBuildCrystal = false;
 
     G4NistManager* manager = G4NistManager::Instance();
-    G4Material* CLYC_material = manager->FindOrBuildMaterial(fCLYCCrystalMatName);
-    G4Material* Alum_material = manager->FindOrBuildMaterial(fAlumMatName);
-    G4Material* LiF_material = manager->FindOrBuildMaterial(fLiFMatName);
-    G4Material* Pb_material = manager->FindOrBuildMaterial(fPbMatName);
-    G4Material* PEHD_material = manager->FindOrBuildMaterial(fPEHDMatName);
+    G4Material* Crystal_material    = manager->FindOrBuildMaterial(fCrystalMatName);
+    G4Material* Casing_material     = manager->FindOrBuildMaterial(fCasingMatName);
+    G4Material* LiFCol_material     = manager->FindOrBuildMaterial(fLiFColMatName);
+    G4Material* PbCol_material      = manager->FindOrBuildMaterial(fPbColMatName);
+    G4Material* PECol_material      = manager->FindOrBuildMaterial(fPEColMatName);
+    G4Material* PEPlug_material     = manager->FindOrBuildMaterial(fPEPlugMatName);
 
     // 1. PE Plug
     // Front face sits exactly at Z=0, projecting backwards.
@@ -103,10 +105,10 @@ G4int GeometryCLYC::Build()
         std::vector<G4double> rPlug = { 0.*mm, fPEPlugLipRadius,  fPEPlugLipRadius,  fPEPlugInnerRadius,  fPEPlugInnerRadius,                   0.*mm };
         std::vector<G4double> zPlug = { 0.*mm, 0.*mm,            -fPEPlugLipLength, -fPEPlugLipLength,   -fPEPlugLipLength-fPEPlugInnerLength, -fPEPlugLipLength-fPEPlugInnerLength };
         G4GenericPolycone* PE_plug_solid = new G4GenericPolycone("PE_plug_solid", startPhi, endPhi, rPlug.size(), rPlug.data(), zPlug.data());
-        fPEPlugLog = new G4LogicalVolume(PE_plug_solid, PEHD_material, "PEPlugLog", 0, 0, 0);
+        fPEPlugLog = new G4LogicalVolume(PE_plug_solid, PEPlug_material, "PEPlugLog", 0, 0, 0);
         fPEPlugLog->SetVisAttributes(new G4VisAttributes(true, fPEPlugColour));
         move = G4ThreeVector(0., 0., 0.);
-        if(!onlyBuildCLYC)
+        if(!onlyBuildCrystal)
             fCLYCAssembly->AddPlacedVolume(fPEPlugLog, move, rotate);
     }
 
@@ -114,69 +116,69 @@ G4int GeometryCLYC::Build()
     // Front faces aligned with the back of the plug lip (Z = -fPEPlugLipLength).
     // Tubs are defined from their center, so we shift by half their length.
     // PE-HD collimator
-    if(fPEHDCollimatorLength>0.) {
-        G4double pehdCenterZ = -fPEPlugLipLength - (fPEHDCollimatorLength / 2.0);
-        G4Tubs* PEHD_collimator_solid = new G4Tubs("PEHD_collimator_solid", fPEHDCollimatorInnerRadius, fPEHDCollimatorOuterRadius, fPEHDCollimatorLength/2., startPhi, endPhi);
-        fPEHDCollimatorLog = new G4LogicalVolume(PEHD_collimator_solid, PEHD_material, "PEHDCollimatorLog", 0, 0, 0);
-        fPEHDCollimatorLog->SetVisAttributes(new G4VisAttributes(true, fPEHDColour));
-        move = G4ThreeVector(0., 0., pehdCenterZ);
-        if(!onlyBuildCLYC)
-            fCLYCAssembly->AddPlacedVolume(fPEHDCollimatorLog, move, rotate);
+    if(fPECollimatorLength>0.) {
+        G4double peColCenterZ = -fPEPlugLipLength - (fPECollimatorLength / 2.0);
+        G4Tubs* PE_collimator_solid = new G4Tubs("PE_collimator_solid", fPECollimatorInnerRadius, fPECollimatorOuterRadius, fPECollimatorLength/2., startPhi, endPhi);
+        fPECollimatorLog = new G4LogicalVolume(PE_collimator_solid, PECol_material, "PECollimatorLog", 0, 0, 0);
+        fPECollimatorLog->SetVisAttributes(new G4VisAttributes(true, fPEColColour));
+        move = G4ThreeVector(0., 0., peColCenterZ);
+        if(!onlyBuildCrystal)
+            fCLYCAssembly->AddPlacedVolume(fPECollimatorLog, move, rotate);
     }
     // Pb collimator
     if(fPbCollimatorLength>0.) {
         G4double pbCenterZ = -fPEPlugLipLength - (fPbCollimatorLength / 2.0);
         G4Tubs* Pb_collimator_solid = new G4Tubs("Pb_collimator_solid", fPbCollimatorInnerRadius, fPbCollimatorOuterRadius, fPbCollimatorLength/2., startPhi, endPhi);
-        fPbCollimatorLog = new G4LogicalVolume(Pb_collimator_solid, Pb_material, "PbCollimatorLog", 0, 0, 0);
-        fPbCollimatorLog->SetVisAttributes(new G4VisAttributes(true, fPbColour));
+        fPbCollimatorLog = new G4LogicalVolume(Pb_collimator_solid, PbCol_material, "PbCollimatorLog", 0, 0, 0);
+        fPbCollimatorLog->SetVisAttributes(new G4VisAttributes(true, fPbColColour));
         move = G4ThreeVector(0., 0., pbCenterZ);
-        if(!onlyBuildCLYC)
+        if(!onlyBuildCrystal)
             fCLYCAssembly->AddPlacedVolume(fPbCollimatorLog, move, rotate);
     }
     // LiF collimator
     if(fLiFCollimatorLength>0.) {
         G4double lifCenterZ = -fPEPlugLipLength - (fLiFCollimatorLength / 2.0);
         G4Tubs* LiF_collimator_solid = new G4Tubs("LiF_collimator_solid", fLiFCollimatorInnerRadius, fLiFCollimatorOuterRadius, fLiFCollimatorLength/2., startPhi, endPhi);
-        fLiFCollimatorLog = new G4LogicalVolume(LiF_collimator_solid, LiF_material, "LiFCollimatorLog", 0, 0, 0);
-        fLiFCollimatorLog->SetVisAttributes(new G4VisAttributes(true, fLiFColour));
+        fLiFCollimatorLog = new G4LogicalVolume(LiF_collimator_solid, LiFCol_material, "LiFCollimatorLog", 0, 0, 0);
+        fLiFCollimatorLog->SetVisAttributes(new G4VisAttributes(true, fLiFColColour));
 
         move = G4ThreeVector(0., 0., lifCenterZ);
-        if(!onlyBuildCLYC)
+        if(!onlyBuildCrystal)
             fCLYCAssembly->AddPlacedVolume(fLiFCollimatorLog, move, rotate);
     }
 
     // 3. CLYC Crystal and Aluminum Casing
     // Front face of the Aluminum Casing is flush with the rear face of the entire plug.
-    G4double L = fCLYCCrystalLength;
-    G4double R = fCLYCCrystalRadius;
-    G4double t = fAlumCasingThickness;
+    G4double L = fCrystalLength;
+    G4double R = fCrystalRadius;
+    G4double t = fCasingThickness;
     // The plug ends at -fPEPlugLength (-fPEPlugLipLength - fPEPlugInnerLength). We place the front of the casing exactly there.
     G4double crystalCenterZ = -fPEPlugLipLength - fPEPlugInnerLength - t - (L / 2.0);
-    G4Tubs* CLYC_solid = new G4Tubs("CLYC_solid", 0.*mm, R, L/2.0, startPhi, endPhi);
-    fCLYCCrystalLog = new G4LogicalVolume(CLYC_solid, CLYC_material, "CLYCCrystalLog", 0, 0, 0);
-    fCLYCCrystalLog->SetVisAttributes(new G4VisAttributes(true, fCLYCCrystalColour));
+    G4Tubs* Crystal_solid = new G4Tubs("Crystal_solid", 0.*mm, R, L/2.0, startPhi, endPhi);
+    fCrystalLog = new G4LogicalVolume(Crystal_solid, Crystal_material, "CrystalLog", 0, 0, 0);
+    fCrystalLog->SetVisAttributes(new G4VisAttributes(true, fCrystalColour));
     // --- set region in CLYC for finer physics list production cuts
     G4Region* clycRegion = G4RegionStore::GetInstance()->GetRegion("CLYCRegion", false);
     if (!clycRegion) {
         clycRegion = new G4Region("CLYCRegion");
     }
-    clycRegion->AddRootLogicalVolume(fCLYCCrystalLog);
+    clycRegion->AddRootLogicalVolume(fCrystalLog);
     // ---
     move = G4ThreeVector(0., 0., crystalCenterZ);
-    fCLYCAssembly->AddPlacedVolume(fCLYCCrystalLog, move, rotate);
+    fCLYCAssembly->AddPlacedVolume(fCrystalLog, move, rotate);
 
     // Aluminum casing overlaps the sides and FRONT face (+Z) of the crystal
     if(t>0.) {
         std::vector<G4double> rCasing = { 0.*mm, R + t, R + t, R, R, 0.*mm };
         std::vector<G4double> zCasing = { +(L/2. + t), +(L/2. + t), -L/2., -L/2., +L/2., +L/2. };
 
-        G4GenericPolycone* Alum_solid = new G4GenericPolycone("Alum_solid", startPhi, endPhi, rCasing.size(), rCasing.data(), zCasing.data());
-        fAlumCasingLog = new G4LogicalVolume(Alum_solid, Alum_material, "AlumCasingLog", 0, 0, 0);
-        fAlumCasingLog->SetVisAttributes(new G4VisAttributes(true, fAlumColour));
+        G4GenericPolycone* Casing_solid = new G4GenericPolycone("Casing_solid", startPhi, endPhi, rCasing.size(), rCasing.data(), zCasing.data());
+        fCasingLog = new G4LogicalVolume(Casing_solid, Casing_material, "CasingLog", 0, 0, 0);
+        fCasingLog->SetVisAttributes(new G4VisAttributes(true, fCasingColour));
 
         move = G4ThreeVector(0., 0., crystalCenterZ);
-        if(!onlyBuildCLYC)
-            fCLYCAssembly->AddPlacedVolume(fAlumCasingLog, move, rotate);
+        if(!onlyBuildCrystal)
+            fCLYCAssembly->AddPlacedVolume(fCasingLog, move, rotate);
     }
 
     return 1;
@@ -204,18 +206,22 @@ void GeometryCLYC::BuildMaterials()
     G4Element* el_Cl = nist->FindOrBuildElement("Cl");
     G4Element* el_Li = nist->FindOrBuildElement("Li");
     G4Element* el_F  = nist->FindOrBuildElement("F");
+    G4Element* el_C  = nist->FindOrBuildElement("C");
+    G4Element* el_B  = nist->FindOrBuildElement("B");
     // enriched lithium
     G4Isotope* iso_Li6 = new G4Isotope("Li6", 3, 6, 6.015 * g/mole);
     G4Isotope* iso_Li7 = new G4Isotope("Li7", 3, 7, 7.016 * g/mole);
     G4Element* el_Li_enr = new G4Element("Enriched Lithium", "Li", 2);
     el_Li_enr->AddIsotope(iso_Li6, 95.0 * perCent);
     el_Li_enr->AddIsotope(iso_Li7, 5.0 * perCent);
+    // hydrogen from polyethylene, for S(alpha,beta) thermal neutron scattering cross-sections below 4 eV
+    G4Element* el_TS_H = new G4Element("TS_H_of_Polyethylene", "H_POLYETHYLENE", 1.0, 1.0079*g/mole); 
 
     // materials
     // NIST 
-    G4Material* mat_Pb = nist->FindOrBuildMaterial(fPbMatName);
-    G4Material* mat_PE_HD = nist->FindOrBuildMaterial(fPEHDMatName);
-    G4Material* mat_Al = nist->FindOrBuildMaterial(fAlumMatName);
+    G4Material* mat_Al      = nist->FindOrBuildMaterial("G4_Al");
+    G4Material* mat_Pb      = nist->FindOrBuildMaterial("G4_Pb");
+    G4Material* mat_PE      = nist->FindOrBuildMaterial("G4_POLYETHYLENE");
     // CLYC
     G4Material* mat_CLYC = new G4Material("CLYC", 3.31 * g/cm3, 4);
     mat_CLYC->AddElement(el_Cs,     2);
@@ -223,15 +229,24 @@ void GeometryCLYC::BuildMaterials()
     mat_CLYC->AddElement(el_Y,      1);
     mat_CLYC->AddElement(el_Cl,     6);   
     // enriched LiF
-    G4Material* LiF = new G4Material("LiF", 2.635*g/cm3, 2);
-    LiF->AddElement(el_Li_enr, 1);
-    LiF->AddElement(el_F, 1);
+    G4Material* mat_LiF = new G4Material("LiF", 2.635*g/cm3, 2);
+    mat_LiF->AddElement(el_Li_enr, 1);
+    mat_LiF->AddElement(el_F, 1);
+    // custom-defined LD/HD/boratedHD PE, using hydrogen element which uses the thermal scattering cross-sectiond data 
+    // high-density polyethylene (PEHD) 
+    G4Material* mat_PEHD = new G4Material("PEHD", 0.96*g/cm3, 2);
+    mat_PEHD->AddElement(el_TS_H, 2);
+    mat_PEHD->AddElement(el_C, 1);
+    // borated PEHD
+    G4Material* mat_PEHD_borated = new G4Material("PEHD_borated", 1.01*g/cm3, 2);
+    mat_PEHD_borated->AddMaterial(mat_PEHD, 95.*perCent);
+    mat_PEHD_borated->AddElement(el_B, 5.*perCent);
 }
 
 G4ThreeVector GeometryCLYC::GetCrystalCenterLocal() const
 {
     // Replicate the offset calculation used in Build()
-    G4double crystalCenterZ = -fPEPlugLipLength - fPEPlugInnerLength - fAlumCasingThickness - (fCLYCCrystalLength / 2.0);
+    G4double crystalCenterZ = -fPEPlugLipLength - fPEPlugInnerLength - fCasingThickness - (fCrystalLength / 2.0);
     return G4ThreeVector(0., 0., crystalCenterZ);
 }
 

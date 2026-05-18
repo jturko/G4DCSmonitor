@@ -104,8 +104,8 @@ DetectorMessenger::DetectorMessenger(DetectorConstruction* Det) : fDetector(Det)
     fSetCLYCCrystalLengthCmd = new G4UIcmdWithADoubleAndUnit("/dcs-monitor/det/clyc/setCrystalLength", this);
     fSetCLYCCrystalLengthCmd->AvailableForStates(G4State_PreInit);
     // aluminum casing
-    fSetCLYCAlumThicknessCmd = new G4UIcmdWithADoubleAndUnit("/dcs-monitor/det/clyc/setAlumThickness", this);
-    fSetCLYCAlumThicknessCmd->AvailableForStates(G4State_PreInit);
+    fSetCLYCCasingThicknessCmd = new G4UIcmdWithADoubleAndUnit("/dcs-monitor/det/clyc/setCasingThickness", this);
+    fSetCLYCCasingThicknessCmd->AvailableForStates(G4State_PreInit);
     // LiF collimator liner
     fSetCLYCLiFColInnerRadiusCmd = new G4UIcmdWithADoubleAndUnit("/dcs-monitor/det/clyc/setLiFColInnerRadius", this);
     fSetCLYCLiFColInnerRadiusCmd->AvailableForStates(G4State_PreInit);
@@ -121,12 +121,12 @@ DetectorMessenger::DetectorMessenger(DetectorConstruction* Det) : fDetector(Det)
     fSetCLYCPbColLengthCmd = new G4UIcmdWithADoubleAndUnit("/dcs-monitor/det/clyc/setPbColLength", this);
     fSetCLYCPbColLengthCmd->AvailableForStates(G4State_PreInit);
     // PE collimator
-    fSetCLYCPEHDColInnerRadiusCmd = new G4UIcmdWithADoubleAndUnit("/dcs-monitor/det/clyc/setPEHDColInnerRadius", this);
-    fSetCLYCPEHDColInnerRadiusCmd->AvailableForStates(G4State_PreInit);
-    fSetCLYCPEHDColOuterRadiusCmd = new G4UIcmdWithADoubleAndUnit("/dcs-monitor/det/clyc/setPEHDColOuterRadius", this);
-    fSetCLYCPEHDColOuterRadiusCmd->AvailableForStates(G4State_PreInit);
-    fSetCLYCPEHDColLengthCmd = new G4UIcmdWithADoubleAndUnit("/dcs-monitor/det/clyc/setPEHDColLength", this);
-    fSetCLYCPEHDColLengthCmd->AvailableForStates(G4State_PreInit);
+    fSetCLYCPEColInnerRadiusCmd = new G4UIcmdWithADoubleAndUnit("/dcs-monitor/det/clyc/setPEColInnerRadius", this);
+    fSetCLYCPEColInnerRadiusCmd->AvailableForStates(G4State_PreInit);
+    fSetCLYCPEColOuterRadiusCmd = new G4UIcmdWithADoubleAndUnit("/dcs-monitor/det/clyc/setPEColOuterRadius", this);
+    fSetCLYCPEColOuterRadiusCmd->AvailableForStates(G4State_PreInit);
+    fSetCLYCPEColLengthCmd = new G4UIcmdWithADoubleAndUnit("/dcs-monitor/det/clyc/setPEColLength", this);
+    fSetCLYCPEColLengthCmd->AvailableForStates(G4State_PreInit);
     // PE plug
     fSetCLYCPEPlugLipRadiusCmd = new G4UIcmdWithADoubleAndUnit("/dcs-monitor/det/clyc/setPEPlugLipRadius", this);
     fSetCLYCPEPlugLipRadiusCmd->AvailableForStates(G4State_PreInit);
@@ -139,14 +139,16 @@ DetectorMessenger::DetectorMessenger(DetectorConstruction* Det) : fDetector(Det)
     // materials
     fSetCLYCCrystalMaterialNameCmd = new G4UIcmdWithAString("/dcs-monitor/det/clyc/setCrystalMaterial", this);
     fSetCLYCCrystalMaterialNameCmd->AvailableForStates(G4State_PreInit);
-    fSetCLYCAlumMaterialNameCmd = new G4UIcmdWithAString("/dcs-monitor/det/clyc/setAlumMaterial", this);
-    fSetCLYCAlumMaterialNameCmd->AvailableForStates(G4State_PreInit);
-    fSetCLYCLiFMaterialNameCmd = new G4UIcmdWithAString("/dcs-monitor/det/clyc/setLiFMaterial", this);
-    fSetCLYCLiFMaterialNameCmd->AvailableForStates(G4State_PreInit);
-    fSetCLYCPbMaterialNameCmd = new G4UIcmdWithAString("/dcs-monitor/det/clyc/setPbMaterial", this);
-    fSetCLYCPbMaterialNameCmd->AvailableForStates(G4State_PreInit);
-    fSetCLYCPEHDMaterialNameCmd = new G4UIcmdWithAString("/dcs-monitor/det/clyc/setPEHDMaterial", this);
-    fSetCLYCPEHDMaterialNameCmd->AvailableForStates(G4State_PreInit);
+    fSetCLYCCasingMaterialNameCmd = new G4UIcmdWithAString("/dcs-monitor/det/clyc/setCasingMaterial", this);
+    fSetCLYCCasingMaterialNameCmd->AvailableForStates(G4State_PreInit);
+    fSetCLYCLiFColMaterialNameCmd = new G4UIcmdWithAString("/dcs-monitor/det/clyc/setLiFColMaterial", this);
+    fSetCLYCLiFColMaterialNameCmd->AvailableForStates(G4State_PreInit);
+    fSetCLYCPbColMaterialNameCmd = new G4UIcmdWithAString("/dcs-monitor/det/clyc/setPbColMaterial", this);
+    fSetCLYCPbColMaterialNameCmd->AvailableForStates(G4State_PreInit);
+    fSetCLYCPEColMaterialNameCmd = new G4UIcmdWithAString("/dcs-monitor/det/clyc/setPEColMaterial", this);
+    fSetCLYCPEColMaterialNameCmd->AvailableForStates(G4State_PreInit);
+    fSetCLYCPEPlugMaterialNameCmd = new G4UIcmdWithAString("/dcs-monitor/det/clyc/setPEPlugMaterial", this);
+    fSetCLYCPEPlugMaterialNameCmd->AvailableForStates(G4State_PreInit);
     
     // CASTOR 440
     fAddCASTOR440Cmd = new G4UIcmdWithoutParameter("/dcs-monitor/det/castor440/add", this);
@@ -180,7 +182,7 @@ DetectorMessenger::~DetectorMessenger()
     delete fSetCLYCCrystalRadiusCmd;
     delete fSetCLYCCrystalLengthCmd;
     // alum dims
-    delete fSetCLYCAlumThicknessCmd;
+    delete fSetCLYCCasingThicknessCmd;
     // LiF collimator dims
     delete fSetCLYCLiFColInnerRadiusCmd;
     delete fSetCLYCLiFColOuterRadiusCmd;
@@ -190,9 +192,9 @@ DetectorMessenger::~DetectorMessenger()
     delete fSetCLYCPbColOuterRadiusCmd;
     delete fSetCLYCPbColLengthCmd;
     // PE collimator dims
-    delete fSetCLYCPEHDColInnerRadiusCmd;
-    delete fSetCLYCPEHDColOuterRadiusCmd;
-    delete fSetCLYCPEHDColLengthCmd;
+    delete fSetCLYCPEColInnerRadiusCmd;
+    delete fSetCLYCPEColOuterRadiusCmd;
+    delete fSetCLYCPEColLengthCmd;
     // PE plug dims
     delete fSetCLYCPEPlugLipRadiusCmd;
     delete fSetCLYCPEPlugInnerRadiusCmd;
@@ -200,10 +202,11 @@ DetectorMessenger::~DetectorMessenger()
     delete fSetCLYCPEPlugInnerLengthCmd;
     // materials
     delete fSetCLYCCrystalMaterialNameCmd;
-    delete fSetCLYCAlumMaterialNameCmd;
-    delete fSetCLYCLiFMaterialNameCmd;
-    delete fSetCLYCPbMaterialNameCmd;
-    delete fSetCLYCPEHDMaterialNameCmd;
+    delete fSetCLYCCasingMaterialNameCmd;
+    delete fSetCLYCLiFColMaterialNameCmd;
+    delete fSetCLYCPbColMaterialNameCmd;
+    delete fSetCLYCPEColMaterialNameCmd;
+    delete fSetCLYCPEPlugMaterialNameCmd;
     
     // CASTOR 440
     delete fAddCASTOR440Cmd;
@@ -238,7 +241,7 @@ void DetectorMessenger::SetNewValue(G4UIcommand* command, G4String value)
     if(command == fSetCLYCCrystalRadiusCmd)         fDetector->SetCLYCCrystalRadius(fSetCLYCCrystalRadiusCmd->GetNewDoubleValue(value));
     if(command == fSetCLYCCrystalLengthCmd)         fDetector->SetCLYCCrystalLength(fSetCLYCCrystalLengthCmd->GetNewDoubleValue(value));
     
-    if(command == fSetCLYCAlumThicknessCmd)         fDetector->SetCLYCAlumThickness(fSetCLYCAlumThicknessCmd->GetNewDoubleValue(value));
+    if(command == fSetCLYCCasingThicknessCmd)       fDetector->SetCLYCCasingThickness(fSetCLYCCasingThicknessCmd->GetNewDoubleValue(value));
     
     if(command == fSetCLYCLiFColInnerRadiusCmd)     fDetector->SetCLYCLiFCollimatorInnerRadius(fSetCLYCLiFColInnerRadiusCmd->GetNewDoubleValue(value));
     if(command == fSetCLYCLiFColOuterRadiusCmd)     fDetector->SetCLYCLiFCollimatorOuterRadius(fSetCLYCLiFColOuterRadiusCmd->GetNewDoubleValue(value));
@@ -248,9 +251,9 @@ void DetectorMessenger::SetNewValue(G4UIcommand* command, G4String value)
     if(command == fSetCLYCPbColOuterRadiusCmd)      fDetector->SetCLYCPbCollimatorOuterRadius(fSetCLYCPbColOuterRadiusCmd->GetNewDoubleValue(value));
     if(command == fSetCLYCPbColLengthCmd)           fDetector->SetCLYCPbCollimatorLength(fSetCLYCPbColLengthCmd->GetNewDoubleValue(value));
     
-    if(command == fSetCLYCPEHDColInnerRadiusCmd)    fDetector->SetCLYCPEHDCollimatorInnerRadius(fSetCLYCPEHDColInnerRadiusCmd->GetNewDoubleValue(value));
-    if(command == fSetCLYCPEHDColOuterRadiusCmd)    fDetector->SetCLYCPEHDCollimatorOuterRadius(fSetCLYCPEHDColOuterRadiusCmd->GetNewDoubleValue(value));
-    if(command == fSetCLYCPEHDColLengthCmd)         fDetector->SetCLYCPEHDCollimatorLength(fSetCLYCPEHDColLengthCmd->GetNewDoubleValue(value));
+    if(command == fSetCLYCPEColInnerRadiusCmd)      fDetector->SetCLYCPECollimatorInnerRadius(fSetCLYCPEColInnerRadiusCmd->GetNewDoubleValue(value));
+    if(command == fSetCLYCPEColOuterRadiusCmd)      fDetector->SetCLYCPECollimatorOuterRadius(fSetCLYCPEColOuterRadiusCmd->GetNewDoubleValue(value));
+    if(command == fSetCLYCPEColLengthCmd)           fDetector->SetCLYCPECollimatorLength(fSetCLYCPEColLengthCmd->GetNewDoubleValue(value));
 
     if(command == fSetCLYCPEPlugLipRadiusCmd)       fDetector->SetCLYCPEPlugLipRadius(  fSetCLYCPEPlugLipRadiusCmd->GetNewDoubleValue(value));
     if(command == fSetCLYCPEPlugInnerRadiusCmd)     fDetector->SetCLYCPEPlugInnerRadius(fSetCLYCPEPlugInnerRadiusCmd->GetNewDoubleValue(value));
@@ -258,10 +261,11 @@ void DetectorMessenger::SetNewValue(G4UIcommand* command, G4String value)
     if(command == fSetCLYCPEPlugInnerLengthCmd)     fDetector->SetCLYCPEPlugInnerLength(fSetCLYCPEPlugInnerLengthCmd->GetNewDoubleValue(value));
 
     if(command == fSetCLYCCrystalMaterialNameCmd)   fDetector->SetCLYCCrystalMaterialName(value);
-    if(command == fSetCLYCAlumMaterialNameCmd)      fDetector->SetCLYCAlumMaterialName(value);
-    if(command == fSetCLYCLiFMaterialNameCmd)       fDetector->SetCLYCLiFMaterialName(value);
-    if(command == fSetCLYCPbMaterialNameCmd)        fDetector->SetCLYCPbMaterialName(value);
-    if(command == fSetCLYCPEHDMaterialNameCmd)      fDetector->SetCLYCPEHDMaterialName(value);
+    if(command == fSetCLYCCasingMaterialNameCmd)    fDetector->SetCLYCCasingMaterialName(value);
+    if(command == fSetCLYCLiFColMaterialNameCmd)    fDetector->SetCLYCLiFColMaterialName(value);
+    if(command == fSetCLYCPbColMaterialNameCmd)     fDetector->SetCLYCPbColMaterialName(value);
+    if(command == fSetCLYCPEColMaterialNameCmd)     fDetector->SetCLYCPEColMaterialName(value);
+    if(command == fSetCLYCPEPlugMaterialNameCmd)     fDetector->SetCLYCPEPlugMaterialName(value);
     
     // CASTOR 440
     if(command == fAddCASTOR440Cmd)                 fDetector->AddCASTOR440();

@@ -17,55 +17,55 @@ class GeometryCLYC
 
     G4int Build();
     void PlaceDetector(G4LogicalVolume* expHallLog, G4ThreeVector move, G4RotationMatrix* rotate, G4int copyNo);
-    //void PlaceDetectorByCrystalCenter(G4LogicalVolume* expHallLog, G4ThreeVector move, G4RotationMatrix* rotate, G4int copyNo);
     G4ThreeVector GetCrystalCenterLocal() const;
 
-    G4LogicalVolume* GetCLYCLog() { return fCLYCCrystalLog; }
+    G4LogicalVolume* GetCLYCLog() { return fCrystalLog; }
     
     // Dimension Setters
-    void SetCrystalRadius(G4double radius) { fCLYCCrystalRadius = radius; }
-    void SetCrystalLength(G4double length) { fCLYCCrystalLength = length; }
-    void SetAlumCasingThickness(G4double thickness) { fAlumCasingThickness = thickness; }
+    void SetCrystalRadius(G4double radius) { fCrystalRadius = radius; }
+    void SetCrystalLength(G4double length) { fCrystalLength = length; }
+    void SetCasingThickness(G4double thickness) { fCasingThickness = thickness; }
     
-    void SetLiFCollimatorInnerRadius(G4double r) { fLiFCollimatorInnerRadius = r; }
-    void SetLiFCollimatorOuterRadius(G4double r) { fLiFCollimatorOuterRadius = r; }
-    void SetLiFCollimatorLength(G4double l) { fLiFCollimatorLength = l; }
+    void SetLiFCollimatorInnerRadius(G4double r){ fLiFCollimatorInnerRadius = r; }
+    void SetLiFCollimatorOuterRadius(G4double r){ fLiFCollimatorOuterRadius = r; }
+    void SetLiFCollimatorLength(G4double l)     { fLiFCollimatorLength = l; }
     
     void SetPbCollimatorInnerRadius(G4double r) { fPbCollimatorInnerRadius = r; }
     void SetPbCollimatorOuterRadius(G4double r) { fPbCollimatorOuterRadius = r; }
-    void SetPbCollimatorLength(G4double l) { fPbCollimatorLength = l; }
+    void SetPbCollimatorLength(G4double l)      { fPbCollimatorLength = l; }
     
-    void SetPEHDCollimatorInnerRadius(G4double r) { fPEHDCollimatorInnerRadius = r; }
-    void SetPEHDCollimatorOuterRadius(G4double r) { fPEHDCollimatorOuterRadius = r; }
-    void SetPEHDCollimatorLength(G4double l) { fPEHDCollimatorLength = l; }
+    void SetPECollimatorInnerRadius(G4double r) { fPECollimatorInnerRadius = r; }
+    void SetPECollimatorOuterRadius(G4double r) { fPECollimatorOuterRadius = r; }
+    void SetPECollimatorLength(G4double l)      { fPECollimatorLength = l; }
     
-    void SetPEPlugInnerRadius(G4double r)   { fPEPlugInnerRadius    = r; }
-    void SetPEPlugLipRadius(G4double r)     { fPEPlugLipRadius      = r; }
-    void SetPEPlugInnerLength(G4double l)   { fPEPlugInnerLength    = l; }
-    void SetPEPlugLipLength(G4double l)     { fPEPlugLipLength      = l; }
+    void SetPEPlugInnerRadius(G4double r)       { fPEPlugInnerRadius    = r; }
+    void SetPEPlugLipRadius(G4double r)         { fPEPlugLipRadius      = r; }
+    void SetPEPlugInnerLength(G4double l)       { fPEPlugInnerLength    = l; }
+    void SetPEPlugLipLength(G4double l)         { fPEPlugLipLength      = l; }
 
     // Material Setters
-    void SetCrystalMaterialName(G4String name) { fCLYCCrystalMatName = name; }
-    void SetAlumMaterialName(G4String name) { fAlumMatName = name; }
-    void SetLiFMaterialName(G4String name) { fLiFMatName = name; }
-    void SetPbMaterialName(G4String name) { fPbMatName = name; }
-    void SetPEHDMaterialName(G4String name) { fPEHDMatName = name; }
+    void SetCrystalMaterialName(G4String name)      { fCrystalMatName = name; }
+    void SetCasingMaterialName(G4String name)       { fCasingMatName = name; }
+    void SetLiFColMaterialName(G4String name)       { fLiFColMatName = name; }
+    void SetPbColMaterialName(G4String name)        { fPbColMatName = name; }
+    void SetPEColMaterialName(G4String name)        { fPEColMatName = name; }
+    void SetPEPlugMaterialName(G4String name)       { fPEPlugMatName = name; }
 
   private:
     void BuildMaterials();
 
     G4AssemblyVolume* fCLYCAssembly;
 
-    G4LogicalVolume* fCLYCCrystalLog;
-    G4LogicalVolume* fAlumCasingLog;
+    G4LogicalVolume* fCrystalLog;
+    G4LogicalVolume* fCasingLog;
     G4LogicalVolume* fLiFCollimatorLog;
     G4LogicalVolume* fPbCollimatorLog;
-    G4LogicalVolume* fPEHDCollimatorLog;
+    G4LogicalVolume* fPECollimatorLog;
     G4LogicalVolume* fPEPlugLog;
 
-    G4double fCLYCCrystalRadius;
-    G4double fCLYCCrystalLength;
-    G4double fAlumCasingThickness;
+    G4double fCrystalRadius;
+    G4double fCrystalLength;
+    G4double fCasingThickness;
     
     G4double fLiFCollimatorInnerRadius;
     G4double fLiFCollimatorOuterRadius;
@@ -75,26 +75,27 @@ class GeometryCLYC
     G4double fPbCollimatorOuterRadius;
     G4double fPbCollimatorLength;
     
-    G4double fPEHDCollimatorInnerRadius;
-    G4double fPEHDCollimatorOuterRadius;
-    G4double fPEHDCollimatorLength;
+    G4double fPECollimatorInnerRadius;
+    G4double fPECollimatorOuterRadius;
+    G4double fPECollimatorLength;
 
     G4double fPEPlugInnerRadius;
     G4double fPEPlugLipRadius;
     G4double fPEPlugInnerLength;
     G4double fPEPlugLipLength;
 
-    G4String fCLYCCrystalMatName;
-    G4String fAlumMatName;
-    G4String fLiFMatName;
-    G4String fPbMatName;
-    G4String fPEHDMatName;
+    G4String fCrystalMatName;
+    G4String fCasingMatName;
+    G4String fLiFColMatName;
+    G4String fPbColMatName;
+    G4String fPEColMatName;
+    G4String fPEPlugMatName;
 
-    G4Colour fCLYCCrystalColour;
-    G4Colour fAlumColour;
-    G4Colour fLiFColour;
-    G4Colour fPbColour;
-    G4Colour fPEHDColour;
+    G4Colour fCrystalColour;
+    G4Colour fCasingColour;
+    G4Colour fLiFColColour;
+    G4Colour fPbColColour;
+    G4Colour fPEColColour;
     G4Colour fPEPlugColour;
 };
 

@@ -26,27 +26,27 @@
 /dcs-monitor/det/clyc/setCrystalRadius 12.5 mm
 /dcs-monitor/det/clyc/setCrystalLength 25.0 mm
 # aluminum casing
-/dcs-monitor/det/clyc/setAlumMaterial G4_Al
-/dcs-monitor/det/clyc/setAlumThickness 0.5 mm
-#/dcs-monitor/det/clyc/setAlumThickness 0.0 mm
+/dcs-monitor/det/clyc/setCasingMaterial G4_Al
+/dcs-monitor/det/clyc/setCasingThickness 0.5 mm
+#/dcs-monitor/det/clyc/setCasingThickness 0.0 mm
 # LiF collimator
-/dcs-monitor/det/clyc/setLiFMaterial LiF
+/dcs-monitor/det/clyc/setLiFColMaterial LiF
 #/dcs-monitor/det/clyc/setLiFColInnerRadius 15.0 mm
 #/dcs-monitor/det/clyc/setLiFColOuterRadius 17.5 mm
 #/dcs-monitor/det/clyc/setLiFColLength 50.0 mm
 /dcs-monitor/det/clyc/setLiFColLength 0.0 mm
 # Pb collimator
-/dcs-monitor/det/clyc/setPbMaterial G4_Pb
+/dcs-monitor/det/clyc/setPbColMaterial G4_Pb
 #/dcs-monitor/det/clyc/setPbColInnerRadius 17.5 mm
 #/dcs-monitor/det/clyc/setPbColOuterRadius 22.5 mm
 /dcs-monitor/det/clyc/setPbColLength 50.0 mm
 #/dcs-monitor/det/clyc/setPbColLength 0.0 mm
-# PEHD collimator
-/dcs-monitor/det/clyc/setPEHDMaterial G4_POLYETHYLENE
-#/dcs-monitor/det/clyc/setPEHDColInnerRadius 22.5 mm
-#/dcs-monitor/det/clyc/setPEHDColOuterRadius 27.5 mm
-/dcs-monitor/det/clyc/setPEHDColLength 50.0 mm
-#/dcs-monitor/det/clyc/setPEHDColLength 0.0 mm
+# PE collimator
+/dcs-monitor/det/clyc/setPEColMaterial G4_POLYETHYLENE
+#/dcs-monitor/det/clyc/setPEColInnerRadius 22.5 mm
+#/dcs-monitor/det/clyc/setPEColOuterRadius 27.5 mm
+/dcs-monitor/det/clyc/setPEColLength 50.0 mm
+#/dcs-monitor/det/clyc/setPEColLength 0.0 mm
 # PE plug
 #/dcs-monitor/det/clyc/setPEPlugLipRadius 27.5 mm
 #/dcs-monitor/det/clyc/setPEPlugInnerRadius 14.5 mm

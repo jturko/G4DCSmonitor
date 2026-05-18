@@ -54,7 +54,7 @@ class DetectorConstruction : public G4VUserDetectorConstruction
 
         void SetCLYCCrystalRadius(G4double val);
         void SetCLYCCrystalLength(G4double val);
-        void SetCLYCAlumThickness(G4double val);
+        void SetCLYCCasingThickness(G4double val);
 
         void SetCLYCLiFCollimatorInnerRadius(G4double val);
         void SetCLYCLiFCollimatorOuterRadius(G4double val);
@@ -64,9 +64,9 @@ class DetectorConstruction : public G4VUserDetectorConstruction
         void SetCLYCPbCollimatorOuterRadius(G4double val);
         void SetCLYCPbCollimatorLength(G4double val);
 
-        void SetCLYCPEHDCollimatorInnerRadius(G4double val);
-        void SetCLYCPEHDCollimatorOuterRadius(G4double val);
-        void SetCLYCPEHDCollimatorLength(G4double val);
+        void SetCLYCPECollimatorInnerRadius(G4double val);
+        void SetCLYCPECollimatorOuterRadius(G4double val);
+        void SetCLYCPECollimatorLength(G4double val);
 
         void SetCLYCPEPlugLipRadius(G4double val);
         void SetCLYCPEPlugInnerRadius(G4double val);
@@ -74,10 +74,11 @@ class DetectorConstruction : public G4VUserDetectorConstruction
         void SetCLYCPEPlugInnerLength(G4double val);
 
         void SetCLYCCrystalMaterialName(G4String val);
-        void SetCLYCAlumMaterialName(G4String val);
-        void SetCLYCLiFMaterialName(G4String val);
-        void SetCLYCPbMaterialName(G4String val);
-        void SetCLYCPEHDMaterialName(G4String val);
+        void SetCLYCCasingMaterialName(G4String val);
+        void SetCLYCLiFColMaterialName(G4String val);
+        void SetCLYCPbColMaterialName(G4String val);
+        void SetCLYCPEColMaterialName(G4String val);
+        void SetCLYCPEPlugMaterialName(G4String val);
 
         // CASTOR 440
         void AddCASTOR440();
