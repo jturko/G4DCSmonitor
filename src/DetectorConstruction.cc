@@ -133,17 +133,17 @@ G4VPhysicalVolume* DetectorConstruction::ConstructVolumes()
     G4Box* sWorld = new G4Box("sWorld", 
             fWorldXYZ/2., fWorldXYZ/2., fWorldXYZ/2.);
     material = man->FindOrBuildMaterial("G4_AIR");
-    // r-index for optical physics to work correctly
-    if (!material->GetMaterialPropertiesTable()) {
-        const G4int Na = 2;
-        G4double ea[Na] = { 1.5*eV, 6.0*eV };
-        G4double na[Na] = { 1.0003, 1.0003 };
-        auto* mptAir = new G4MaterialPropertiesTable();
-        mptAir->AddProperty("RINDEX", ea, na, Na);
-        material->SetMaterialPropertiesTable(mptAir);
-        G4cout << " [DetectorConstruction] Attached RINDEX to G4_AIR (n = 1.0003)" << G4endl;
-    }
-    // 
+    //// r-index for optical physics to work correctly
+    //if (!material->GetMaterialPropertiesTable()) {
+    //    const G4int Na = 2;
+    //    G4double ea[Na] = { 1.5*eV, 6.0*eV };
+    //    G4double na[Na] = { 1.0003, 1.0003 };
+    //    auto* mptAir = new G4MaterialPropertiesTable();
+    //    mptAir->AddProperty("RINDEX", ea, na, Na);
+    //    material->SetMaterialPropertiesTable(mptAir);
+    //    G4cout << " [DetectorConstruction] Attached RINDEX to G4_AIR (n = 1.0003)" << G4endl;
+    //}
+    //// 
     fLWorld = new G4LogicalVolume(sWorld, 
             material,
             material->GetName());

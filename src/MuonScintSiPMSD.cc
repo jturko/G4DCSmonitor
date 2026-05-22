@@ -47,36 +47,40 @@ G4bool MuonScintSiPMSD::ProcessHits(G4Step* step, G4TouchableHistory*)
 {
     G4Track* track = step->GetTrack();
 
-    // -----------------------------------------------------------------
-    // 1) Optical photons only. Charged-particle steps are silently
-    //    ignored (and NOT killed).
-    // -----------------------------------------------------------------
-    if (track->GetDefinition() != G4OpticalPhoton::OpticalPhoton()) {
-        return false;
-    }
+    // 1) Optical photons only.
+    if (track->GetDefinition() != G4OpticalPhoton::OpticalPhoton()) return false;
 
-    // -----------------------------------------------------------------
-    // 2) Trigger on entry into the SiPM volume only.
-    // -----------------------------------------------------------------
-    G4StepPoint* preStep = step->GetPreStepPoint();
-    if (preStep->GetStepStatus() != fGeomBoundary) {
-        return false;
-    }
+    G4StepPoint* preStep  = step->GetPreStepPoint();
+    G4StepPoint* postStep = step->GetPostStepPoint();
 
-    // -----------------------------------------------------------------
-    // 3) Identify the SiPM (copyNo at depth 0) and parent slab (depth 1).
-    // -----------------------------------------------------------------
-    const G4TouchableHandle& touch = preStep->GetTouchableHandle();
-    const G4int sipmCopy = touch->GetCopyNumber(0);
-    const G4int detCopy  = (touch->GetHistoryDepth() >= 1)
-                         ? touch->GetCopyNumber(1) : 0;
+    // 2) We get called for *every* step on the SiPM volume. We only care
+    //    about steps that LAND on the grease<->SiPM boundary. Detection is
+    //    signalled by OpBoundaryProcess setting the post-step process
+    //    status to "Detection" (track is also flagged fStopAndKill).
+    //
+    //    The boundary status is exposed via G4OpBoundaryProcess; rather
+    //    than chase that pointer, we use the simpler proxy: the photon
+    //    just got killed AND the post-step is on a geometry boundary AND
+    //    the post-step volume's LV is the SiPM LV.
+    if (postStep->GetStepStatus() != fGeomBoundary) return false;
+    if (track->GetTrackStatus() != fStopAndKill)   return false;
 
-    // Composite key: assumes <65536 SiPMs per slab and <65536 slabs.
+    // 3) Identify (det, sipm) from the POST-step touchable: the photon is
+    //    crossing INTO the SiPM volume right now.
+    const G4VTouchable* postTouch = postStep->GetTouchable();
+    G4VPhysicalVolume*  postPV    = postStep->GetPhysicalVolume();
+    if (!postPV || postPV->GetLogicalVolume()->GetName() != "SiPMLV") return false;
+
+    const G4int sipmCopy = postTouch->GetCopyNumber(0);
+    // For external-SiPM design, SiPMs are siblings of the slab in the world;
+    // we don't have a "parent slab copy" available from the touchable. If
+    // you support multiple slabs, you'll need a SiPM->slab mapping stored
+    // in GeometryMuonScint. For a single-slab setup, det = 0 is fine.
+    const G4int detCopy = 0;
+
     const G4int key = (detCopy << 16) | (sipmCopy & 0xFFFF);
 
-    // -----------------------------------------------------------------
-    // 4) Find or create the aggregate hit for this (det, sipm).
-    // -----------------------------------------------------------------
+    // 4) Find or create the aggregate hit.
     G4int hitIdx = -1;
     auto it = fSiPMHitIndexMap.find(key);
     if (it != fSiPMHitIndexMap.end()) {
@@ -91,16 +95,9 @@ G4bool MuonScintSiPMSD::ProcessHits(G4Step* step, G4TouchableHistory*)
     }
     auto* hit = (*fHitsCollection)[hitIdx];
 
-    // Always count incidence.
+    // Every photon that reached this point was absorbed by the photocathode
+    // (i.e. detected, since EFFICIENCY = PDE and REFLECTIVITY = 0).
     hit->AddIncident();
-
-    // -----------------------------------------------------------------
-    // 5) PDE Bernoulli draw, then kill the photon.
-    // -----------------------------------------------------------------
-    const G4bool detected = (G4UniformRand() < fPDE);
-    track->SetTrackStatus(fStopAndKill);
-
-    if (!detected) return false;
 
     const G4double t   = preStep->GetGlobalTime();
     const G4double E   = track->GetKineticEnergy();
@@ -108,7 +105,7 @@ G4bool MuonScintSiPMSD::ProcessHits(G4Step* step, G4TouchableHistory*)
         ? (CLHEP::h_Planck * CLHEP::c_light / E) / CLHEP::nanometer
         : 0.;
 
-    hit->AddDetected(t, lam, preStep->GetPosition());
+    hit->AddDetected(t, lam, postStep->GetPosition());
     return true;
 }
 
