@@ -45,6 +45,8 @@
 #include "G4PhysicalVolumeStore.hh"
 #include "G4Material.hh"
 
+#include "G4ProcessTable.hh"
+
 #include "ProgressBar.hh"
 
 #include <iomanip>
@@ -99,17 +101,19 @@ void RunAction::BeginOfRunAction(const G4Run* run)
     }
 
     // histograms
-    //
     G4AnalysisManager* analysisManager = G4AnalysisManager::Instance();
-    //if (analysisManager->IsActive()) {
-        analysisManager->OpenFile();
+    analysisManager->OpenFile();
+
+    //auto* opBdry = G4ProcessTable::GetProcessTable()->FindProcess("OpBoundary", "opticalphoton");
+    //if (opBdry) {
+    //    opBdry->SetVerboseLevel(2);
+    //    G4cout << " [Diag] OpBoundary verbosity raised to 2" << G4endl;
     //}
 
     ProgressBar::gEvtNb.store(0, std::memory_order_relaxed);
     if(fProgBar)
         delete fProgBar;
     fProgBar = new ProgressBar(run->GetNumberOfEventToBeProcessed(), 1.0, 25);
-    //fProgBar = new ProgressBar(run->GetNumberOfEventToBeProcessed());
 
 }
 
@@ -122,30 +126,11 @@ void RunAction::EndOfRunAction(const G4Run* run)
         fProgBar->Print(run->GetNumberOfEventToBeProcessed()-1);
     }
 
-    //if (isMaster) {
-    //    // volumes
-    //    G4cout << " -------------- Volumes in this run -------------- " << G4endl;
-    //    G4PhysicalVolumeStore* PVStore = G4PhysicalVolumeStore::GetInstance();
-    //    for (auto it = PVStore->begin(); it != PVStore->end(); ++it) {
-    //        G4VPhysicalVolume* currentVolume = *it;
-    //        G4String volumeName = currentVolume->GetName();
-    //        G4cout << " - " << volumeName << G4endl;
-    //    }
-    //    G4cout << " ------------------------------------------------- " << G4endl;
-    //    
-    //    // run info
-    //    fRun->EndOfRun(fPrint);
-    //    
-    //    // show Rndm status
-    //    G4Random::showEngineStatus();
-    //}
 
     // save histograms
     G4AnalysisManager* analysisManager = G4AnalysisManager::Instance();
-    //if (analysisManager->IsActive()) {
-        analysisManager->Write();
-        analysisManager->CloseFile();
-    //}
+    analysisManager->Write();
+    analysisManager->CloseFile();
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

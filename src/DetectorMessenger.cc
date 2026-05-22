@@ -34,6 +34,7 @@
 
 #include "DetectorConstruction.hh"
 
+#include "G4UIcmdWithADouble.hh"
 #include "G4UIcmdWithADoubleAndUnit.hh"
 #include "G4UIcmdWith3Vector.hh"
 #include "G4UIcmdWith3VectorAndUnit.hh"
@@ -152,6 +153,71 @@ DetectorMessenger::DetectorMessenger(DetectorConstruction* Det) : fDetector(Det)
     fAddCASTOR440Cmd = new G4UIcmdWithoutParameter("/dcs-monitor/det/castor440/add", this);
     fAddCASTOR440Cmd->AvailableForStates(G4State_PreInit);
 
+
+
+
+
+    // -----------------------------------------------------------------
+    // muon scintillator
+    // -----------------------------------------------------------------
+    fAddMuonScintCmd = new G4UIcmdWithoutParameter("/dcs-monitor/det/muonScint/add", this);
+    fAddMuonScintCmd->SetGuidance("Instantiate a plastic scintillator slab at the current "
+                                  "position/rotation. Each call creates a new slab.");
+    fAddMuonScintCmd->AvailableForStates(G4State_PreInit);
+
+    fSetMuonScintSizeCmd = new G4UIcmdWith3VectorAndUnit("/dcs-monitor/det/muonScint/setSize", this);
+    fSetMuonScintSizeCmd->SetGuidance("Set the HALF-lengths (Lx/2, Ly/2, Lz/2) of the slab. "
+                                     "Default 100 100 5 mm = 200x200x10 mm^3.");
+    fSetMuonScintSizeCmd->SetParameterName("hx", "hy", "hz", false);
+    fSetMuonScintSizeCmd->SetDefaultUnit("mm");
+    fSetMuonScintSizeCmd->AvailableForStates(G4State_PreInit);
+
+    fSetMuonScintReflectorCmd = new G4UIcmdWithAnInteger("/dcs-monitor/det/muonScint/setReflector", this);
+    fSetMuonScintReflectorCmd->SetGuidance("Reflector type:");
+    fSetMuonScintReflectorCmd->SetGuidance("  0 = none (bare polished)");
+    fSetMuonScintReflectorCmd->SetGuidance("  1 = EJ-510 TiO2 paint  (Lambertian, ~97%)");
+    fSetMuonScintReflectorCmd->SetGuidance("  2 = aluminium foil      (specular,   ~90%)");
+    fSetMuonScintReflectorCmd->SetGuidance("  3 = high-gloss paper    (mixed,      ~95%)");
+    fSetMuonScintReflectorCmd->SetGuidance("  4 = PTFE / Teflon       (Lambertian, ~99%)");
+    fSetMuonScintReflectorCmd->SetParameterName("type", false);
+    fSetMuonScintReflectorCmd->SetRange("type >= 0 && type <= 4");
+    fSetMuonScintReflectorCmd->AvailableForStates(G4State_PreInit);
+
+    fSetMuonScintWrapCmd = new G4UIcmdWithABool("/dcs-monitor/det/muonScint/setWrap", this);
+    fSetMuonScintWrapCmd->SetGuidance("Wrap the slab in the selected reflector (true/false).");
+    fSetMuonScintWrapCmd->SetParameterName("wrap", true);
+    fSetMuonScintWrapCmd->SetDefaultValue(true);
+    fSetMuonScintWrapCmd->AvailableForStates(G4State_PreInit);
+
+    fSetMuonScintSiPMSizeCmd = new G4UIcmdWith3Vector("/dcs-monitor/det/muonScint/setSiPMSize", this);
+    fSetMuonScintSiPMSizeCmd->SetGuidance("SiPM active-area size (sx, sy) in mm. The third component "
+                                         "is ignored (thickness is fixed internally).");
+    fSetMuonScintSiPMSizeCmd->SetParameterName("sx_mm", "sy_mm", "ignored", false);
+    fSetMuonScintSiPMSizeCmd->AvailableForStates(G4State_PreInit);
+
+    fAddMuonScintSiPMCmd = new G4UIcmdWith3Vector("/dcs-monitor/det/muonScint/addSiPM", this);
+    fAddMuonScintSiPMCmd->SetGuidance("Add a SiPM at (edge, u, v):");
+    fAddMuonScintSiPMCmd->SetGuidance("  edge: 0=+X, 1=-X, 2=+Y, 3=-Y    (the 4 narrow side faces)");
+    fAddMuonScintSiPMCmd->SetGuidance("  u: position along the long axis of the edge, in [-1, +1]");
+    fAddMuonScintSiPMCmd->SetGuidance("  v: position across the thickness, in [-1, +1] (usually 0)");
+    fAddMuonScintSiPMCmd->SetParameterName("edge", "u", "v", false);
+    fAddMuonScintSiPMCmd->AvailableForStates(G4State_PreInit);
+
+    fClearMuonScintSiPMsCmd = new G4UIcmdWithoutParameter("/dcs-monitor/det/muonScint/clearSiPMs", this);
+    fClearMuonScintSiPMsCmd->SetGuidance("Remove all SiPMs from the most-recently-added slab.");
+    fClearMuonScintSiPMsCmd->AvailableForStates(G4State_PreInit);
+
+    fApplyMuonScintPresetCmd = new G4UIcmdWithAnInteger("/dcs-monitor/det/muonScint/preset", this);
+    fApplyMuonScintPresetCmd->SetGuidance("Apply a preset SiPM layout (Configs from Rao 2025):");
+    fApplyMuonScintPresetCmd->SetGuidance("  1 = Config 1: 8 SiPMs (2 per side, all 4 sides)");
+    fApplyMuonScintPresetCmd->SetGuidance("  2 = Config 2: 4 SiPMs (1 per side, all 4 sides)");
+    fApplyMuonScintPresetCmd->SetGuidance("  3 = Config 3: 2 SiPMs (both on the +X side)");
+    fApplyMuonScintPresetCmd->SetGuidance("  4 = Corners:  4 SiPMs (one at each corner of +X/-X edges)");
+    fApplyMuonScintPresetCmd->SetParameterName("preset", false);
+    fApplyMuonScintPresetCmd->SetRange("preset >= 1 && preset <= 4");
+    fApplyMuonScintPresetCmd->AvailableForStates(G4State_PreInit);
+
+
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -206,7 +272,19 @@ DetectorMessenger::~DetectorMessenger()
     delete fSetCLYCPEHDMaterialNameCmd;
     
     // CASTOR 440
-    delete fAddCASTOR440Cmd;
+    delete fAddCASTOR440Cmd; 
+
+
+    // muon scintillator
+    delete fAddMuonScintCmd;
+    delete fSetMuonScintSizeCmd;
+    delete fSetMuonScintReflectorCmd;
+    delete fSetMuonScintWrapCmd;
+    delete fSetMuonScintSiPMSizeCmd;
+    delete fAddMuonScintSiPMCmd;
+    delete fClearMuonScintSiPMsCmd;
+    delete fApplyMuonScintPresetCmd;
+
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -265,6 +343,25 @@ void DetectorMessenger::SetNewValue(G4UIcommand* command, G4String value)
     
     // CASTOR 440
     if(command == fAddCASTOR440Cmd)                 fDetector->AddCASTOR440();
+
+
+
+    // muon scintillator
+    if (command == fAddMuonScintCmd)             fDetector->AddMuonScint();
+    if (command == fSetMuonScintSizeCmd)         fDetector->SetMuonScintSize(fSetMuonScintSizeCmd->GetNew3VectorValue(value));
+    if (command == fSetMuonScintReflectorCmd)    fDetector->SetMuonScintReflector(fSetMuonScintReflectorCmd->GetNewIntValue(value));
+    if (command == fSetMuonScintWrapCmd)         fDetector->SetMuonScintWrap(fSetMuonScintWrapCmd->GetNewBoolValue(value));
+    if (command == fSetMuonScintSiPMSizeCmd) {
+        G4ThreeVector v = fSetMuonScintSiPMSizeCmd->GetNew3VectorValue(value);
+        fDetector->SetMuonScintSiPMSize(v.x() * CLHEP::mm, v.y() * CLHEP::mm);
+    }
+    if (command == fAddMuonScintSiPMCmd) {
+        G4ThreeVector v = fAddMuonScintSiPMCmd->GetNew3VectorValue(value);
+        fDetector->AddMuonScintSiPM((G4int)v.x(), v.y(), v.z());
+    }
+    if (command == fClearMuonScintSiPMsCmd)      fDetector->ClearMuonScintSiPMs();
+    if (command == fApplyMuonScintPresetCmd)     fDetector->ApplyMuonScintPreset(fApplyMuonScintPresetCmd->GetNewIntValue(value));
+
 
 }
 

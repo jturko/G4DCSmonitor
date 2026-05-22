@@ -53,6 +53,10 @@
 #include "G4SystemOfUnits.hh"
 #include "G4UnitsTable.hh"
 
+// u-sim
+#include "G4OpticalPhysics.hh"
+#include "G4OpticalParameters.hh"
+
 // particles
 
 #include "G4BaryonConstructor.hh"
@@ -85,7 +89,9 @@
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-PhysicsList::PhysicsList(G4bool useImportanceBiasing) : fUseImportanceBiasing(useImportanceBiasing)
+PhysicsList::PhysicsList(G4bool useImportanceBiasing, G4bool useOpticalPhysics) : 
+    fUseImportanceBiasing(useImportanceBiasing),
+    fUseOpticalPhysics(useOpticalPhysics)
 {
     G4int verb = 1;
     SetVerboseLevel(verb);
@@ -113,17 +119,54 @@ PhysicsList::PhysicsList(G4bool useImportanceBiasing) : fUseImportanceBiasing(us
     RegisterPhysics(new GammaNuclearPhysics("gamma"));
     RegisterPhysics(new G4RadioactiveDecayPhysics());
     
-    if (fUseImportanceBiasing) {
-        RegisterPhysics(new G4ParallelWorldPhysics("BiasingWorld"));
+    //// importance biasing
+    //if (fUseImportanceBiasing) {
+    //    RegisterPhysics(new G4ParallelWorldPhysics("BiasingWorld"));
 
-        fGammaSampler = new G4GeometrySampler("BiasingWorld", "gamma");
-        fGammaSampler->SetParallel(true);
-        RegisterPhysics(new G4ImportanceBiasing(fGammaSampler, "BiasingWorld"));
+    //    fGammaSampler = new G4GeometrySampler("BiasingWorld", "gamma");
+    //    fGammaSampler->SetParallel(true);
+    //    RegisterPhysics(new G4ImportanceBiasing(fGammaSampler, "BiasingWorld"));
 
-        fNeutronSampler = new G4GeometrySampler("BiasingWorld", "neutron");
-        fNeutronSampler->SetParallel(true);
-        RegisterPhysics(new G4ImportanceBiasing(fNeutronSampler, "BiasingWorld"));
+    //    fNeutronSampler = new G4GeometrySampler("BiasingWorld", "neutron");
+    //    fNeutronSampler->SetParallel(true);
+    //    RegisterPhysics(new G4ImportanceBiasing(fNeutronSampler, "BiasingWorld"));
+    //}
+
+    // u-sim
+    if (fUseOpticalPhysics) {
+        G4cout << " -> Building optical physics in PhysicsList constructor..." << G4endl;
+
+        auto* optParams = G4OpticalParameters::Instance();
+    
+        //  verbosity
+        optParams->SetVerboseLevel(1);
+    
+        // scintillation settings
+        optParams->SetScintTrackSecondariesFirst(true);
+        optParams->SetScintByParticleType(false); 
+    
+        // Cerenkov settings
+        optParams->SetCerenkovTrackSecondariesFirst(true);
+        optParams->SetCerenkovMaxPhotonsPerStep(100);
+        optParams->SetCerenkovMaxBetaChange(10.0);
+    
+        // WLS timing profile - look into later for config 4 from Rao et al
+        optParams->SetWLSTimeProfile("delta");
+    
+        // process activation
+        optParams->SetProcessActivation("Cerenkov",      true);
+        optParams->SetProcessActivation("Scintillation", true);
+        optParams->SetProcessActivation("OpAbsorption",  true);
+        optParams->SetProcessActivation("OpRayleigh",    true);
+        optParams->SetProcessActivation("OpBoundary",    true);
+        optParams->SetProcessActivation("OpMieHG",       false);
+        optParams->SetProcessActivation("OpWLS",         false);
+        optParams->SetProcessActivation("OpWLS2",        false);
+    
+        RegisterPhysics(new G4OpticalPhysics());
     }
+    
+
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -178,18 +221,60 @@ void PhysicsList::SetCuts()
         clycRegion->SetProductionCuts(clycCuts);
         G4cout << " [PhysicsList] Applied fine production cuts (0.1 mm) to CLYCRegion" << G4endl;
     }
+    
+    // FIX: Fine cuts for the MuonScint detector region
+    G4Region* scintRegion = G4RegionStore::GetInstance()->GetRegion("MuonScintRegion", false);
+    if (scintRegion) {
+        G4ProductionCuts* scintCuts = new G4ProductionCuts();
+        scintCuts->SetProductionCut(0.1 * mm, "gamma");
+        scintCuts->SetProductionCut(0.1 * mm, "e-");
+        scintCuts->SetProductionCut(0.1 * mm, "e+");
+        scintCuts->SetProductionCut(0.1 * mm, "proton");
+        scintRegion->SetProductionCuts(scintCuts);
+        G4cout << " [PhysicsList] Applied fine production cuts (0.1 mm) to MuonScintRegion" << G4endl;
+    }
 }
 
-//void PhysicsList::SetCuts()
-//{
-//    //SetCutValue(0. * mm, "proton");
-//    //SetCutValue(1. * um, "proton");
-//    
-//    SetCutValue(1.0 * mm, "gamma");
-//    SetCutValue(1.0 * mm, "e-");   
-//    SetCutValue(1.0 * mm, "e+");   
-//    SetCutValue(1.0 * um, "proton");
-//
-//}
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+#include "G4ParallelWorldProcess.hh"
+#include "G4OpticalPhoton.hh"
+#include "G4ProcessManager.hh"
+
+void PhysicsList::ConstructProcess() {
+    G4VModularPhysicsList::ConstructProcess();
+
+    if (fUseImportanceBiasing) {
+        auto* optDef = G4OpticalPhoton::OpticalPhotonDefinition();
+        auto* pmgr   = optDef->GetProcessManager();
+        if (pmgr) {
+            G4VProcess* pwProc = nullptr;
+            G4ProcessVector* plist = pmgr->GetProcessList();
+            for (G4int i = 0; i < (G4int)plist->size(); ++i) {
+                G4VProcess* p = (*plist)[i];
+                // The process name is set when G4ParallelWorldPhysics
+                // registers it; it carries the parallel-world name.
+                if (p && p->GetProcessName() == "BiasingWorld") {
+                    pwProc = p;
+                    break;
+                }
+            }
+            //if (pwProc) {
+            //    pmgr->RemoveProcess(pwProc);
+            //    G4cout << " [PhysicsList] Removed parallel-world process 'BiasingWorld' "
+            //           << "from opticalphoton (required for correct boundary handling)."
+            //           << G4endl;
+            //}
+            if (pwProc) {
+                pmgr->SetProcessActivation(pwProc, false);
+                G4cout << " [PhysicsList] DEACTIVATED parallel-world process 'BiasingWorld' "
+                       << "on opticalphoton (was priority 9900, blocking OpBoundary)."
+                       << G4endl;
+            }
+        }
+    }
+
+}
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+

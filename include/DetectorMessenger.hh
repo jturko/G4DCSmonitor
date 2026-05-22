@@ -40,6 +40,7 @@ class DetectorConstruction;
 class G4UIdirectory;
 class G4UIcommand;
 class G4UIcmdWithAString;
+class G4UIcmdWithADouble;
 class G4UIcmdWithADoubleAndUnit;
 class G4UIcmdWithoutParameter;
 class G4UIcmdWith3Vector;
@@ -109,6 +110,17 @@ class DetectorMessenger : public G4UImessenger
 
     // castor 440
     G4UIcmdWithoutParameter* fAddCASTOR440Cmd = nullptr;
+
+    // muon scintillator
+    G4UIcmdWithoutParameter*   fAddMuonScintCmd               = nullptr;
+    G4UIcmdWith3VectorAndUnit* fSetMuonScintSizeCmd           = nullptr;     // half-lengths (Lx/2, Ly/2, Lz/2)
+    G4UIcmdWithAnInteger*      fSetMuonScintReflectorCmd      = nullptr;    // 0=none,1=TiO2 paint,2=Al foil,3=glossy paper,4=PTFE
+    G4UIcmdWithABool*          fSetMuonScintWrapCmd           = nullptr;
+    G4UIcmdWith3Vector*        fSetMuonScintSiPMSizeCmd       = nullptr;     // (sx, sy, _) in mm; z is fixed in geometry
+    G4UIcmdWith3Vector*        fAddMuonScintSiPMCmd           = nullptr;     // (edge, u, v) ; edge=0..3, u/v in [-1,1]
+    G4UIcmdWithoutParameter*   fClearMuonScintSiPMsCmd        = nullptr;
+    G4UIcmdWithAnInteger*      fApplyMuonScintPresetCmd       = nullptr;     // 1..4
+
 
 };
 

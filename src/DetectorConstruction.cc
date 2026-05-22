@@ -31,34 +31,38 @@
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-#include "DetectorConstruction.hh"
-#include "DetectorMessenger.hh"
-
-#include "DCSMonitorSD.hh"
-
-#include "GeometryCLYC.hh"
-#include "GeometryCASTOR440.hh"
-
-#include "G4Box.hh"
-#include "G4Tubs.hh"
-#include "G4SubtractionSolid.hh"
-#include "G4GeometryManager.hh"
-#include "G4LogicalVolume.hh"
-#include "G4LogicalVolumeStore.hh"
-#include "G4Material.hh"
-#include "G4NistManager.hh"
-#include "G4PVPlacement.hh"
-#include "G4PhysicalVolumeStore.hh"
-#include "G4RunManager.hh"
-#include "G4SolidStore.hh"
 #include "G4SystemOfUnits.hh"
 #include "G4UnitsTable.hh"
 
+#include "DetectorConstruction.hh"
+#include "DetectorMessenger.hh"
+#include "G4RunManager.hh"
+
+#include "G4GeometryManager.hh"
+#include "G4Box.hh"
+#include "G4Tubs.hh"
+#include "G4SubtractionSolid.hh"
+
+#include "G4SolidStore.hh"
+#include "G4LogicalVolume.hh"
+#include "G4LogicalVolumeStore.hh"
+#include "G4PVPlacement.hh"
+#include "G4PhysicalVolumeStore.hh"
+
+#include "G4Material.hh"
+#include "G4NistManager.hh"
+
 #include "G4VisAttributes.hh"
 #include "G4Colour.hh"
-#include "G4SDManager.hh"
 
+#include "GeometryCLYC.hh"
+#include "GeometryCASTOR440.hh"
 #include "GeometryParallelBiasing.hh"
+#include "GeometryMuonScint.hh"
+
+#include "G4SDManager.hh"
+#include "DCSMonitorSD.hh"
+#include "MuonScintSiPMSD.hh"
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
@@ -74,7 +78,7 @@ DetectorConstruction::DetectorConstruction()
 
     // biasing
     // TODO -> could we make this registration conditional based on flag set (fUseBiasing) ?
-    RegisterParallelWorld(new GeometryParallelBiasing("BiasingWorld", this));
+    //RegisterParallelWorld(new GeometryParallelBiasing("BiasingWorld", this));
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -129,6 +133,17 @@ G4VPhysicalVolume* DetectorConstruction::ConstructVolumes()
     G4Box* sWorld = new G4Box("sWorld", 
             fWorldXYZ/2., fWorldXYZ/2., fWorldXYZ/2.);
     material = man->FindOrBuildMaterial("G4_AIR");
+    // r-index for optical physics to work correctly
+    if (!material->GetMaterialPropertiesTable()) {
+        const G4int Na = 2;
+        G4double ea[Na] = { 1.5*eV, 6.0*eV };
+        G4double na[Na] = { 1.0003, 1.0003 };
+        auto* mptAir = new G4MaterialPropertiesTable();
+        mptAir->AddProperty("RINDEX", ea, na, Na);
+        material->SetMaterialPropertiesTable(mptAir);
+        G4cout << " [DetectorConstruction] Attached RINDEX to G4_AIR (n = 1.0003)" << G4endl;
+    }
+    // 
     fLWorld = new G4LogicalVolume(sWorld, 
             material,
             material->GetName());
@@ -141,19 +156,9 @@ G4VPhysicalVolume* DetectorConstruction::ConstructVolumes()
             false,                  // no boolean operation
             0);                     // copy number
 
-    // CLYC detector(s)
-    // old method - fCLYCPositions stores either the front PE plug pos OR the crystal centroid pos
-    //for (size_t i = 0; i < fCLYCDetectors.size(); ++i) {
-    //    fCLYCDetectors[i]->Build();
 
-    //    if (fCLYCPlaceByCrystalCenter[i]) {
-    //        fCLYCDetectors[i]->PlaceDetectorByCrystalCenter(fLWorld, fCLYCPositions[i], fCLYCRotations[i], i);
-    //    } else {
-    //        fCLYCDetectors[i]->PlaceDetector(fLWorld, fCLYCPositions[i], fCLYCRotations[i], i);
-    //    }
-    //}
-    // new method - fCLYCPositions ALWAYS stores the PE plug front pos, and the local offset to the crystal center is applied if 
-    // we the bool flag for center placement has been set
+
+    // CLYC detector(s)
     for (size_t i = 0; i < fCLYCDetectors.size(); ++i) {
         fCLYCDetectors[i]->Build();
     
@@ -175,9 +180,15 @@ G4VPhysicalVolume* DetectorConstruction::ConstructVolumes()
     for (size_t i = 0; i < fCASTOR440Detectors.size(); ++i) {
         fCASTOR440Detectors[i]->Build();
         fCASTOR440Detectors[i]->PlaceDetector(fLWorld, fCASTOR440Positions[i], fCASTOR440Rotations[i], i);
-
         fLCASTOR440s.push_back(fCASTOR440Detectors[i]->GetCASTORLog());
     }
+
+    // u-sim scintillator slab(s)
+    for (size_t i = 0; i < fMuonScints.size(); ++i) {
+        fMuonScints[i]->Build();
+        fMuonScints[i]->PlaceDetector(fLWorld, fMuonScintPositions[i], fMuonScintRotations[i], i);
+    }
+
 
     //PrintParameters();
     //G4cout << *(G4Material::GetMaterialTable()) << G4endl;
@@ -200,6 +211,19 @@ void DetectorConstruction::ConstructSDandField()
             G4LogicalVolume* logVol = clyc->GetCLYCLog();
             if (logVol) {
                 SetSensitiveDetector(logVol, clycSD);
+            }
+        }
+    }
+
+    if (!fMuonScints.empty()) {
+        G4String muonSDname = "MuonScintSiPMSD";
+        auto muonSiPMSD = new MuonScintSiPMSD(muonSDname, "MuonScintSiPMHits");
+        G4SDManager::GetSDMpointer()->AddNewDetector(muonSiPMSD);
+
+        for (auto* mscint : fMuonScints) {
+            G4LogicalVolume* sipmLV = mscint->GetSiPMLV();
+            if (sipmLV) {
+                SetSensitiveDetector(sipmLV, muonSiPMSD);
             }
         }
     }
@@ -341,5 +365,72 @@ G4ThreeVector DetectorConstruction::SampleUniformGlobalPositionInFuel(G4int cask
 
     globalPos += fCASTOR440Positions[caskIndex];
     return globalPos;
+}
+
+
+
+void DetectorConstruction::AddMuonScint()
+{
+    fMuonScints.push_back(new GeometryMuonScint());
+    fMuonScintPositions.push_back(fPosition);
+
+    G4RotationMatrix* rot = new G4RotationMatrix();
+    rot->rotateX(fRotation.x() * M_PI / 180.);
+    rot->rotateY(fRotation.y() * M_PI / 180.);
+    rot->rotateZ(fRotation.z() * M_PI / 180.);
+    fMuonScintRotations.push_back(rot);
+}
+
+void DetectorConstruction::SetMuonScintSize(G4ThreeVector half_mm)
+{
+    if (!fMuonScints.empty()) fMuonScints.back()->SetSlabSize(half_mm);
+}
+
+void DetectorConstruction::SetMuonScintReflector(G4int type)
+{
+    if (!fMuonScints.empty())
+        fMuonScints.back()->SetReflectorType(static_cast<ReflectorType>(type));
+}
+
+void DetectorConstruction::SetMuonScintWrap(G4bool on)
+{
+    if (!fMuonScints.empty()) fMuonScints.back()->SetReflectorWrap(on);
+}
+
+void DetectorConstruction::SetMuonScintSiPMSize(G4double sx, G4double sy)
+{
+    if (!fMuonScints.empty()) fMuonScints.back()->SetSiPMSize(sx, sy);
+}
+
+void DetectorConstruction::AddMuonScintSiPM(G4int edge, G4double u, G4double v)
+{
+    if (!fMuonScints.empty()) {
+        SiPMSpec s;
+        s.edge   = edge;
+        s.uAlong = u;
+        s.vAlong = v;
+        fMuonScints.back()->AddSiPM(s);
+    }
+}
+
+void DetectorConstruction::ClearMuonScintSiPMs()
+{
+    if (!fMuonScints.empty()) fMuonScints.back()->ClearSiPMs();
+}
+
+void DetectorConstruction::ApplyMuonScintPreset(G4int presetId)
+{
+    if (fMuonScints.empty()) return;
+    auto* m = fMuonScints.back();
+    switch (presetId) {
+        case 1: m->PresetConfig_8SiPM_AllSides();   break;
+        case 2: m->PresetConfig_4SiPM_OnePerSide(); break;
+        case 3: m->PresetConfig_2SiPM_OneSide();    break;
+        case 4: m->PresetConfig_4SiPM_Corners();    break;
+        default:
+            G4cerr << " [DetectorConstruction::ApplyMuonScintPreset] "
+                   << "Unknown preset " << presetId << " (valid: 1..4)" << G4endl;
+            break;
+    }
 }
 

@@ -112,7 +112,23 @@ void HistoManager::Book()
     analysisManager->CreateNtupleDColumn("evtNb");
     analysisManager->FinishNtuple();
     //G4cout << " Created ntuple \"castor_surf\" (id " << idx << ")" << G4endl;
-    
+ 
+    // ntuple for MuonScint SiPM hits (one row per (event, SiPM) with detected photons)
+    idx = analysisManager->CreateNtuple("sipmHits", "tree of detected optical photon counts in MuonScint SiPMs");
+    analysisManager->SetNtupleActivation(idx, true);
+    analysisManager->CreateNtupleIColumn("evtNb");
+    analysisManager->CreateNtupleIColumn("det");
+    analysisManager->CreateNtupleIColumn("sipm");
+    analysisManager->CreateNtupleIColumn("nDetected");
+    analysisManager->CreateNtupleIColumn("nIncident");
+    analysisManager->CreateNtupleDColumn("tFirst");
+    analysisManager->CreateNtupleDColumn("meanWavelength_nm");
+    analysisManager->CreateNtupleDColumn("rmsWavelength_nm");
+    analysisManager->CreateNtupleDColumn("weight");
+    analysisManager->FinishNtuple();
+    //G4cout << " Created ntuple \"sipmHits\" (id " << idx << ")" << G4endl;
+
+
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

@@ -12,6 +12,7 @@ class G4Material;
 class DetectorMessenger;
 class GeometryCLYC;
 class GeometryCASTOR440;
+class GeometryMuonScint;
 
 class DetectorConstruction : public G4VUserDetectorConstruction
 {
@@ -109,6 +110,22 @@ class DetectorConstruction : public G4VUserDetectorConstruction
         G4ThreeVector SampleUniformGlobalPositionInFuel(G4int caskIndex,
                                                         G4int fuelIndex) const;
 
+
+
+
+        // u-sim
+        void  AddMuonScint();                         // place one at fPosition / fRotation
+        G4int GetNumMuonScints() const                { return (G4int)fMuonScints.size(); }
+        GeometryMuonScint* GetMuonScint(G4int i) const{ return (i>=0 && i<(G4int)fMuonScints.size()) ? fMuonScints[i] : nullptr; }
+
+        void SetMuonScintSize(G4ThreeVector half_mm);
+        void SetMuonScintReflector(G4int  type);      // 0..4 (enum mirror)
+        void SetMuonScintWrap    (G4bool on);
+        void SetMuonScintSiPMSize(G4double sx, G4double sy);
+        void AddMuonScintSiPM    (G4int edge, G4double u, G4double v);
+        void ClearMuonScintSiPMs ();
+        void ApplyMuonScintPreset(G4int presetId);    // 1..4 (Configs)
+
     private:
         DetectorMessenger* fDetectorMessenger = nullptr;
 
@@ -134,6 +151,12 @@ class DetectorConstruction : public G4VUserDetectorConstruction
         std::vector<G4ThreeVector>        fCASTOR440Positions;
         std::vector<G4RotationMatrix*>    fCASTOR440Rotations;
         std::vector<G4LogicalVolume*>     fLCASTOR440s;
+
+        // u-sim
+        std::vector<GeometryMuonScint*>   fMuonScints;
+        std::vector<G4ThreeVector>        fMuonScintPositions;
+        std::vector<G4RotationMatrix*>    fMuonScintRotations;
+
 
     private:
         void DefineMaterials();

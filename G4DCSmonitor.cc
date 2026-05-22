@@ -109,7 +109,8 @@ int main(int argc, char** argv)
     
     // the importance biasing is always set to true here, however if it is deactivated in the
     // run macro, then importance values of 1 are registered everywhere (see GeometryParallelBiasing)
-    PhysicsList* phys = new PhysicsList(/*useImportanceBiasing=*/true); 
+    // similarly, we always build/use optical physics here
+    PhysicsList* phys = new PhysicsList(/*useImportanceBiasing=*/true, /*useOpticalPhysics=*/true); 
     runManager->SetUserInitialization(phys);
     runManager->SetUserInitialization(new ActionInitialization(det));
 
