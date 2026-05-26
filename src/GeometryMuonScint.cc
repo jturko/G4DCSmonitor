@@ -174,8 +174,12 @@ void GeometryMuonScint::BuildOpticalSurfaces()
 
     switch (fReflectorType) {
       case kNoReflector:
+        //fReflSurface->SetType(dielectric_dielectric);
+        //fReflSurface->SetFinish(polished);
+        //break;
         fReflSurface->SetType(dielectric_dielectric);
-        fReflSurface->SetFinish(polished);
+        fReflSurface->SetFinish(ground);
+        fReflSurface->SetSigmaAlpha(0.1);  // tune: try 0.03, 0.05, 0.10, 0.20
         break;
       case kPaintTiO2: {
         fReflSurface->SetType(dielectric_dielectric);
@@ -186,28 +190,56 @@ void GeometryMuonScint::BuildOpticalSurfaces()
         break;
       }
       case kAluminumFoil: {
-        fReflSurface->SetType(dielectric_metal);
-        fReflSurface->SetFinish(polished);
-        G4double R[N] = { 0.90, 0.90 };
+        //fReflSurface->SetType(dielectric_metal);
+        //fReflSurface->SetFinish(polished);
+        //G4double R[N] = { 0.90, 0.90 };
+        //surfMPT->AddProperty("REFLECTIVITY", e, R, N);
+        //break;
+        
+        // Loose foil approximation:
+        // scintillator -> air gap -> polished aluminum reflector.
+        // This preserves the scintillator/air Fresnel + TIR behavior.
+        fReflSurface->SetType(dielectric_dielectric);
+        fReflSurface->SetFinish(polishedbackpainted);
+        fReflSurface->SetSigmaAlpha(0.0);
+        G4double R[N] = {0.90, 0.90};
+        G4double nGap[N] = {1.0003, 1.0003};
         surfMPT->AddProperty("REFLECTIVITY", e, R, N);
+        surfMPT->AddProperty("RINDEX",    e, nGap, N);
         break;
       }
       case kGlossyPaper: {
+        //fReflSurface->SetType(dielectric_dielectric);
+        //fReflSurface->SetFinish(groundfrontpainted);
+        //fReflSurface->SetSigmaAlpha(0.10);
+        //G4double R[N]    = { 0.95, 0.95 };
+        //G4double lobe[N] = { 0.70, 0.70 };
+        //surfMPT->AddProperty("REFLECTIVITY",         e, R,    N);
+        //surfMPT->AddProperty("SPECULARLOBECONSTANT", e, lobe, N);
+        //break;
+        
+        // Loose glossy paper approximation:
+        // scintillator -> air gap -> mixed/specular-diffuse paper reflector.
         fReflSurface->SetType(dielectric_dielectric);
-        fReflSurface->SetFinish(groundfrontpainted);
+        fReflSurface->SetFinish(groundbackpainted);
         fReflSurface->SetSigmaAlpha(0.10);
-        G4double R[N]    = { 0.95, 0.95 };
-        G4double lobe[N] = { 0.70, 0.70 };
+        G4double R[N]    = {0.95, 0.95};
+        G4double lobe[N] = {0.70, 0.70};
+        G4double nGap[N] = {1.0003, 1.0003};
         surfMPT->AddProperty("REFLECTIVITY",         e, R,    N);
         surfMPT->AddProperty("SPECULARLOBECONSTANT", e, lobe, N);
+        surfMPT->AddProperty("RINDEX",               e, nGap, N);
         break;
       }
       case kTeflon: {
         fReflSurface->SetType(dielectric_dielectric);
-        fReflSurface->SetFinish(groundfrontpainted);
+        //fReflSurface->SetFinish(groundfrontpainted);
+        fReflSurface->SetFinish(groundbackpainted);
         fReflSurface->SetSigmaAlpha(0.25);
         G4double R[N] = { 0.99, 0.99 };
+        G4double nGap[N] = {1.0003, 1.0003};
         surfMPT->AddProperty("REFLECTIVITY", e, R, N);
+        surfMPT->AddProperty("RINDEX",    e, nGap, N);
         break;
       }
     }
@@ -239,7 +271,8 @@ void GeometryMuonScint::BuildOpticalSurfaces()
     // ===================================================================
     fSiPMSurface = new G4OpticalSurface("MuonScintSiPMPhotocathode");
     fSiPMSurface->SetModel(unified);
-    fSiPMSurface->SetType(dielectric_metal);
+    //fSiPMSurface->SetType(dielectric_metal);
+    fSiPMSurface->SetType(dielectric_dielectric);
     fSiPMSurface->SetFinish(polished);
 
     auto* sipmMPT = new G4MaterialPropertiesTable();
@@ -251,8 +284,8 @@ void GeometryMuonScint::BuildOpticalSurfaces()
     G4double pde[Np]   = { 0.20, 0.23, 0.27, 0.31, 0.35,
                            0.40, 0.43, 0.43, 0.40, 0.30, 0.18 };
     G4double rZero[Np] = { 0,0,0,0,0, 0,0,0,0,0,0 };
-    sipmMPT->AddProperty("EFFICIENCY",   ep, pde,   Np);
-    sipmMPT->AddProperty("REFLECTIVITY", ep, rZero, Np);
+    //sipmMPT->AddProperty("EFFICIENCY",   ep, pde,   Np);
+    //sipmMPT->AddProperty("REFLECTIVITY", ep, rZero, Np);
     fSiPMSurface->SetMaterialPropertiesTable(sipmMPT);
 }
 
@@ -364,9 +397,9 @@ void GeometryMuonScint::PlaceDetector(G4LogicalVolume* worldLV,
 
     // Wrapping skin -- applies on every face of the slab where no border
     // surface exists. The grease patches will override at their footprints.
-    if (fWrapWithReflector && fReflectorType != kNoReflector) {
+    //if (fWrapWithReflector && fReflectorType != kNoReflector) {
         new G4LogicalSkinSurface("MuonScintSkin", fScintLV, fReflSurface);
-    }
+    //}
 
     // Place grease pads + SiPMs as siblings of the slab in the world.
     PlaceSiPMs(worldLV, pos, rot, copyNo);
