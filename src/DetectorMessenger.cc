@@ -166,9 +166,9 @@ DetectorMessenger::DetectorMessenger(DetectorConstruction* Det) : fDetector(Det)
     fAddMuonScintCmd->AvailableForStates(G4State_PreInit);
 
     fSetMuonScintSizeCmd = new G4UIcmdWith3VectorAndUnit("/dcs-monitor/det/muonScint/setSize", this);
-    fSetMuonScintSizeCmd->SetGuidance("Set the HALF-lengths (Lx/2, Ly/2, Lz/2) of the slab. "
-                                     "Default 100 100 5 mm = 200x200x10 mm^3.");
-    fSetMuonScintSizeCmd->SetParameterName("hx", "hy", "hz", false);
+    fSetMuonScintSizeCmd->SetGuidance("Set the lengths of the slab. "
+                                     "Default 200 200 10 mm = 200 x 200 x 10 mm^3.");
+    fSetMuonScintSizeCmd->SetParameterName("xx", "yy", "zz", false);
     fSetMuonScintSizeCmd->SetDefaultUnit("mm");
     fSetMuonScintSizeCmd->AvailableForStates(G4State_PreInit);
 

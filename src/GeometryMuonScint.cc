@@ -161,133 +161,279 @@ void GeometryMuonScint::BuildOpticalProperties(G4Material* scintMat)
 
 void GeometryMuonScint::BuildOpticalSurfaces()
 {
-    // ===================================================================
+    // -----------------------------------------------------------------
     // 1) Wrapping reflector (skin surface on the scintillator LV).
-    //    Will be overridden at coupling patches by border surfaces below.
-    // ===================================================================
+    // -----------------------------------------------------------------
     fReflSurface = new G4OpticalSurface("MuonScintReflector");
     fReflSurface->SetModel(unified);
 
-    auto* surfMPT = new G4MaterialPropertiesTable();
     const G4int N = 2;
     G4double e[N] = { 1.5*eV, 6.0*eV };
 
     switch (fReflectorType) {
-      case kNoReflector:
-        //fReflSurface->SetType(dielectric_dielectric);
-        //fReflSurface->SetFinish(polished);
-        //break;
+
+      // ============================================================
+      // 0) BARE: pure Fresnel/TIR off the slab/air boundary.
+      //    No paint, no roughness. Refractive indices come from the
+      //    slab and world materials' RINDEX tables.
+      // ============================================================
+      case kNoReflector: {
         fReflSurface->SetType(dielectric_dielectric);
-        fReflSurface->SetFinish(ground);
-        fReflSurface->SetSigmaAlpha(0.1);  // tune: try 0.03, 0.05, 0.10, 0.20
+        fReflSurface->SetFinish(polished);
+        // Deliberately attach NO MPT here -- Fresnel from RINDEX is automatic.
         break;
+      }
+
+      // ============================================================
+      // 1) TiO2 PAINT (EJ-510 or similar epoxy paint applied directly).
+      //    Photon hits paint immediately (no air gap). Lambertian
+      //    reflection is physically correct for TiO2 paint -- the
+      //    emission is from sub-surface scattering off TiO2 grains.
+      //    R(425 nm) ~ 0.95-0.97 for EJ-510.
+      // ============================================================
       case kPaintTiO2: {
         fReflSurface->SetType(dielectric_dielectric);
         fReflSurface->SetFinish(groundfrontpainted);
-        fReflSurface->SetSigmaAlpha(0.20);
-        G4double R[N] = { 0.97, 0.97 };
-        surfMPT->AddProperty("REFLECTIVITY", e, R, N);
+        fReflSurface->SetSigmaAlpha(0.1);  // ~5.7 deg, paint texture
+
+        auto* mpt = new G4MaterialPropertiesTable();
+        G4double R[N]      = { 0.97, 0.97 };
+        G4double specSp[N] = { 0.00, 0.00 };  // not specular
+        G4double specLo[N] = { 0.00, 0.00 };
+        G4double backSc[N] = { 0.00, 0.00 };
+        // Lambertian fraction = 1 - (specSp + specLo + backSc) = 1.00
+        mpt->AddProperty("REFLECTIVITY",          e, R,      N);
+        mpt->AddProperty("SPECULARSPIKECONSTANT", e, specSp, N);
+        mpt->AddProperty("SPECULARLOBECONSTANT",  e, specLo, N);
+        mpt->AddProperty("BACKSCATTERCONSTANT",   e, backSc, N);
+        fReflSurface->SetMaterialPropertiesTable(mpt);
         break;
       }
+
+      // ============================================================
+      // 2) ALUMINUM FOIL with air gap (loose-wrap like Mylar/Al).
+      //    "polishedbackpainted" preserves TIR at the slab/air
+      //    interface; sub-TIR photons enter the gap, hit the Al
+      //    "paint", and reflect SPECULARLY (specular spike = 1.0)
+      //    because Al is a smooth metal mirror.
+      //    R(425 nm) for crinkled household Al ~ 0.85; for Mylar
+      //    aluminized film ~ 0.90; for evaporated-Al on glass ~ 0.92.
+      // ============================================================
       case kAluminumFoil: {
-        //fReflSurface->SetType(dielectric_metal);
-        //fReflSurface->SetFinish(polished);
-        //G4double R[N] = { 0.90, 0.90 };
-        //surfMPT->AddProperty("REFLECTIVITY", e, R, N);
-        //break;
-        
-        // Loose foil approximation:
-        // scintillator -> air gap -> polished aluminum reflector.
-        // This preserves the scintillator/air Fresnel + TIR behavior.
         fReflSurface->SetType(dielectric_dielectric);
         fReflSurface->SetFinish(polishedbackpainted);
         fReflSurface->SetSigmaAlpha(0.0);
-        G4double R[N] = {0.90, 0.90};
-        G4double nGap[N] = {1.0003, 1.0003};
-        surfMPT->AddProperty("REFLECTIVITY", e, R, N);
-        surfMPT->AddProperty("RINDEX",    e, nGap, N);
+
+        auto* mpt = new G4MaterialPropertiesTable();
+        G4double R[N]      = { 0.90, 0.90 };
+        G4double nGap[N]   = { 1.0003, 1.0003 };
+        G4double specSp[N] = { 1.00, 1.00 };  // pure mirror
+        G4double specLo[N] = { 0.00, 0.00 };
+        G4double backSc[N] = { 0.00, 0.00 };
+        mpt->AddProperty("REFLECTIVITY",          e, R,      N);
+        mpt->AddProperty("RINDEX",                e, nGap,   N);
+        mpt->AddProperty("SPECULARSPIKECONSTANT", e, specSp, N);
+        mpt->AddProperty("SPECULARLOBECONSTANT",  e, specLo, N);
+        mpt->AddProperty("BACKSCATTERCONSTANT",   e, backSc, N);
+        fReflSurface->SetMaterialPropertiesTable(mpt);
         break;
       }
+
+      // ============================================================
+      // 3) GLOSSY WHITE PAPER with air gap.
+      //    Ground/back-painted with sigma_alpha ~ 0.1 rad to model
+      //    the slight surface texture of the paper. Most photons
+      //    that transmit and hit the paper backing are diffusely
+      //    re-emitted (Lambertian), with a small specular-lobe
+      //    component from the glossy finish.
+      //    R(425 nm) ~ 0.93-0.95 typical for glossy photo paper.
+      // ============================================================
       case kGlossyPaper: {
-        //fReflSurface->SetType(dielectric_dielectric);
-        //fReflSurface->SetFinish(groundfrontpainted);
-        //fReflSurface->SetSigmaAlpha(0.10);
-        //G4double R[N]    = { 0.95, 0.95 };
-        //G4double lobe[N] = { 0.70, 0.70 };
-        //surfMPT->AddProperty("REFLECTIVITY",         e, R,    N);
-        //surfMPT->AddProperty("SPECULARLOBECONSTANT", e, lobe, N);
-        //break;
-        
-        // Loose glossy paper approximation:
-        // scintillator -> air gap -> mixed/specular-diffuse paper reflector.
         fReflSurface->SetType(dielectric_dielectric);
         fReflSurface->SetFinish(groundbackpainted);
-        fReflSurface->SetSigmaAlpha(0.10);
-        G4double R[N]    = {0.95, 0.95};
-        G4double lobe[N] = {0.70, 0.70};
-        G4double nGap[N] = {1.0003, 1.0003};
-        surfMPT->AddProperty("REFLECTIVITY",         e, R,    N);
-        surfMPT->AddProperty("SPECULARLOBECONSTANT", e, lobe, N);
-        surfMPT->AddProperty("RINDEX",               e, nGap, N);
+        fReflSurface->SetSigmaAlpha(0.0000001);  // mild texture
+
+        auto* mpt = new G4MaterialPropertiesTable();
+        G4double R[N]      = { 0.95, 0.95 };
+        G4double nGap[N]   = { 1.0003, 1.0003 };
+        G4double specSp[N] = { 0.00, 0.00 };
+        G4double specLo[N] = { 0.20, 0.20 };  // small glossy lobe
+        G4double backSc[N] = { 0.00, 0.00 };
+        // Lambertian fraction = 0.80
+        mpt->AddProperty("REFLECTIVITY",          e, R,      N);
+        mpt->AddProperty("RINDEX",                e, nGap,   N);
+        mpt->AddProperty("SPECULARSPIKECONSTANT", e, specSp, N);
+        mpt->AddProperty("SPECULARLOBECONSTANT",  e, specLo, N);
+        mpt->AddProperty("BACKSCATTERCONSTANT",   e, backSc, N);
+        fReflSurface->SetMaterialPropertiesTable(mpt);
         break;
       }
+
+      // ============================================================
+      // 4) PTFE / TEFLON tape with air gap.
+      //    Near-perfectly Lambertian volumetric scatterer.
+      //    R(425 nm) >= 0.99 for >= 4 layers of plumber's tape;
+      //    use 0.985 to be conservative for typical 2-3 layers.
+      // ============================================================
       case kTeflon: {
         fReflSurface->SetType(dielectric_dielectric);
-        //fReflSurface->SetFinish(groundfrontpainted);
         fReflSurface->SetFinish(groundbackpainted);
-        fReflSurface->SetSigmaAlpha(0.25);
-        G4double R[N] = { 0.99, 0.99 };
-        G4double nGap[N] = {1.0003, 1.0003};
-        surfMPT->AddProperty("REFLECTIVITY", e, R, N);
-        surfMPT->AddProperty("RINDEX",    e, nGap, N);
+        fReflSurface->SetSigmaAlpha(0.1);
+
+        auto* mpt = new G4MaterialPropertiesTable();
+        G4double R[N]      = { 0.99, 0.99 };
+        G4double nGap[N]   = { 1.0003, 1.0003 };
+        G4double specSp[N] = { 0.00, 0.00 };
+        G4double specLo[N] = { 0.00, 0.00 };
+        G4double backSc[N] = { 0.00, 0.00 };
+        // Lambertian fraction = 1.00
+        mpt->AddProperty("REFLECTIVITY",          e, R,      N);
+        mpt->AddProperty("RINDEX",                e, nGap,   N);
+        mpt->AddProperty("SPECULARSPIKECONSTANT", e, specSp, N);
+        mpt->AddProperty("SPECULARLOBECONSTANT",  e, specLo, N);
+        mpt->AddProperty("BACKSCATTERCONSTANT",   e, backSc, N);
+        fReflSurface->SetMaterialPropertiesTable(mpt);
         break;
       }
     }
-    fReflSurface->SetMaterialPropertiesTable(surfMPT);
 
-    // ===================================================================
+    // -----------------------------------------------------------------
     // 2) Slab <-> Grease coupling patch.
-    //    Define an explicit "polished dielectric_dielectric" surface so
-    //    Geant4 uses pure Fresnel transmission (and bypasses the wrapping
-    //    skin surface at this patch). With n_scint=1.58, n_grease=1.46
-    //    the Fresnel transmittance at normal incidence is ~99.8%.
-    // ===================================================================
+    //    Pure Fresnel on a polished dielectric/dielectric boundary.
+    //    n_scint = 1.58, n_grease = 1.46  ->  T(0 deg) ~ 99.84%
+    // -----------------------------------------------------------------
     fCouplingSurface = new G4OpticalSurface("MuonScintCoupling");
     fCouplingSurface->SetModel(unified);
     fCouplingSurface->SetType(dielectric_dielectric);
     fCouplingSurface->SetFinish(polished);
-    // No properties table needed -- Fresnel from RINDEX is automatic.
+    // No MPT -- Fresnel from material RINDEX is automatic.
 
-    // ===================================================================
+    // -----------------------------------------------------------------
     // 3) Grease <-> SiPM photocathode boundary.
-    //    EFFICIENCY = PDE(lambda); REFLECTIVITY = 0; type = dielectric_metal.
-    //    Geant4's OpBoundaryProcess will:
-    //      - apply Fresnel at the n=1.46 -> n=1.55 interface (small loss),
-    //      - on transmission, kill the photon and (with prob = EFFICIENCY)
-    //        register a "Detection" hit in the SD via the boundary process.
-    //    Using dielectric_metal here is the standard CosmicWatch-style trick:
-    //    the photon never propagates inside the SiPM bulk, exactly matching
-    //    a real silicon photodetector (silicon is opaque at 425 nm anyway).
-    // ===================================================================
+    //    Pure Fresnel transmission; SD applies PDE manually.
+    //    The SiPM bulk material is "opaque" via the SD's StopAndKill.
+    // -----------------------------------------------------------------
     fSiPMSurface = new G4OpticalSurface("MuonScintSiPMPhotocathode");
     fSiPMSurface->SetModel(unified);
-    //fSiPMSurface->SetType(dielectric_metal);
     fSiPMSurface->SetType(dielectric_dielectric);
     fSiPMSurface->SetFinish(polished);
-
-    auto* sipmMPT = new G4MaterialPropertiesTable();
-    // For broadband: replace with measured PDE(lambda) curve from your SiPM datasheet.
-    // Hamamatsu S13360-3050 / SensL MicroFC: PDE peaks at ~40-50% near 420 nm.
-    const G4int Np = 11;
-    G4double ep[Np]    = { 2.067*eV, 2.156*eV, 2.250*eV, 2.339*eV, 2.450*eV,
-                           2.594*eV, 2.755*eV, 2.917*eV, 3.100*eV, 3.300*eV, 3.543*eV };
-    G4double pde[Np]   = { 0.20, 0.23, 0.27, 0.31, 0.35,
-                           0.40, 0.43, 0.43, 0.40, 0.30, 0.18 };
-    G4double rZero[Np] = { 0,0,0,0,0, 0,0,0,0,0,0 };
-    //sipmMPT->AddProperty("EFFICIENCY",   ep, pde,   Np);
-    //sipmMPT->AddProperty("REFLECTIVITY", ep, rZero, Np);
-    fSiPMSurface->SetMaterialPropertiesTable(sipmMPT);
+    // No MPT -- Fresnel from material RINDEX is automatic.
 }
+
+
+
+
+//void GeometryMuonScint::BuildOpticalSurfaces()
+//{
+//    // the main reflector which covers the entire scintillator slab. 
+//    // the coupling patches (to grease, then to sipm) should be over-ridden using 
+//    // the optical surfaces defined after fReflSurface
+//    fReflSurface = new G4OpticalSurface("OpSurface_scinti_reflector");
+//    fReflSurface->SetModel(unified);
+//
+//    auto* surfMPT = new G4MaterialPropertiesTable();
+//    const G4int N = 2;
+//    G4double e[N] = { 1.5*eV, 6.0*eV };
+//
+//    switch (fReflectorType) {
+//      case kNoReflector: {
+//        fReflSurface->SetType(dielectric_dielectric);
+//        fReflSurface->SetFinish(polished);
+//        break;
+//        //fReflSurface->SetType(dielectric_dielectric);
+//        //fReflSurface->SetFinish(ground);
+//        //fReflSurface->SetSigmaAlpha(0.0); 
+//        //G4double one[N]  = {1.0, 1.0};
+//        //G4double zero[N] = {0.0, 0.0};
+//        //surfMPT->AddProperty("SPECULARLOBECONSTANT",  e, one,  N);
+//        //surfMPT->AddProperty("SPECULARSPIKECONSTANT", e, zero, N);
+//        //surfMPT->AddProperty("BACKSCATTERCONSTANT",   e, zero, N);
+//        //break;
+//      }
+//      case kPaintTiO2: {
+//        fReflSurface->SetType(dielectric_dielectric);
+//        fReflSurface->SetFinish(groundfrontpainted);
+//        fReflSurface->SetSigmaAlpha(0.20);
+//        G4double R[N] = { 0.97, 0.97 };
+//        surfMPT->AddProperty("REFLECTIVITY", e, R, N);
+//        break;
+//      }
+//      case kAluminumFoil: {
+//        fReflSurface->SetType(dielectric_dielectric);
+//        fReflSurface->SetFinish(polishedbackpainted);
+//        fReflSurface->SetSigmaAlpha(0.0);
+//        G4double R[N] = {0.90, 0.90};
+//        G4double nGap[N] = {1.0003, 1.0003};
+//        surfMPT->AddProperty("REFLECTIVITY", e, R, N);
+//        surfMPT->AddProperty("RINDEX",    e, nGap, N);
+//        break;
+//      }
+//      case kGlossyPaper: {
+//        fReflSurface->SetType(dielectric_dielectric);
+//        fReflSurface->SetFinish(groundbackpainted);
+//        fReflSurface->SetSigmaAlpha(0.10);
+//        G4double R[N]    = {0.95, 0.95};
+//        G4double lobe[N] = {0.70, 0.70};
+//        G4double nGap[N] = {1.0003, 1.0003};
+//        surfMPT->AddProperty("REFLECTIVITY",         e, R,    N);
+//        surfMPT->AddProperty("SPECULARLOBECONSTANT", e, lobe, N);
+//        surfMPT->AddProperty("RINDEX",               e, nGap, N);
+//        break;
+//      }
+//      case kTeflon: {
+//        fReflSurface->SetType(dielectric_dielectric);
+//        fReflSurface->SetFinish(groundbackpainted);
+//        fReflSurface->SetSigmaAlpha(0.25);
+//        G4double R[N] = { 0.99, 0.99 };
+//        G4double nGap[N] = {1.0003, 1.0003};
+//        surfMPT->AddProperty("REFLECTIVITY", e, R, N);
+//        surfMPT->AddProperty("RINDEX",    e, nGap, N);
+//        break;
+//      }
+//    }
+//    fReflSurface->SetMaterialPropertiesTable(surfMPT);
+//
+//    // coupling to grease, should be polished and use pure Fresnel
+//    // this should override the skin surface fReflSurface when placed
+//    fCouplingSurface = new G4OpticalSurface("OpSurface_scinti_to_grease");
+//    fCouplingSurface->SetModel(unified);
+//    fCouplingSurface->SetType(dielectric_dielectric);
+//    fCouplingSurface->SetFinish(polished);
+//    auto* couplingMPT = new G4MaterialPropertiesTable();
+//    G4double R_coup[N] = { 0.99, 0.99 };
+//    G4double nGap_coup[N] = {1.0003, 1.0003};
+//    couplingMPT->AddProperty("RINDEX",    e, nGap_coup, N);
+//
+//    // ===================================================================
+//    // 3) Grease <-> SiPM photocathode boundary.
+//    //    EFFICIENCY = PDE(lambda); REFLECTIVITY = 0; type = dielectric_metal.
+//    //    Geant4's OpBoundaryProcess will:
+//    //      - apply Fresnel at the n=1.46 -> n=1.55 interface (small loss),
+//    //      - on transmission, kill the photon and (with prob = EFFICIENCY)
+//    //        register a "Detection" hit in the SD via the boundary process.
+//    //    Using dielectric_metal here is the standard CosmicWatch-style trick:
+//    //    the photon never propagates inside the SiPM bulk, exactly matching
+//    //    a real silicon photodetector (silicon is opaque at 425 nm anyway).
+//    // ===================================================================
+//    fSiPMSurface = new G4OpticalSurface("OpSurface_grease_to_SiPM");
+//    fSiPMSurface->SetModel(unified);
+//    fSiPMSurface->SetType(dielectric_metal);
+//    //fSiPMSurface->SetType(dielectric_dielectric);
+//    fSiPMSurface->SetFinish(polished);
+//
+//    auto* sipmMPT = new G4MaterialPropertiesTable();
+//    // For broadband: replace with measured PDE(lambda) curve from your SiPM datasheet.
+//    // Hamamatsu S13360-3050 / SensL MicroFC: PDE peaks at ~40-50% near 420 nm.
+//    const G4int Np = 11;
+//    G4double ep[Np]    = { 2.067*eV, 2.156*eV, 2.250*eV, 2.339*eV, 2.450*eV,
+//                           2.594*eV, 2.755*eV, 2.917*eV, 3.100*eV, 3.300*eV, 3.543*eV };
+//    G4double pde[Np]   = { 0.20, 0.23, 0.27, 0.31, 0.35,
+//                           0.40, 0.43, 0.43, 0.40, 0.30, 0.18 };
+//    G4double rZero[Np] = { 0,0,0,0,0, 0,0,0,0,0,0 };
+//    sipmMPT->AddProperty("EFFICIENCY",   ep, pde,   Np);
+//    sipmMPT->AddProperty("REFLECTIVITY", ep, rZero, Np);
+//    fSiPMSurface->SetMaterialPropertiesTable(sipmMPT);
+//}
 
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -397,9 +543,9 @@ void GeometryMuonScint::PlaceDetector(G4LogicalVolume* worldLV,
 
     // Wrapping skin -- applies on every face of the slab where no border
     // surface exists. The grease patches will override at their footprints.
-    //if (fWrapWithReflector && fReflectorType != kNoReflector) {
+    if (fWrapWithReflector && fReflectorType != kNoReflector) {
         new G4LogicalSkinSurface("MuonScintSkin", fScintLV, fReflSurface);
-    //}
+    }
 
     // Place grease pads + SiPMs as siblings of the slab in the world.
     PlaceSiPMs(worldLV, pos, rot, copyNo);
