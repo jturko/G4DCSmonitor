@@ -116,30 +116,39 @@ void SteppingAction::UserSteppingAction(const G4Step* aStep)
     G4bool inShielding = (volName.find("CastorBody") != G4String::npos || 
                           volName.find("Cavity") != G4String::npos || 
                           volName.find("FuelPhys") != G4String::npos);
-    if (inShielding) {
-        // 1. Kill ALL Electrons and Positrons immediately (Perfectly fair to do)
-        if (particle == G4Electron::Electron() || particle == G4Positron::Positron()) {
-            aStep->GetTrack()->SetTrackStatus(fStopAndKill);
-            return;
-        }
-        // kill gammas below a given threshold
-        if (particle == G4Gamma::Gamma() && aStep->GetTrack()->GetKineticEnergy() < 50.0 * keV) {
-            aStep->GetTrack()->SetTrackStatus(fStopAndKill);
-            return;
-        }
-    }
+    //if (inShielding) {
+    //    // 1. Kill ALL Electrons and Positrons immediately (Perfectly fair to do)
+    //    if (particle == G4Electron::Electron() || particle == G4Positron::Positron()) {
+    //        aStep->GetTrack()->SetTrackStatus(fStopAndKill);
+    //        return;
+    //    }
+    //    // kill gammas below a given threshold
+    //    if (particle == G4Gamma::Gamma() && aStep->GetTrack()->GetKineticEnergy() < 50.0 * keV) {
+    //        aStep->GetTrack()->SetTrackStatus(fStopAndKill);
+    //        return;
+    //    }
+    //}
 
     // CASTOR 440 surface flux tracker
     if(RunAction::WriteCASTOR440SurfaceFluxTree) {
         for(G4int c=0; c<fDetector->GetNumCASTOR440s(); c++) {
             GeometryCASTOR440 * thisCask = fDetector->GetCASTOR440(c);
             G4LogicalVolume * preLV = aStep->GetPreStepPoint()->GetPhysicalVolume()->GetLogicalVolume();
+            G4LogicalVolume * postLV = nullptr;
+            if(aStep->GetPostStepPoint()->GetPhysicalVolume() != nullptr)
+                postLV = aStep->GetPostStepPoint()->GetPhysicalVolume()->GetLogicalVolume();
             G4bool inBodyOrFin =  (preLV == thisCask->GetCASTORLog() ||
                                    preLV == thisCask->GetFinLog());
+            G4bool inBody      =  (preLV == thisCask->GetCASTORLog());
+            G4bool inFinAfter  =  (postLV == thisCask->GetFinLog());
 
-            if(inBodyOrFin && 
-               aStep->GetPostStepPoint()->GetPhysicalVolume() == fDetector->GetWorld() &&
-               (particle->GetPDGEncoding() == 22 || particle->GetPDGEncoding() == 2112)) // gammas and neutrons only
+            //if(inBodyOrFin && 
+            //   aStep->GetPostStepPoint()->GetPhysicalVolume() == fDetector->GetWorld() &&
+            //   (particle->GetPDGEncoding() == 22 || particle->GetPDGEncoding() == 2112)) // gammas and neutrons only
+            //{
+            if(inBody && // if pre-volume is the cask body, and...
+               (aStep->GetPostStepPoint()->GetPhysicalVolume() == fDetector->GetWorld() || inFinAfter) && // if post-volume is 1) world, or 2) a fin, and...
+               (particle->GetPDGEncoding() == 22 || particle->GetPDGEncoding() == 2112)) // is a gamma or neutron
             {
                 G4int idx = 2; // third  ntuple for castor_surf
                 analysis->FillNtupleDColumn(idx, 0, particle->GetPDGEncoding());
@@ -154,6 +163,10 @@ void SteppingAction::UserSteppingAction(const G4Step* aStep)
                 analysis->FillNtupleDColumn(idx, 9, aStep->GetPreStepPoint()->GetWeight());
                 analysis->FillNtupleDColumn(idx,10, G4EventManager::GetEventManager()->GetConstCurrentEvent()->GetEventID());
                 analysis->AddNtupleRow(idx);
+
+                // kill the particle after exiting
+                //aStep->GetTrack()->SetTrackStatus(fStopAndKill);
+
             }
             break; //  can only exit one cask
         }

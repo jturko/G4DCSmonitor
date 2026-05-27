@@ -65,6 +65,7 @@ class DetectorMessenger : public G4UImessenger
 
     // biasing
     G4UIcmdWithABool* fUseBiasingCmd = nullptr;
+    G4UIcmdWithAString*        fSetBiasingParticleCmd = nullptr;
     G4UIcmdWithAnInteger*      fSetNShellsCmd   = nullptr;
     G4UIcmdWithADoubleAndUnit* fSetBiasRMinCmd  = nullptr;
     G4UIcmdWithADoubleAndUnit* fSetBiasRMaxCmd  = nullptr;

@@ -85,7 +85,7 @@
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-PhysicsList::PhysicsList(G4bool useImportanceBiasing) : fUseImportanceBiasing(useImportanceBiasing)
+PhysicsList::PhysicsList(const G4String& biasParticle) : fBiasingParticle(biasParticle)
 {
     G4int verb = 1;
     SetVerboseLevel(verb);
@@ -113,16 +113,26 @@ PhysicsList::PhysicsList(G4bool useImportanceBiasing) : fUseImportanceBiasing(us
     RegisterPhysics(new GammaNuclearPhysics("gamma"));
     RegisterPhysics(new G4RadioactiveDecayPhysics());
     
-    if (fUseImportanceBiasing) {
+    if(fBiasingParticle == "") {
+        G4cout << "[PhysicsList] No biasing particle set, no parallel worlds created" << G4endl;
+    }
+    else if (fBiasingParticle == "gamma" || fBiasingParticle == "neutron") {
         RegisterPhysics(new G4ParallelWorldPhysics("BiasingWorld"));
-
-        fGammaSampler = new G4GeometrySampler("BiasingWorld", "gamma");
-        fGammaSampler->SetParallel(true);
-        RegisterPhysics(new G4ImportanceBiasing(fGammaSampler, "BiasingWorld"));
-
-        fNeutronSampler = new G4GeometrySampler("BiasingWorld", "neutron");
-        fNeutronSampler->SetParallel(true);
-        RegisterPhysics(new G4ImportanceBiasing(fNeutronSampler, "BiasingWorld"));
+        
+        fGeomSampler = new G4GeometrySampler("BiasingWorld", fBiasingParticle);
+        fGeomSampler->SetParallel(true);
+        
+        RegisterPhysics(new G4ImportanceBiasing(fGeomSampler, "ImportanceBiasing"));
+        
+        G4cout << "[PhysicsList] Built biasing world for " << fBiasingParticle << G4endl;
+    }
+    else {
+        G4ExceptionDescription ed;
+        ed << "Invalid biasing particle: " << fBiasingParticle << ", exiting...";
+        G4Exception("PhysicsList::PhysicsList",
+                    "InvalidBiasingParticle", 
+                    FatalException, 
+                    ed);
     }
 }
 
@@ -130,8 +140,7 @@ PhysicsList::PhysicsList(G4bool useImportanceBiasing) : fUseImportanceBiasing(us
 
 PhysicsList::~PhysicsList()
 {
-    delete fGammaSampler;
-    delete fNeutronSampler;
+    delete fGeomSampler;
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

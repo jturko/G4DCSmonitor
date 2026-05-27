@@ -59,7 +59,7 @@ DetectorMessenger::DetectorMessenger(DetectorConstruction* Det) : fDetector(Det)
     fUseBiasingCmd->SetParameterName("useBiasing", true);
     fUseBiasingCmd->SetDefaultValue(true);
     fUseBiasingCmd->AvailableForStates(G4State_PreInit);
-    
+
     fSetNShellsCmd = new G4UIcmdWithAnInteger("/dcs-monitor/det/setBiasingShells", this);
     fSetNShellsCmd->SetGuidance("Number of importance-biasing shells (radial & axial thickness uniform).");
     fSetNShellsCmd->SetGuidance("Max importance = 2^N. Applies to both gamma and neutron biasing.");

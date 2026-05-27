@@ -86,15 +86,75 @@ int main(int argc, char** argv)
     //    return 1;
     //}
 
-    // file number
-    if(argc > 2) {
-        G4int fileNum = atoi(argv[2]);
-        rootManager.SetFileNum(fileNum);
-    }
 
-    // detect interactive mode (if no arguments) and define UI session
+    // -----------------------------------------------------------------
+    // CLI parsing.
+    //
+    // Supported invocations (positional arg meanings unchanged):
+    //   G4DCSmonitor                                  -> interactive
+    //   G4DCSmonitor run.mac                          -> batch, no biasing
+    //   G4DCSmonitor run.mac 17                       -> batch, fileNum=17
+    //   G4DCSmonitor --biasing neutron run.mac        -> batch, bias neutrons
+    //   G4DCSmonitor --biasing gamma run.mac 17       -> batch, bias gammas, fileNum=17
+    //   G4DCSmonitor run.mac --biasing neutron 17     -> order-insensitive
+    //
+    // --biasing accepts: gamma | neutron | none | off
+    // -----------------------------------------------------------------
+    G4String biasParticle = "";                  // "" -> no importance biasing
+    std::vector<G4String> positional;
+    positional.reserve(argc);
+    for (int i = 1; i < argc; ++i) {
+        const G4String arg = argv[i];
+        if (arg == "--biasing" || arg == "-b") {
+            if (i + 1 >= argc) {
+                G4cerr << "[CLI] '" << arg
+                       << "' requires an argument (gamma|neutron|none)." << G4endl;
+                return 1;
+            }
+            G4String val = argv[++i];
+            if (val == "none" || val == "off" || val == "false") val = "";
+            if (!val.empty() && val != "gamma" && val != "neutron") {
+                G4cerr << "[CLI] --biasing must be one of: gamma, neutron, none. "
+                       << "Got '" << val << "'." << G4endl;
+                return 1;
+            }
+            biasParticle = val;
+        }
+        else if (arg.length() > 10 && arg.substr(0, 10) == "--biasing=") {
+            G4String val = arg.substr(10);
+            if (val == "none" || val == "off" || val == "false") val = "";
+            if (!val.empty() && val != "gamma" && val != "neutron") {
+                G4cerr << "[CLI] --biasing must be one of: gamma, neutron, none. "
+                       << "Got '" << val << "'." << G4endl;
+                return 1;
+            }
+            biasParticle = val;
+        }
+        else if (arg == "--help" || arg == "-h") {
+            G4cout << "Usage: " << argv[0]
+                   << " [--biasing gamma|neutron|none] [macro] [fileNum]" << G4endl;
+            return 0;
+        }
+        else {
+            positional.push_back(arg);
+        }
+    }
+    
+    // 2nd positional arg = file number, if present
+    if (positional.size() > 1) {
+        rootManager.SetFileNum(std::atoi(positional[1].c_str()));
+    }
+    //// file number
+    //if(argc > 2) {
+    //    G4int fileNum = atoi(argv[2]);
+    //    rootManager.SetFileNum(fileNum);
+    //}
+
     G4UIExecutive* ui = nullptr;
-    if (argc == 1) ui = new G4UIExecutive(argc, argv);
+    if (positional.empty()) ui = new G4UIExecutive(argc, argv);
+    //// detect interactive mode (if no arguments) and define UI session
+    //G4UIExecutive* ui = nullptr;
+    //if (argc == 1) ui = new G4UIExecutive(argc, argv);
 
     // use G4SteppingVerboseWithUnits
     G4int precision = 4;
@@ -107,9 +167,7 @@ int main(int argc, char** argv)
     DetectorConstruction* det = new DetectorConstruction;
     runManager->SetUserInitialization(det);
     
-    // the importance biasing is always set to true here, however if it is deactivated in the
-    // run macro, then importance values of 1 are registered everywhere (see GeometryParallelBiasing)
-    PhysicsList* phys = new PhysicsList(/*useImportanceBiasing=*/true); 
+    PhysicsList* phys = new PhysicsList(biasParticle);
     runManager->SetUserInitialization(phys);
     runManager->SetUserInitialization(new ActionInitialization(det));
 
@@ -139,7 +197,8 @@ int main(int argc, char** argv)
     else {
         // batch mode
         G4String command = "/control/execute ";
-        G4String fileName = argv[1];
+        //G4String fileName = argv[1];
+        G4String fileName = positional[0];
         UImanager->ApplyCommand(command + fileName);
     }
 

@@ -41,7 +41,7 @@ class G4GeometrySampler;
 class PhysicsList : public G4VModularPhysicsList
 {
   public:
-    PhysicsList(G4bool useImportanceBiasing = false);
+    PhysicsList(const G4String& biasParticle="");
     ~PhysicsList();// = default;
 
   public:
@@ -49,9 +49,8 @@ class PhysicsList : public G4VModularPhysicsList
     void SetCuts() override;
 
   private:
-    G4GeometrySampler* fGammaSampler = nullptr;
-    G4GeometrySampler* fNeutronSampler = nullptr;
-    G4bool fUseImportanceBiasing;
+    G4GeometrySampler* fGeomSampler = nullptr;
+    G4String           fBiasingParticle = "";
 };
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
