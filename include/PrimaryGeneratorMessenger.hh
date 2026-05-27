@@ -14,6 +14,7 @@ class G4UIcmdWithoutParameter;
 class G4UIcmdWithAString; 
 class G4UIcmdWithADouble;
 class G4UIcmdWithADoubleAndUnit;
+class G4UIcmdWithABool;
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
@@ -36,6 +37,11 @@ class PrimaryGeneratorMessenger: public G4UImessenger
         G4UIcmdWithAnInteger* fFuelNumCmd = nullptr;
         
         G4UIcmdWithADoubleAndUnit * fCLYCBoundingRadiusCmd = nullptr;
+
+        G4UIcmdWithABool*           fUseWattCmd  = nullptr;
+        G4UIcmdWithADoubleAndUnit*  fWattACmd    = nullptr;
+        G4UIcmdWithADouble*         fWattBCmd    = nullptr;
+
 };
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

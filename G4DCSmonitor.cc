@@ -173,11 +173,11 @@ int main(int argc, char** argv)
 
     // Replaced HP environmental variables with C++ calls
     // TODO - can we put this into the physics list class?
-    G4ParticleHPManager::GetInstance()->SetSkipMissingIsotopes(false);
+    G4ParticleHPManager::GetInstance()->SetSkipMissingIsotopes(true); // testing
     G4ParticleHPManager::GetInstance()->SetDoNotAdjustFinalState(true);
     G4ParticleHPManager::GetInstance()->SetUseOnlyPhotoEvaporation(true);
     G4ParticleHPManager::GetInstance()->SetNeglectDoppler(false);
-    G4ParticleHPManager::GetInstance()->SetProduceFissionFragments(true);
+    G4ParticleHPManager::GetInstance()->SetProduceFissionFragments(false); // testing
     G4ParticleHPManager::GetInstance()->SetUseWendtFissionModel(false);
     G4ParticleHPManager::GetInstance()->SetUseNRESP71Model(false);
 

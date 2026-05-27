@@ -47,6 +47,15 @@ class PrimaryGeneratorAction : public G4VUserPrimaryGeneratorAction
     void     SetCLYCBoundingRadius(G4double r) { fCLYCBoundingRadius = r; }
     G4double GetCLYCBoundingRadius() const     { return fCLYCBoundingRadius; }
 
+    // setters/getters for Watt spectrum generator
+    void     SetUseWattSpectrum(G4bool v) { fUseWattSpectrum = v; }
+    G4bool   GetUseWattSpectrum() const   { return fUseWattSpectrum; }
+    void     SetWattA(G4double a)         { fWattA = a; }   // [energy]
+    void     SetWattB(G4double b)         { fWattB = b; }   // [1/energy]
+    G4double GetWattA() const             { return fWattA; }
+    G4double GetWattB() const             { return fWattB; }
+    G4double SampleWattSpectrum() const;
+
   private:
     G4ParticleGun*             fParticleGun = nullptr;
     G4GeneralParticleSource*   fGPS         = nullptr;
@@ -73,6 +82,12 @@ class PrimaryGeneratorAction : public G4VUserPrimaryGeneratorAction
 
     // Default bounding sphere radius used by the geometric bias
     G4double fCLYCBoundingRadius = 150.0 * mm;
+
+    // Watt spectrum config. Defaults: U-235 thermal-fission Watt parameters.
+    G4bool   fUseWattSpectrum = false;
+    G4double fWattA = 0.988 * MeV;        // a
+    G4double fWattB = 2.249 / MeV;        // b
+
 };
 
 #endif

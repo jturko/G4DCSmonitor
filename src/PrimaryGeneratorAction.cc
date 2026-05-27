@@ -292,6 +292,12 @@ PrimaryGeneratorAction::GenerateVertexCASTOR440FuelFlux(G4Event* anEvent)
     fParticleGun->SetParticlePosition(vertexPos);
     SetVertexDirectionIsotropic();
     
+    if (fUseWattSpectrum) {
+        G4ParticleDefinition* neutron = G4ParticleTable::GetParticleTable()->FindParticle("neutron");
+        fParticleGun->SetParticleDefinition(neutron);        
+        fParticleGun->SetParticleEnergy(SampleWattSpectrum());
+    }
+
     fParticleGun->GeneratePrimaryVertex(anEvent);
 }
 
@@ -310,6 +316,13 @@ PrimaryGeneratorAction::GenerateVertexCASTOR440FuelFluxWithGeomBias(G4Event* anE
 
     // 2. Directional bias towards CLYC; returns the required statistical weight.
     const G4double weight = SetVertexDirectionIsotropicWithGeomBias(vertexPos);
+    
+    // 2.5 If Watt spectrum, override particle type + energy
+    if (fUseWattSpectrum) {
+        G4ParticleDefinition* neutron = G4ParticleTable::GetParticleTable()->FindParticle("neutron");
+        fParticleGun->SetParticleDefinition(neutron);        
+        fParticleGun->SetParticleEnergy(SampleWattSpectrum());
+    }
 
     // 3. Create the primary vertex in the event...
     fParticleGun->GeneratePrimaryVertex(anEvent);
@@ -318,6 +331,52 @@ PrimaryGeneratorAction::GenerateVertexCASTOR440FuelFluxWithGeomBias(G4Event* anE
     G4PrimaryVertex* vertex =
         anEvent->GetPrimaryVertex(anEvent->GetNumberOfPrimaryVertex() - 1);
     if (vertex) vertex->SetWeight(weight);
+}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+// Watt fission spectrum sampler.
+//
+// Implements the Cashwell–Everett rejection algorithm (LA-9721-MS, also used
+// by MCNP). For parameters a [energy], b [1/energy]:
+//     K = 1 + b/(8a)
+//     L = (K + sqrt(K^2 - 1)) / a
+//     M = a*L - 1
+//   loop:
+//     x = -ln(xi1), y = -ln(xi2)
+//     accept if (y - M*(x+1))^2 <= b*L*x
+//   return E = a*L*x
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+G4double PrimaryGeneratorAction::SampleWattSpectrum() const
+{
+    const G4double a = fWattA;
+    const G4double b = fWattB;
+
+    if (a <= 0. || b <= 0.) {
+        G4Exception("PrimaryGeneratorAction::SampleWattSpectrum",
+                    "InvalidWattParams", FatalException,
+                    "Watt parameters a and b must be strictly positive.");
+        return 0.;
+    }
+
+    const G4double K = 1.0 + (b / (8.0 * a));
+    const G4double L = (K + std::sqrt(K * K - 1.0)) / a;
+    const G4double M = a * L - 1.0;
+
+    // Hard cap on rejection iterations as a safety net.
+    for (G4int trial = 0; trial < 10000; ++trial) {
+        const G4double x = -std::log(G4UniformRand());
+        const G4double y = -std::log(G4UniformRand());
+        const G4double t = y - M * (x + 1.0);
+        if (t * t <= b * L * x) {
+            return a * L * x;     // sampled neutron kinetic energy
+        }
+    }
+
+    G4Exception("PrimaryGeneratorAction::SampleWattSpectrum",
+                "WattRejectionStuck", JustWarning,
+                "Watt sampler exceeded 10000 rejections; returning mean energy.");
+    return 2.0 * a;   // fallback ~ <E> for typical fission Watts
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
