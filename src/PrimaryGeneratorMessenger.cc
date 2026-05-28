@@ -1,8 +1,9 @@
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 #include "PrimaryGeneratorMessenger.hh"
-
 #include "PrimaryGeneratorAction.hh"
+#include "SurfaceFluxSampler.hh"
+
 #include "G4UIdirectory.hh"
 #include "G4UIcmdWithAString.hh"
 #include "G4UIcmdWithAnInteger.hh"
@@ -25,7 +26,7 @@ PrimaryGeneratorMessenger::PrimaryGeneratorMessenger(PrimaryGeneratorAction* gun
     fSourceModeCmd = new G4UIcmdWithAString("/dcs-monitor/gun/sourceMode", this);
     fSourceModeCmd->SetGuidance("Select the source distribution mode.");
     fSourceModeCmd->SetParameterName("mode", false);
-    fSourceModeCmd->SetCandidates("GPS CASTOR440_surface CASTOR440_fuel CASTOR440_fuel_biased");
+    fSourceModeCmd->SetCandidates("GPS CASTOR440_surface CASTOR440_surface_from_TTree CASTOR440_fuel CASTOR440_fuel_biased");
     fSourceModeCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
 
     // For FuelFlux generators -- set the CASTOR440 cask/fuel assembly 
@@ -56,6 +57,14 @@ PrimaryGeneratorMessenger::PrimaryGeneratorMessenger(PrimaryGeneratorAction* gun
     fWattBCmd->SetParameterName("b", false);
     fWattBCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
 
+    // surface flux from root TTree
+    fSurfaceSourceFileCmd = new G4UIcmdWithAString("/dcs-monitor/gun/surfaceSourceFile", this);
+    fSurfaceSourceFileCmd->SetGuidance("Path to step-1 ROOT file containing the 'surfaceFlux' tree.");
+    fSurfaceSourceFileCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+    
+    fSurfaceSourcePidCmd = new G4UIcmdWithAnInteger("/dcs-monitor/gun/surfaceSourcePid", this);
+    fSurfaceSourcePidCmd->SetGuidance("PDG code filter: 0=any, 2112=neutron, 22=gamma.");
+    fSurfaceSourcePidCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -75,6 +84,8 @@ PrimaryGeneratorMessenger::~PrimaryGeneratorMessenger()
     delete fWattACmd;
     delete fWattBCmd;
 
+    delete fSurfaceSourceFileCmd;
+    delete fSurfaceSourcePidCmd;
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -89,6 +100,10 @@ void PrimaryGeneratorMessenger::SetNewValue(G4UIcommand* command, G4String newVa
         else if (newValue == "CASTOR440_surface") {
                 G4cout << " --> Setting source mode to the CASTOR 440/84 surface flux (kCASTOR440_surface)" << G4endl;
                 fPrimaryGeneratorAction->SetSourceMode(kCASTOR440_surface);
+        }
+        else if (newValue == "CASTOR440_surface_from_TTree") {
+                G4cout << " --> Setting source mode to the CASTOR 440/84 surface flux, sampled from a ROOT tree (kCASTOR440_surface_from_TTree)" << G4endl;
+                fPrimaryGeneratorAction->SetSourceMode(kCASTOR440_surface_from_TTree);
         }
         else if (newValue == "CASTOR440_fuel") {
             G4cout << " --> Setting source mode to CASTOR 440/84 fuel element volume flux (kCASTOR440_fuel)" << G4endl;
@@ -123,6 +138,13 @@ void PrimaryGeneratorMessenger::SetNewValue(G4UIcommand* command, G4String newVa
         fPrimaryGeneratorAction->SetWattB(bInternal);
     }
 
+    if (command == fSurfaceSourceFileCmd) {
+        G4cout << "[PrimaryGeneratorMessenger::SetNewValue] Setting the surface flux file to: " << newValue << G4endl;
+        SurfaceFluxSampler::Instance().SetSourceFile(newValue);
+    }
+    if (command == fSurfaceSourcePidCmd) {
+        fPrimaryGeneratorAction->SetSurfaceSourcePid(fSurfaceSourcePidCmd->GetNewIntValue(newValue));
+    }
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

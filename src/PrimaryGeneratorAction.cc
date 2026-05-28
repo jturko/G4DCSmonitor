@@ -6,6 +6,7 @@
 #include "RootManager.hh"
 #include "PrimaryGeneratorMessenger.hh"
 #include "RunAction.hh"
+#include "SurfaceFluxSampler.hh"
 
 #include "G4Event.hh"
 #include "G4ParticleDefinition.hh"
@@ -48,6 +49,10 @@ PrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 
         case kCASTOR440_surface:
             GenerateVertexCASTOR440SurfaceFlux(anEvent);
+            break;
+    
+        case kCASTOR440_surface_from_TTree:
+            GenerateVertexCASTOR440SurfaceFromTree(anEvent);
             break;
 
         case kCASTOR440_fuel:
@@ -381,3 +386,60 @@ G4double PrimaryGeneratorAction::SampleWattSpectrum() const
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
+void PrimaryGeneratorAction::GenerateVertexCASTOR440SurfaceFromTree(G4Event* event)
+{
+    auto& s = SurfaceFluxSampler::Instance();
+    // Push the geometry once before the (lazy) Load can fire. This is cheap
+    // and idempotent; only the values from the first call matter because the
+    // load itself happens at most once.
+    if (auto* cask = fDetector->GetCASTOR440(fCaskNum)) {
+        s.SetGeometryParameters(cask->GetCaskOuterRadius() / CLHEP::mm,
+                                cask->GetCaskHeight()      / CLHEP::mm,
+                                fDetector->GetCASTOR440Position(fCaskNum) / CLHEP::mm,
+                                fDetector->GetCASTOR440Rotation(fCaskNum),
+                                /*tol mm*/ 2.0);
+    } else {
+        G4Exception("PrimaryGeneratorAction", "NoCask", FatalException,
+                    "Cask not constructed; did /run/initialize run before /run/beamOn?");
+        return;
+    }
+
+    G4ThreeVector posLocal, dirLocal;
+    G4double      ekin, weight;
+    G4int         pid;
+    if (!s.Sample(fSurfaceSourcePid, posLocal, dirLocal, ekin, weight, pid)) {
+        G4Exception("PrimaryGeneratorAction", "SurfaceSampleFail",
+                    FatalException, "No matching crossings in sampler.");
+        return;
+    }
+
+    // Transform from cask-local back into world: the local frame stored is the
+    // cask body frame, so we apply the same per-cask placement transform that
+    // step 1 used (rotation, then translation).
+    G4ThreeVector globalPos = posLocal;
+    G4ThreeVector globalDir = dirLocal;
+    if (auto* rot = fDetector->GetCASTOR440Rotation(fCaskNum)) {
+        globalPos.transform(*rot);
+        globalDir.transform(*rot);
+    }
+    globalPos += fDetector->GetCASTOR440Position(fCaskNum);
+
+    auto* def = G4ParticleTable::GetParticleTable()->FindParticle(pid);
+    if (!def) {
+        G4ExceptionDescription ed; ed << "Unknown PDG code " << pid;
+        G4Exception("PrimaryGeneratorAction", "BadPID", FatalException, ed);
+        return;
+    }
+
+    fParticleGun->SetParticleDefinition(def);
+    fParticleGun->SetParticleEnergy(ekin * MeV);
+    fParticleGun->SetParticlePosition(globalPos);
+    fParticleGun->SetParticleMomentumDirection(globalDir.unit());
+    fParticleGun->GeneratePrimaryVertex(event);
+
+    // weight is 1.0 because the alias table already encodes the input weights.
+    auto* v = event->GetPrimaryVertex(event->GetNumberOfPrimaryVertex() - 1);
+    if (v) v->SetWeight(weight);
+}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

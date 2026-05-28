@@ -39,6 +39,7 @@
 
 #include <map>
 #include <atomic>
+#include <mutex>
 
 #include "THnSparse.h"
 
@@ -82,6 +83,8 @@ class RunAction : public G4UserRunAction
 
     G4bool fPrint = true;  // optional printing
     ProgressBar* fProgBar; 
+
+    static std::once_flag fSurfaceSamplerOnce;
     
 };
 

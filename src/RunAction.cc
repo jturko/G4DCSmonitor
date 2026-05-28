@@ -47,16 +47,23 @@
 
 #include "ProgressBar.hh"
 
+#include "SurfaceFluxSampler.hh"
+#include "GeometryCASTOR440.hh"
+#include "G4Threading.hh"
+
 #include <iomanip>
 
 #include "TFile.h"
 #include "TROOT.h"
 
+
+
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-//G4bool RunAction::WritePrimaryTree = false;
 std::atomic<G4bool> RunAction::WritePrimaryTree{false};
 std::atomic<G4bool> RunAction::WriteCASTOR440SurfaceFluxTree{false};
+
+std::once_flag RunAction::fSurfaceSamplerOnce;
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 

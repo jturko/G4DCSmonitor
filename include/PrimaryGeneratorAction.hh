@@ -18,6 +18,7 @@ class PrimaryGeneratorMessenger;
 enum SourceMode {
     kGPS,
     kCASTOR440_surface,
+    kCASTOR440_surface_from_TTree,
     kCASTOR440_fuel,
     kCASTOR440_fuel_biased
 };
@@ -56,6 +57,10 @@ class PrimaryGeneratorAction : public G4VUserPrimaryGeneratorAction
     G4double GetWattB() const             { return fWattB; }
     G4double SampleWattSpectrum() const;
 
+    // ROOT-based surface flux generation
+    void SetSurfaceSourceFile(const G4String& f) { fSurfaceSourceFile = f; }
+    void SetSurfaceSourcePid (G4int p)           { fSurfaceSourcePid  = p; }
+
   private:
     G4ParticleGun*             fParticleGun = nullptr;
     G4GeneralParticleSource*   fGPS         = nullptr;
@@ -68,6 +73,7 @@ class PrimaryGeneratorAction : public G4VUserPrimaryGeneratorAction
     void GenerateVertexCASTOR440SurfaceFlux(G4Event* event);            // CASTOR surface flux
     void GenerateVertexCASTOR440FuelFlux(G4Event* event);               // CASTOR fuel flux (isotropic)
     void GenerateVertexCASTOR440FuelFluxWithGeomBias(G4Event* event);   // CASTOR fuel flux (isotropic w. geom CLYC bias)
+    void GenerateVertexCASTOR440SurfaceFromTree(G4Event*);              // CASTUR surface flux from TTree input based on surfaceFlux 
 
     // calculate/set the vertex position
     G4ThreeVector SetVertexPositionInFuel();
@@ -87,6 +93,9 @@ class PrimaryGeneratorAction : public G4VUserPrimaryGeneratorAction
     G4bool   fUseWattSpectrum = false;
     G4double fWattA = 0.988 * MeV;        // a
     G4double fWattB = 2.249 / MeV;        // b
+
+    G4String fSurfaceSourceFile;
+    G4int    fSurfaceSourcePid = 0;      // 0 = any, 2112 = n, 22 = gamma
 
 };
 

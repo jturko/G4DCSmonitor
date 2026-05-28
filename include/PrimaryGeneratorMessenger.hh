@@ -42,6 +42,9 @@ class PrimaryGeneratorMessenger: public G4UImessenger
         G4UIcmdWithADoubleAndUnit*  fWattACmd    = nullptr;
         G4UIcmdWithADouble*         fWattBCmd    = nullptr;
 
+        G4UIcmdWithAString* fSurfaceSourceFileCmd = nullptr;
+        G4UIcmdWithAnInteger* fSurfaceSourcePidCmd = nullptr;
+
 };
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

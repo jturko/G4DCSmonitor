@@ -42,26 +42,26 @@ ActionInitialization::ActionInitialization(DetectorConstruction* detector) : fDe
 
 void ActionInitialization::BuildForMaster() const
 {
-  RunAction* runAction = new RunAction(fDetector, 0);
-  SetUserAction(runAction);
+    RunAction* runAction = new RunAction(fDetector, 0);
+    SetUserAction(runAction);
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 void ActionInitialization::Build() const
 {
-  PrimaryGeneratorAction* primary = new PrimaryGeneratorAction(fDetector);
-  SetUserAction(primary);
+    PrimaryGeneratorAction* primary = new PrimaryGeneratorAction(fDetector);
+    SetUserAction(primary);
 
-  RunAction* runAction = new RunAction(fDetector, primary);
-  SetUserAction(runAction);
-  //primary->SetNeutronPhaseSpace(runAction->GetNeutronPhaseSpace());
+    RunAction* runAction = new RunAction(fDetector, primary);
+    SetUserAction(runAction);
+    //primary->SetNeutronPhaseSpace(runAction->GetNeutronPhaseSpace());
 
-  SteppingAction* steppingAction = new SteppingAction(fDetector);
-  SetUserAction(steppingAction);
+    SteppingAction* steppingAction = new SteppingAction(fDetector);
+    SetUserAction(steppingAction);
 
-  EventAction* eventAction = new EventAction(runAction);
-  SetUserAction(eventAction);
+    EventAction* eventAction = new EventAction(runAction);
+    SetUserAction(eventAction);
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
