@@ -41,19 +41,32 @@ class SurfaceFluxSampler
 
     G4bool IsLoaded() const { return fLoaded; }
     G4int  NumEntries(G4int pid) const;
+
+    // local coordinates
+    //void SetSourceFile(const std::string& f) { fPendingFile = f; }
+    //const std::string& GetSourceFile() const { return fPendingFile; }
+    //void SetTreeName  (const std::string& t) { fPendingTree = t; }
+    //void SetGeometryParameters(G4double R_mm, G4double H_mm, 
+    //                           const G4ThreeVector& caskPos_mm, const G4RotationMatrix* caskRot,
+    //                           G4double tol_mm = 2.0) {
+    //    fPendingR_mm = R_mm; fPendingH_mm = H_mm; fPendingTol_mm = tol_mm;
+    //    // for global coords in surfaceFlux:
+    //    fPendingRot    = caskRot ? *caskRot : G4RotationMatrix();
+    //    fPendingRotInv = fPendingRot.inverse();
+    //    fPendingTol_mm = tol_mm;
+    //}
+    
+    // global coordinates
     void SetSourceFile(const std::string& f) { fPendingFile = f; }
     const std::string& GetSourceFile() const { return fPendingFile; }
     void SetTreeName  (const std::string& t) { fPendingTree = t; }
-    void SetGeometryParameters(G4double R_mm, G4double H_mm, 
-                               const G4ThreeVector& caskPos_mm, const G4RotationMatrix* caskRot,
+    void SetGeometryParameters(G4double R_mm, G4double H_mm,
                                G4double tol_mm = 2.0) {
-        fPendingR_mm = R_mm; fPendingH_mm = H_mm; fPendingTol_mm = tol_mm;
-        // for global coords in surfaceFlux:
-        fPendingRot    = caskRot ? *caskRot : G4RotationMatrix();
-        fPendingRotInv = fPendingRot.inverse();
+        fPendingR_mm   = R_mm;
+        fPendingH_mm   = H_mm;
         fPendingTol_mm = tol_mm;
     }
-    
+
 
   private:
     SurfaceFluxSampler() = default;
@@ -70,10 +83,6 @@ class SurfaceFluxSampler
     G4double    fPendingH_mm   = -1.;
     G4double    fPendingTol_mm =  2.;
     G4bool fLoaded = false;
-    // for global coords surfaceTree
-    G4ThreeVector    fPendingPos_mm;
-    G4RotationMatrix fPendingRot;        // local -> global
-    G4RotationMatrix fPendingRotInv;     // global -> local (precomputed)
 
     struct Bucket {
         std::vector<Crossing> data;

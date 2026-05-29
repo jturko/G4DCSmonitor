@@ -62,7 +62,7 @@
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-DetectorConstruction::DetectorConstruction()
+DetectorConstruction::DetectorConstruction(G4String biasParticle)
 {
     fPosition = G4ThreeVector(0., 0., 0.);
     fRotation = G4ThreeVector(0., 0., 0.);
@@ -73,8 +73,21 @@ DetectorConstruction::DetectorConstruction()
     fDetectorMessenger = new DetectorMessenger(this);
 
     // biasing
-    // TODO -> could we make this registration conditional based on flag set (fUseBiasing) ?
-    RegisterParallelWorld(new GeometryParallelBiasing("BiasingWorld", this));
+    if(biasParticle == "gamma" || biasParticle == "neutron") {
+        G4cout << "[DetectorConstruction] Registering parallel world w. class GeometryParallelBiasing." << G4endl;
+        RegisterParallelWorld(new GeometryParallelBiasing("BiasingWorld", this));
+        fUseBiasingFromCLI = true;
+    }
+    else if(biasParticle.empty()){
+        G4cout << "[DetectorConstruction] No biasing particle set, no parallel world registration." << G4endl;
+        fUseBiasingFromCLI = false;
+    }
+    else {
+        G4ExceptionDescription ed;
+        ed << "Unknown biasing particle \"" << biasParticle << "\"";
+        G4Exception("DetectorConstruction::DetectorConstruction",
+                    "InvalidBiasingParticle", FatalException, ed);
+    }
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -115,6 +128,18 @@ void DetectorConstruction::DefineMaterials()
 
 G4VPhysicalVolume* DetectorConstruction::ConstructVolumes()
 {
+    // if mix-match biasing settings
+    if((GetUseBiasing() && !GetUseBiasingFromCLI()) ||
+       (!GetUseBiasing() && GetUseBiasingFromCLI())) {
+        G4ExceptionDescription ed;
+        ed << "Biasing needs to be on/off both:\n"
+           << " 1) in the run macro via \"/dcs-monitor/det/useBiasing <true/false>\", and\n"
+           << " 2) via the command-line via \"--biasing <gamma/neutron>\"";
+        G4Exception("DetectorConstruction::ConstructVolumes",
+                    "BiasingConfigError", FatalException, ed);
+    }
+    
+    
     // Cleanup old geometry
     G4GeometryManager::GetInstance()->OpenGeometry();
     G4PhysicalVolumeStore::GetInstance()->Clean();

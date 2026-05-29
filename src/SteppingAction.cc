@@ -129,7 +129,16 @@ void SteppingAction::UserSteppingAction(const G4Step* aStep)
     //    }
     //}
 
-    // CASTOR 440 surface flux tracker
+    if(particle == G4NeutrinoE::NeutrinoE() ||
+       particle == G4AntiNeutrinoE::AntiNeutrinoE() ||
+       particle == G4NeutrinoMu::NeutrinoMu() ||
+       particle == G4AntiNeutrinoMu::AntiNeutrinoMu() ||
+       particle == G4NeutrinoTau::NeutrinoTau() ||
+       particle == G4AntiNeutrinoTau::AntiNeutrinoTau()) {
+        aStep->GetTrack()->SetTrackStatus(fStopAndKill);
+    }
+
+    // CASTOR 440 surface flux tracker, global coordinates
     if(RunAction::WriteCASTOR440SurfaceFluxTree) {
         for(G4int c=0; c<fDetector->GetNumCASTOR440s(); c++) {
             GeometryCASTOR440 * thisCask = fDetector->GetCASTOR440(c);
@@ -141,31 +150,53 @@ void SteppingAction::UserSteppingAction(const G4Step* aStep)
                                    preLV == thisCask->GetFinLog());
             G4bool inBody      =  (preLV == thisCask->GetCASTORLog());
             G4bool inFinAfter  =  (postLV == thisCask->GetFinLog());
+            G4bool inWorldAfter=  (aStep->GetPostStepPoint()->GetPhysicalVolume() == fDetector->GetWorld());
 
-            //if(inBodyOrFin && 
-            //   aStep->GetPostStepPoint()->GetPhysicalVolume() == fDetector->GetWorld() &&
-            //   (particle->GetPDGEncoding() == 22 || particle->GetPDGEncoding() == 2112)) // gammas and neutrons only
-            //{
+            
             if(inBody && // if pre-volume is the cask body, and...
-               (aStep->GetPostStepPoint()->GetPhysicalVolume() == fDetector->GetWorld() || inFinAfter) && // if post-volume is 1) world, or 2) a fin, and...
+               (inWorldAfter || inFinAfter) && // if post-volume is 1) world, or 2) a fin, and...
                (particle->GetPDGEncoding() == 22 || particle->GetPDGEncoding() == 2112)) // is a gamma or neutron
             {
-                G4int idx = 2; // third  ntuple for castor_surf
+                //// global coordinates
+                //G4int idx = 2; // third  ntuple for castor_surf
+                //analysis->FillNtupleDColumn(idx, 0, particle->GetPDGEncoding());
+                //analysis->FillNtupleDColumn(idx, 1, aStep->GetPostStepPoint()->GetKineticEnergy());
+                //analysis->FillNtupleDColumn(idx, 2, aStep->GetPostStepPoint()->GetGlobalTime());
+                //analysis->FillNtupleDColumn(idx, 3, aStep->GetPostStepPoint()->GetPosition().x());
+                //analysis->FillNtupleDColumn(idx, 4, aStep->GetPostStepPoint()->GetPosition().y());
+                //analysis->FillNtupleDColumn(idx, 5, aStep->GetPostStepPoint()->GetPosition().z());
+                //analysis->FillNtupleDColumn(idx, 6, aStep->GetPostStepPoint()->GetMomentum().x());
+                //analysis->FillNtupleDColumn(idx, 7, aStep->GetPostStepPoint()->GetMomentum().y());
+                //analysis->FillNtupleDColumn(idx, 8, aStep->GetPostStepPoint()->GetMomentum().z());
+                //analysis->FillNtupleDColumn(idx, 9, aStep->GetPreStepPoint()->GetWeight());
+                //analysis->FillNtupleDColumn(idx,10, G4EventManager::GetEventManager()->GetConstCurrentEvent()->GetEventID());
+                //analysis->AddNtupleRow(idx);
+
+                // local coordinates
+                const G4ThreeVector    caskPos = fDetector->GetCASTOR440Position(c);
+                const G4RotationMatrix* caskRot = fDetector->GetCASTOR440Rotation(c);
+                G4RotationMatrix caskRotInv;                       // identity by default
+                if (caskRot) caskRotInv = caskRot->inverse();
+                const G4ThreeVector globalPos = aStep->GetPostStepPoint()->GetPosition();
+                const G4ThreeVector globalMom = aStep->GetPostStepPoint()->GetMomentum();
+                const G4ThreeVector localPos = caskRotInv * (globalPos - caskPos);
+                const G4ThreeVector localMom = caskRotInv *  globalMom;
+                G4int idx = 2; // "surfaceFlux" ntuple
                 analysis->FillNtupleDColumn(idx, 0, particle->GetPDGEncoding());
                 analysis->FillNtupleDColumn(idx, 1, aStep->GetPostStepPoint()->GetKineticEnergy());
                 analysis->FillNtupleDColumn(idx, 2, aStep->GetPostStepPoint()->GetGlobalTime());
-                analysis->FillNtupleDColumn(idx, 3, aStep->GetPostStepPoint()->GetPosition().x());
-                analysis->FillNtupleDColumn(idx, 4, aStep->GetPostStepPoint()->GetPosition().y());
-                analysis->FillNtupleDColumn(idx, 5, aStep->GetPostStepPoint()->GetPosition().z());
-                analysis->FillNtupleDColumn(idx, 6, aStep->GetPostStepPoint()->GetMomentum().x());
-                analysis->FillNtupleDColumn(idx, 7, aStep->GetPostStepPoint()->GetMomentum().y());
-                analysis->FillNtupleDColumn(idx, 8, aStep->GetPostStepPoint()->GetMomentum().z());
+                analysis->FillNtupleDColumn(idx, 3, localPos.x());
+                analysis->FillNtupleDColumn(idx, 4, localPos.y());
+                analysis->FillNtupleDColumn(idx, 5, localPos.z());
+                analysis->FillNtupleDColumn(idx, 6, localMom.x());
+                analysis->FillNtupleDColumn(idx, 7, localMom.y());
+                analysis->FillNtupleDColumn(idx, 8, localMom.z());
                 analysis->FillNtupleDColumn(idx, 9, aStep->GetPreStepPoint()->GetWeight());
                 analysis->FillNtupleDColumn(idx,10, G4EventManager::GetEventManager()->GetConstCurrentEvent()->GetEventID());
                 analysis->AddNtupleRow(idx);
 
                 // kill the particle after exiting
-                //aStep->GetTrack()->SetTrackStatus(fStopAndKill);
+                aStep->GetTrack()->SetTrackStatus(fStopAndKill);
 
             }
             break; //  can only exit one cask

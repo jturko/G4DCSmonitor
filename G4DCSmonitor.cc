@@ -164,7 +164,7 @@ int main(int argc, char** argv)
     auto runManager = G4RunManagerFactory::CreateRunManager();
 
     // set mandatory initialization classes
-    DetectorConstruction* det = new DetectorConstruction;
+    DetectorConstruction* det = new DetectorConstruction(biasParticle);
     runManager->SetUserInitialization(det);
     
     PhysicsList* phys = new PhysicsList(biasParticle);

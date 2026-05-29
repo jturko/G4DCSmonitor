@@ -122,7 +122,7 @@ class ProgressBar {
         // Render the bar.
         // ----------------------------------------------------------------
         const double percent = static_cast<double>(event) / static_cast<double>(fMaxEvents);
-        const int    nDone   = static_cast<int>(percent * fBarWidth);
+        const int    nDone   = static_cast<int>(percent * fBarWidth)+1;
 
         std::cout << "\33[2K\r  -> [";
         for (int i = 0; i < fBarWidth; ++i) std::cout.put(i < nDone ? '=' : ' ');

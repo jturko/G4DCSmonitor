@@ -107,11 +107,9 @@ void SurfaceFluxSampler::Load(const std::string& filename,
            << nOther    << " other (of " << N << " total)" << G4endl;
 
     // ------------------------------------------------------------------
-    // Second pass: re-enable all branches and read everything. We now
-    // have exact (upper-bound) sizes for the per-species buckets. The
-    // surface-tolerance / outgoing-only cuts may reject some entries,
-    // but reserving the count rather than the full N still avoids any
-    // reallocation in the hot loop and uses the right amount of memory.
+    // Second pass: full read. The tree is already stored in cask-local
+    // coordinates, so we apply NO transform here -- only the side/outgoing
+    // filter against the local cylinder (axis = z, radius = R).
     // ------------------------------------------------------------------
     t->SetBranchStatus("*", 1);
     Double_t ekin, tt, x, y, z, px, py, pz, w;
@@ -125,37 +123,29 @@ void SurfaceFluxSampler::Load(const std::string& filename,
     t->SetBranchAddress("py",     &py);
     t->SetBranchAddress("pz",     &pz);
     t->SetBranchAddress("weight", &w);
+
     fNeutrons.data.reserve(nNeutrons);
     fGammas  .data.reserve(nGammas);
-    fAll     .data.reserve(nNeutrons + nGammas);   // 'other' species ignored below
+    fAll     .data.reserve(nNeutrons + nGammas);
 
-    // global coords:
-    const G4double  R     = fPendingR_mm;
-    const G4double  Hhalf = 0.5 * fPendingH_mm;
-    const G4double  tol   = fPendingTol_mm;
-    const G4ThreeVector& T   = fPendingPos_mm;
-    const G4RotationMatrix& Rinv = fPendingRotInv;
-    prog = ProgressBar(N);
+    const G4double R     = fPendingR_mm;
+    const G4double Hhalf = 0.5 * fPendingH_mm;
+    const G4double tol   = fPendingTol_mm;
+
+    ProgressBar prog2(N);
     Long64_t keptSide = 0, rejEndcap = 0, rejNotSurf = 0,
              rejIncoming = 0, rejUnknownPid = 0;
+
     for (Long64_t i = 0; i < N; ++i) {
-        prog.Print(i);
+        prog2.Print(i);
         t->GetEntry(i);
 
-        // -- global -> cask-local --
-        G4ThreeVector pGlob(x,  y,  z );
-        G4ThreeVector mGlob(px, py, pz);
-        G4ThreeVector pLoc = Rinv * (pGlob - T);
-        G4ThreeVector mLoc = Rinv *  mGlob;
+        // No transform -- input is already in cask-local frame.
+        const G4double rLoc = std::hypot(x, y);
 
-        // Local frame: cylinder axis along z, side at sqrt(x^2+y^2)=R,
-        // endcaps at z=+/-Hhalf.
-        const G4double rLoc = std::hypot(pLoc.x(), pLoc.y());
-
-        // --- side-surface filter -----------------------------------------
-        const G4bool onSide   = (std::fabs(rLoc -    R    ) < tol) &&
-                                (std::fabs(pLoc.z())       < Hhalf - tol);
-        const G4bool onEndcap = (std::fabs(std::fabs(pLoc.z()) - Hhalf) < tol) &&
+        const G4bool onSide   = (std::fabs(rLoc - R) < tol) &&
+                                (std::fabs(z)        < Hhalf - tol);
+        const G4bool onEndcap = (std::fabs(std::fabs(z) - Hhalf) < tol) &&
                                 (rLoc < R + tol);
 
         if (!onSide) {
@@ -163,82 +153,49 @@ void SurfaceFluxSampler::Load(const std::string& filename,
             else          ++rejNotSurf;
             continue;
         }
-        // -----------------------------------------------------------------
 
         // Outward radial normal in local frame.
-        const G4double nx = pLoc.x() / rLoc;
-        const G4double ny = pLoc.y() / rLoc;
+        const G4double nx = x / rLoc;
+        const G4double ny = y / rLoc;
 
-        const G4double pMag = mLoc.mag();
+        const G4double pMag = std::sqrt(px*px + py*py + pz*pz);
         if (pMag <= 0.) { ++rejIncoming; continue; }
 
-        const G4double pxh = mLoc.x() / pMag;
-        const G4double pyh = mLoc.y() / pMag;
-        const G4double mu  = pxh * nx + pyh * ny;     // p . n_out
-        if (mu <= 0.) { ++rejIncoming; continue; }    // keep outgoing only
+        const G4double pxh = px / pMag;
+        const G4double pyh = py / pMag;
+        const G4double mu  = pxh * nx + pyh * ny;   // p_hat . n_out
+        if (mu <= 0.) { ++rejIncoming; continue; }  // outgoing only
 
         Crossing c;
         c.pid    = static_cast<G4int>(pid);
         c.ekin   = static_cast<G4float>(ekin);
-        c.x  = (G4float)pLoc.x();
-        c.y  = (G4float)pLoc.y();
-        c.z  = (G4float)pLoc.z();
-        c.px = (G4float)(mLoc.x() / pMag);   // store unit direction
-        c.py = (G4float)(mLoc.y() / pMag);
-        c.pz = (G4float)(mLoc.z() / pMag);
+        c.x      = (G4float)x;
+        c.y      = (G4float)y;
+        c.z      = (G4float)z;
+        c.px     = (G4float)pxh;
+        c.py     = (G4float)pyh;
+        c.pz     = (G4float)(pz / pMag);
         c.weight = static_cast<G4float>(w);
 
         if      (c.pid == 2112) fNeutrons.data.push_back(c);
         else if (c.pid == 22)   fGammas  .data.push_back(c);
         else                    { ++rejUnknownPid; continue; }
+
+        // Keep an "any species" pool too, so requestedPid==0 still works.
+        fAll.data.push_back(c);
         ++keptSide;
     }
 
-    G4cout << "[SurfaceFluxSampler] Load summary:\n"
+    G4cout << "[SurfaceFluxSampler] Load summary (cask-local input):\n"
            << "    kept (side)        : " << keptSide      << '\n'
            << "    rejected (endcap)  : " << rejEndcap     << '\n'
            << "    rejected (not surf): " << rejNotSurf    << '\n'
            << "    rejected (incoming): " << rejIncoming   << '\n'
            << "    rejected (other id): " << rejUnknownPid << G4endl;
 
-
-
-    //Long64_t kept = 0;
-    //for (Long64_t i = 0; i < N; ++i) {
-    //    t->GetEntry(i);
-
-    //    // Reject anything that didn't come out the side.
-    //    const G4double r = std::hypot(x, y);
-    //    if (std::fabs(r - R) > tol)       continue;
-    //    if (std::fabs(z)     >  Hhalf)    continue;
-
-    //    // Outward radial normal in cask-local frame.
-    //    const G4double nx = x / r, ny = y / r;
-    //    const G4double mu = px*nx + py*ny;        // p . n
-    //    if (mu <= 0.) continue;                   // keep outgoing only
-
-    //    Crossing c;
-    //    c.pid    = static_cast<G4int>(pid);
-    //    c.ekin   = static_cast<G4float>(ekin);
-    //    c.x = (G4float)x;  c.y = (G4float)y;  c.z = (G4float)z;
-    //    c.px=(G4float)px;  c.py=(G4float)py;  c.pz=(G4float)pz;
-    //    c.weight = static_cast<G4float>(w);
-
-    //    fAll.data.push_back(c);
-    //    if      (c.pid == 2112) fNeutrons.data.push_back(c);
-    //    else if (c.pid == 22)   fGammas  .data.push_back(c);
-    //    ++kept;
-    //}
-    
-    //G4cout << "[SurfaceFluxSampler] Loaded " << kept << " / " << N
-    //       << " side-outgoing crossings ("
-    //       << fNeutrons.data.size() << " n, "
-    //       << fGammas  .data.size() << " gamma)" << G4endl;
-
     BuildAlias(fNeutrons);
     BuildAlias(fGammas);
     BuildAlias(fAll);
-
 
     fLoaded = true;
 }

@@ -16,7 +16,7 @@ class GeometryCASTOR440;
 class DetectorConstruction : public G4VUserDetectorConstruction
 {
     public:
-        DetectorConstruction();
+        DetectorConstruction(G4String biasParticle);
         ~DetectorConstruction() override;
 
     public:
@@ -30,6 +30,7 @@ class DetectorConstruction : public G4VUserDetectorConstruction
         // Biasing
         void  SetUseBiasing(G4bool val) { fUseBiasing = val; }
         G4bool GetUseBiasing() const    { return fUseBiasing; }
+        G4bool GetUseBiasingFromCLI() const    { return fUseBiasingFromCLI; }
 
         void     SetNShells(G4int n)               { fNShells = n; }
         G4int    GetNShells() const                { return fNShells; }
@@ -113,6 +114,8 @@ class DetectorConstruction : public G4VUserDetectorConstruction
     private:
         DetectorMessenger* fDetectorMessenger = nullptr;
 
+        G4bool   fUseBiasingFromCLI = false;
+        
         G4bool   fUseBiasing = false;
         G4int    fNShells    = 10;
         G4double fBiasRMin   =  900. * CLHEP::mm;
