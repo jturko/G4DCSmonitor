@@ -86,25 +86,30 @@ void SurfaceFluxSampler::Load(const std::string& filename,
     // so this is essentially I/O-bound on a single column and very fast
     // even for trees with O(10^8) entries.
     // ------------------------------------------------------------------
-    Double_t pid = 0;
+    Double_t pid = 0, w = 0;
     t->SetBranchStatus("*", 0);
     t->SetBranchStatus("pid", 1);
+    t->SetBranchStatus("weight", 1);
     t->SetBranchAddress ("pid", &pid);
-    const Long64_t N = t->GetEntries();
+    t->SetBranchAddress ("weight", &w);
+    //const Long64_t N = t->GetEntries();
+    const Long64_t N = (fMaxEntries > 0 && fMaxEntries <= t->GetEntries()) ? fMaxEntries : t->GetEntries();
     Long64_t nNeutrons = 0, nGammas = 0, nOther = 0;
+    Double_t wNeutrons = 0.,wGammas = 0.,wOther = 0.;
     ProgressBar prog(N);
     for (Long64_t i = 0; i < N; ++i) {
         prog.Print(i);
         t->GetEntry(i);
         const G4int p = static_cast<G4int>(pid);
-        if      (p == 2112) ++nNeutrons;
-        else if (p == 22)   ++nGammas;
-        else                ++nOther;
+        if      (p == 2112) { ++nNeutrons; wNeutrons += w; }
+        else if (p == 22)   { ++nGammas;   wGammas += w; }
+        else                { ++nOther;    wOther += w; }
     }
-    G4cout << "[SurfaceFluxSampler] First pass: "
-           << nNeutrons << " neutrons, "
-           << nGammas   << " gammas, "
-           << nOther    << " other (of " << N << " total)" << G4endl;
+    G4cout << "[SurfaceFluxSampler] First pass: " << G4endl
+           << "[SurfaceFluxSampler]     neutrons: " << nNeutrons << "\t, (sum_w = " << wNeutrons                  << ")" << G4endl
+           << "[SurfaceFluxSampler]     gammas  : " << nGammas   << "\t, (sum_w = " << wGammas                    << ")" << G4endl
+           << "[SurfaceFluxSampler]     other   : " << nOther    << "\t, (sum_w = " << wOther                     << ")" << G4endl
+           << "[SurfaceFluxSampler]     total   : " << N         << "\t, (sum_w = " << (wNeutrons+wGammas+wOther) << ")" << G4endl;
 
     // ------------------------------------------------------------------
     // Second pass: full read. The tree is already stored in cask-local
@@ -112,7 +117,7 @@ void SurfaceFluxSampler::Load(const std::string& filename,
     // filter against the local cylinder (axis = z, radius = R).
     // ------------------------------------------------------------------
     t->SetBranchStatus("*", 1);
-    Double_t ekin, tt, x, y, z, px, py, pz, w;
+    Double_t ekin, tt, x, y, z, px, py, pz;
     t->SetBranchAddress("pid",    &pid);
     t->SetBranchAddress("ekin",   &ekin);
     t->SetBranchAddress("t",      &tt);
@@ -135,6 +140,8 @@ void SurfaceFluxSampler::Load(const std::string& filename,
     ProgressBar prog2(N);
     Long64_t keptSide = 0, rejEndcap = 0, rejNotSurf = 0,
              rejIncoming = 0, rejUnknownPid = 0;
+    Double_t keptSideWeight = 0, rejEndcapWeight = 0, rejNotSurfWeight = 0,
+             rejIncomingWeight = 0, rejUnknownPidWeight = 0;
 
     for (Long64_t i = 0; i < N; ++i) {
         prog2.Print(i);
@@ -149,8 +156,8 @@ void SurfaceFluxSampler::Load(const std::string& filename,
                                 (rLoc < R + tol);
 
         if (!onSide) {
-            if (onEndcap) ++rejEndcap;
-            else          ++rejNotSurf;
+            if (onEndcap) { ++rejEndcap;  rejEndcapWeight += w; }
+            else          { ++rejNotSurf; rejNotSurfWeight += w; }
             continue;
         }
 
@@ -159,12 +166,12 @@ void SurfaceFluxSampler::Load(const std::string& filename,
         const G4double ny = y / rLoc;
 
         const G4double pMag = std::sqrt(px*px + py*py + pz*pz);
-        if (pMag <= 0.) { ++rejIncoming; continue; }
+        if (pMag <= 0.) { ++rejIncoming; rejIncomingWeight += w; continue; }
 
         const G4double pxh = px / pMag;
         const G4double pyh = py / pMag;
         const G4double mu  = pxh * nx + pyh * ny;   // p_hat . n_out
-        if (mu <= 0.) { ++rejIncoming; continue; }  // outgoing only
+        if (mu <= 0.) { ++rejIncoming; rejIncomingWeight += w; continue; }  // outgoing only
 
         Crossing c;
         c.pid    = static_cast<G4int>(pid);
@@ -177,24 +184,26 @@ void SurfaceFluxSampler::Load(const std::string& filename,
         c.pz     = (G4float)(pz / pMag);
         c.weight = static_cast<G4float>(w);
 
-        if      (c.pid == 2112) fNeutrons.data.push_back(c);
-        else if (c.pid == 22)   fGammas  .data.push_back(c);
-        else                    { ++rejUnknownPid; continue; }
+        //if      (c.pid == 2112) fNeutrons.data.push_back(c);
+        //else if (c.pid == 22)   fGammas  .data.push_back(c);
+        //else                    { ++rejUnknownPid; rejUnknownPid += w; continue; }
+        if( c.pid != 2112 && c.pid != 22 ) { ++rejUnknownPid; rejUnknownPidWeight += w; continue; }
 
         // Keep an "any species" pool too, so requestedPid==0 still works.
         fAll.data.push_back(c);
         ++keptSide;
+        keptSideWeight += w;
     }
 
     G4cout << "[SurfaceFluxSampler] Load summary (cask-local input):\n"
-           << "    kept (side)        : " << keptSide      << '\n'
-           << "    rejected (endcap)  : " << rejEndcap     << '\n'
-           << "    rejected (not surf): " << rejNotSurf    << '\n'
-           << "    rejected (incoming): " << rejIncoming   << '\n'
-           << "    rejected (other id): " << rejUnknownPid << G4endl;
+           << "[SurfaceFluxSampler]    kept (side)        : " << keptSide      << ",\t weight = " << keptSideWeight       << '\n'
+           << "[SurfaceFluxSampler]    rejected (endcap)  : " << rejEndcap     << ",\t weight = " << rejEndcapWeight      << '\n'
+           << "[SurfaceFluxSampler]    rejected (not surf): " << rejNotSurf    << ",\t weight = " << rejNotSurfWeight     << '\n'
+           << "[SurfaceFluxSampler]    rejected (incoming): " << rejIncoming   << ",\t weight = " << rejIncomingWeight    << '\n'
+           << "[SurfaceFluxSampler]    rejected (other id): " << rejUnknownPid << ",\t weight = " << rejUnknownPidWeight  << G4endl;
 
-    BuildAlias(fNeutrons);
-    BuildAlias(fGammas);
+    //BuildAlias(fNeutrons);
+    //BuildAlias(fGammas);
     BuildAlias(fAll);
 
     fLoaded = true;
@@ -203,8 +212,8 @@ void SurfaceFluxSampler::Load(const std::string& filename,
 const SurfaceFluxSampler::Bucket*
 SurfaceFluxSampler::GetBucket(G4int pid) const
 {
-    if (pid == 2112) return &fNeutrons;
-    if (pid == 22)   return &fGammas;
+    //if (pid == 2112) return &fNeutrons;
+    //if (pid == 22)   return &fGammas;
     return &fAll;
 }
 

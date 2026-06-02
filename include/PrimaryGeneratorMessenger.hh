@@ -44,6 +44,7 @@ class PrimaryGeneratorMessenger: public G4UImessenger
 
         G4UIcmdWithAString* fSurfaceSourceFileCmd = nullptr;
         G4UIcmdWithAnInteger* fSurfaceSourcePidCmd = nullptr;
+        G4UIcmdWithAnInteger* fSurfaceSourceMaxEntriesCmd = nullptr;
 
 };
 

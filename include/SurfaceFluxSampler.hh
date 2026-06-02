@@ -67,6 +67,8 @@ class SurfaceFluxSampler
         fPendingTol_mm = tol_mm;
     }
 
+    void SetMaxEntries(long int n) { fMaxEntries = n; }
+
 
   private:
     SurfaceFluxSampler() = default;
@@ -98,6 +100,7 @@ class SurfaceFluxSampler
     Bucket fGammas;
     Bucket fAll;     // fallback when caller asks pid==0
 
+    long int fMaxEntries = 0;
 };
 
 #endif

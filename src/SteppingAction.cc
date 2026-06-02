@@ -138,7 +138,7 @@ void SteppingAction::UserSteppingAction(const G4Step* aStep)
         aStep->GetTrack()->SetTrackStatus(fStopAndKill);
     }
 
-    // CASTOR 440 surface flux tracker, global coordinates
+    // CASTOR 440 surface flux tracker
     if(RunAction::WriteCASTOR440SurfaceFluxTree) {
         for(G4int c=0; c<fDetector->GetNumCASTOR440s(); c++) {
             GeometryCASTOR440 * thisCask = fDetector->GetCASTOR440(c);

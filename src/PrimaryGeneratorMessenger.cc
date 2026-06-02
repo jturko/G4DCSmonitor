@@ -13,6 +13,8 @@
 #include "G4UIcmdWithoutParameter.hh"
 #include "G4UIcmdWithABool.hh"
 
+#include "G4Threading.hh"
+
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 PrimaryGeneratorMessenger::PrimaryGeneratorMessenger(PrimaryGeneratorAction* gun)
@@ -65,6 +67,10 @@ PrimaryGeneratorMessenger::PrimaryGeneratorMessenger(PrimaryGeneratorAction* gun
     fSurfaceSourcePidCmd = new G4UIcmdWithAnInteger("/dcs-monitor/gun/surfaceSourcePid", this);
     fSurfaceSourcePidCmd->SetGuidance("PDG code filter: 0=any, 2112=neutron, 22=gamma.");
     fSurfaceSourcePidCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+
+    fSurfaceSourceMaxEntriesCmd = new G4UIcmdWithAnInteger("/dcs-monitor/gun/surfaceSourceMaxEntries", this);
+    fSurfaceSourceMaxEntriesCmd->SetGuidance("Set number of primaries to load from the surface source file");
+    fSurfaceSourceMaxEntriesCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -86,6 +92,7 @@ PrimaryGeneratorMessenger::~PrimaryGeneratorMessenger()
 
     delete fSurfaceSourceFileCmd;
     delete fSurfaceSourcePidCmd;
+    delete fSurfaceSourceMaxEntriesCmd;
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -94,27 +101,33 @@ void PrimaryGeneratorMessenger::SetNewValue(G4UIcommand* command, G4String newVa
 {
     if(command == fSourceModeCmd) {
         if (newValue == "GPS") {
+            if(G4Threading::G4GetThreadId() == 0) 
                 G4cout << " --> Setting source mode to the G4GeneralParticleSource (kGPS)" << G4endl;
-                fPrimaryGeneratorAction->SetSourceMode(kGPS);
+            fPrimaryGeneratorAction->SetSourceMode(kGPS);
         }
         else if (newValue == "CASTOR440_surface") {
+            if(G4Threading::G4GetThreadId() == 0) 
                 G4cout << " --> Setting source mode to the CASTOR 440/84 surface flux (kCASTOR440_surface)" << G4endl;
-                fPrimaryGeneratorAction->SetSourceMode(kCASTOR440_surface);
+            fPrimaryGeneratorAction->SetSourceMode(kCASTOR440_surface);
         }
         else if (newValue == "CASTOR440_surface_from_TTree") {
+            if(G4Threading::G4GetThreadId() == 0) 
                 G4cout << " --> Setting source mode to the CASTOR 440/84 surface flux, sampled from a ROOT tree (kCASTOR440_surface_from_TTree)" << G4endl;
-                fPrimaryGeneratorAction->SetSourceMode(kCASTOR440_surface_from_TTree);
+            fPrimaryGeneratorAction->SetSourceMode(kCASTOR440_surface_from_TTree);
         }
         else if (newValue == "CASTOR440_fuel") {
-            G4cout << " --> Setting source mode to CASTOR 440/84 fuel element volume flux (kCASTOR440_fuel)" << G4endl;
+            if(G4Threading::G4GetThreadId() == 0) 
+                G4cout << " --> Setting source mode to CASTOR 440/84 fuel element volume flux (kCASTOR440_fuel)" << G4endl;
             fPrimaryGeneratorAction->SetSourceMode(kCASTOR440_fuel);
         }
         else if (newValue == "CASTOR440_fuel_biased") {
-            G4cout << " --> Setting source mode to CASTOR 440/84 fuel element volume flux with directional bias (kCASTOR440_fuel_biased)" << G4endl;
+            if(G4Threading::G4GetThreadId() == 0) 
+                G4cout << " --> Setting source mode to CASTOR 440/84 fuel element volume flux with directional bias (kCASTOR440_fuel_biased)" << G4endl;
             fPrimaryGeneratorAction->SetSourceMode(kCASTOR440_fuel_biased);
         }
         else {
-            G4cout << " --> Unknown source mode, returning..." << G4endl;
+            if(G4Threading::G4GetThreadId() == 0) 
+                G4cout << " --> Unknown source mode, returning..." << G4endl;
             return;
         }
     }
@@ -139,11 +152,17 @@ void PrimaryGeneratorMessenger::SetNewValue(G4UIcommand* command, G4String newVa
     }
 
     if (command == fSurfaceSourceFileCmd) {
-        G4cout << "[PrimaryGeneratorMessenger::SetNewValue] Setting the surface flux file to: " << newValue << G4endl;
+        if(G4Threading::G4GetThreadId() == 0) 
+            G4cout << "[PrimaryGeneratorMessenger::SetNewValue] Setting the surface flux file to: " << newValue << G4endl;
         SurfaceFluxSampler::Instance().SetSourceFile(newValue);
     }
     if (command == fSurfaceSourcePidCmd) {
         fPrimaryGeneratorAction->SetSurfaceSourcePid(fSurfaceSourcePidCmd->GetNewIntValue(newValue));
+    }
+    if (command == fSurfaceSourceMaxEntriesCmd) {
+        if(G4Threading::G4GetThreadId() == 0) 
+            G4cout << "[PrimaryGeneratorMessenger::SetNewValue] Loading " << newValue << " entries from the input surface source file" << G4endl;
+        SurfaceFluxSampler::Instance().SetMaxEntries(fSurfaceSourceMaxEntriesCmd->GetNewIntValue(newValue));
     }
 }
 
