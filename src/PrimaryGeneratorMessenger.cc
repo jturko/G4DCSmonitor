@@ -59,7 +59,7 @@ PrimaryGeneratorMessenger::PrimaryGeneratorMessenger(PrimaryGeneratorAction* gun
     fWattBCmd->SetParameterName("b", false);
     fWattBCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
 
-    // surface flux from root TTree
+    // surface flux sampler from root TTree
     fSurfaceSourceFileCmd = new G4UIcmdWithAString("/dcs-monitor/gun/surfaceSourceFile", this);
     fSurfaceSourceFileCmd->SetGuidance("Path to step-1 ROOT file containing the 'surfaceFlux' tree.");
     fSurfaceSourceFileCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
@@ -71,6 +71,30 @@ PrimaryGeneratorMessenger::PrimaryGeneratorMessenger(PrimaryGeneratorAction* gun
     fSurfaceSourceMaxEntriesCmd = new G4UIcmdWithAnInteger("/dcs-monitor/gun/surfaceSourceMaxEntries", this);
     fSurfaceSourceMaxEntriesCmd->SetGuidance("Set number of primaries to load from the surface source file");
     fSurfaceSourceMaxEntriesCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+
+    // smearing commands for surface flux sampler
+    fSmearPhiCmd = new G4UIcmdWithADouble("/dcs-monitor/gun/surfaceSmearPhi", this);
+    fSmearPhiCmd->SetGuidance("Gaussian sigma for azimuthal phi smearing on the cask "
+                              "side surface, in radians. 0 = no smearing (default).");
+    fSmearPhiCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+
+    fSmearZCmd = new G4UIcmdWithADoubleAndUnit("/dcs-monitor/gun/surfaceSmearZ", this);
+    fSmearZCmd->SetGuidance("Gaussian sigma for axial z smearing on the cask side "
+                            "surface. 0 = no smearing (default).");
+    fSmearZCmd->SetDefaultUnit("mm");
+    fSmearZCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+
+    fSmearAngleCmd = new G4UIcmdWithADouble("/dcs-monitor/gun/surfaceSmearAngle", this);
+    fSmearAngleCmd->SetGuidance("Gaussian sigma (rad) for direction smearing in a small "
+                                "cone about the stored direction. 0 = no smearing.");
+    fSmearAngleCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+
+    fSmearEfracCmd = new G4UIcmdWithADouble("/dcs-monitor/gun/surfaceSmearEfrac", this);
+    fSmearEfracCmd->SetGuidance("Fractional Gaussian sigma for kinetic-energy smearing "
+                                "(E -> E*(1 + N(0,sigma))). 0 = no smearing.");
+    fSmearEfracCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+
+
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -93,6 +117,11 @@ PrimaryGeneratorMessenger::~PrimaryGeneratorMessenger()
     delete fSurfaceSourceFileCmd;
     delete fSurfaceSourcePidCmd;
     delete fSurfaceSourceMaxEntriesCmd;
+    delete fSmearPhiCmd;
+    delete fSmearZCmd;
+    delete fSmearAngleCmd;
+    delete fSmearEfracCmd;
+
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -151,6 +180,7 @@ void PrimaryGeneratorMessenger::SetNewValue(G4UIcommand* command, G4String newVa
         fPrimaryGeneratorAction->SetWattB(bInternal);
     }
 
+    // surface flux sampler
     if (command == fSurfaceSourceFileCmd) {
         if(G4Threading::G4GetThreadId() == 0) 
             G4cout << "[PrimaryGeneratorMessenger::SetNewValue] Setting the surface flux file to: " << newValue << G4endl;
@@ -164,6 +194,20 @@ void PrimaryGeneratorMessenger::SetNewValue(G4UIcommand* command, G4String newVa
             G4cout << "[PrimaryGeneratorMessenger::SetNewValue] Loading " << newValue << " entries from the input surface source file" << G4endl;
         SurfaceFluxSampler::Instance().SetMaxEntries(fSurfaceSourceMaxEntriesCmd->GetNewIntValue(newValue));
     }
+    // smearing
+    if (command == fSmearPhiCmd)
+        SurfaceFluxSampler::Instance().SetSmearPhi(
+            fSmearPhiCmd->GetNewDoubleValue(newValue));
+    if (command == fSmearZCmd)
+        SurfaceFluxSampler::Instance().SetSmearZ(
+            fSmearZCmd->GetNewDoubleValue(newValue));
+    if (command == fSmearAngleCmd)
+        SurfaceFluxSampler::Instance().SetSmearAngle(
+            fSmearAngleCmd->GetNewDoubleValue(newValue));
+    if (command == fSmearEfracCmd)
+        SurfaceFluxSampler::Instance().SetSmearEfrac(
+            fSmearEfracCmd->GetNewDoubleValue(newValue));
+
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

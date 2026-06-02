@@ -223,6 +223,35 @@ G4int SurfaceFluxSampler::NumEntries(G4int pid) const
     return b ? static_cast<G4int>(b->data.size()) : 0;
 }
 
+// without smearing
+//bool SurfaceFluxSampler::Sample(G4int requestedPid,
+//                                G4ThreeVector& posLocal,
+//                                G4ThreeVector& dirLocal,
+//                                G4double&      ekin,
+//                                G4double&      weight,
+//                                G4int&         pid) const
+//{
+//    EnsureLoaded();
+//
+//    const Bucket* b = GetBucket(requestedPid);
+//    if (!b || b->data.empty()) return false;
+//
+//    // Walker alias step: O(1).
+//    const std::size_t N = b->data.size();
+//    const G4double u    = G4UniformRand() * N;
+//    const std::size_t i = static_cast<std::size_t>(u);
+//    const G4double frac = u - i;
+//    const std::size_t k = (frac < b->prob[i]) ? i : b->alias[i];
+//
+//    const auto& c = b->data[k];
+//    posLocal  = G4ThreeVector(c.x, c.y, c.z);
+//    dirLocal  = G4ThreeVector(c.px, c.py, c.pz).unit();
+//    ekin      = c.ekin;
+//    weight    = 1.0; // weight is already absorbed into the alias-table probabilities
+//    pid       = c.pid;
+//    return true;
+//}
+
 bool SurfaceFluxSampler::Sample(G4int requestedPid,
                                 G4ThreeVector& posLocal,
                                 G4ThreeVector& dirLocal,
@@ -235,7 +264,7 @@ bool SurfaceFluxSampler::Sample(G4int requestedPid,
     const Bucket* b = GetBucket(requestedPid);
     if (!b || b->data.empty()) return false;
 
-    // Walker alias step: O(1).
+    // Walker alias step: O(1) pick of a kernel centre.
     const std::size_t N = b->data.size();
     const G4double u    = G4UniformRand() * N;
     const std::size_t i = static_cast<std::size_t>(u);
@@ -243,11 +272,78 @@ bool SurfaceFluxSampler::Sample(G4int requestedPid,
     const std::size_t k = (frac < b->prob[i]) ? i : b->alias[i];
 
     const auto& c = b->data[k];
-    posLocal  = G4ThreeVector(c.x, c.y, c.z);
-    dirLocal  = G4ThreeVector(c.px, c.py, c.pz).unit();
-    ekin      = c.ekin;
-    weight    = 1.0; // weight is already absorbed into the alias-table probabilities
-    pid       = c.pid;
+
+    // ---------------------------------------------------------------
+    // Position smearing -- stay on the cylinder side surface so the
+    // emission point remains physically meaningful for step 2.
+    //   * radial coordinate locked to the stored radius
+    //   * (phi, z) smeared by independent Gaussians
+    // ---------------------------------------------------------------
+    G4double xL = c.x, yL = c.y, zL = c.z;
+    if (fSmearPhi > 0. || fSmearZ > 0.) {
+        const G4double rLoc = std::hypot(c.x, c.y);  // ~ fPendingR_mm
+        G4double phi0 = std::atan2(c.y, c.x);
+
+        if (fSmearPhi > 0.) phi0 += G4RandGauss::shoot(0., fSmearPhi);
+        if (fSmearZ   > 0.) zL   += G4RandGauss::shoot(0., fSmearZ);
+
+        // Clamp z to half-height minus tolerance so we don't accidentally
+        // wander onto the endcap region.
+        const G4double zMax = 0.5 * fPendingH_mm - fPendingTol_mm;
+        if (zL >  zMax) zL =  zMax;
+        if (zL < -zMax) zL = -zMax;
+
+        xL = rLoc * std::cos(phi0);
+        yL = rLoc * std::sin(phi0);
+    }
+
+    // ---------------------------------------------------------------
+    // Direction smearing -- small-angle cone around the stored dir.
+    // We sample (theta_smear, phi_smear) with theta_smear from a
+    // half-Gaussian of width fSmearAngle, then rotate that cone-axis
+    // vector into the frame whose z-axis is the stored direction.
+    //
+    // If the resulting direction is no longer outgoing (i.e. would go
+    // into the cask), we reject and fall back to the unsmeared dir
+    // rather than try to fix it up -- this preserves the angular PDF
+    // on the outward hemisphere.
+    // ---------------------------------------------------------------
+    G4ThreeVector dir(c.px, c.py, c.pz);
+    if (fSmearAngle > 0.) {
+        const G4double thetaSmear = std::fabs(G4RandGauss::shoot(0., fSmearAngle));
+        const G4double phiSmear   = 2.0 * M_PI * G4UniformRand();
+        const G4double cs = std::cos(thetaSmear);
+        const G4double sn = std::sin(thetaSmear);
+
+        G4ThreeVector dDir(sn * std::cos(phiSmear),
+                           sn * std::sin(phiSmear),
+                           cs);
+        dDir.rotateUz(dir);   // align cone axis with original direction
+
+        // Reject if it would re-enter the cask (n_out . dir <= 0).
+        const G4double invR = 1.0 / std::hypot(xL, yL);
+        const G4double nx = xL * invR, ny = yL * invR;
+        if (dDir.x() * nx + dDir.y() * ny > 0.) {
+            dir = dDir;
+        }
+        // else: keep original `dir`, which is guaranteed outgoing.
+    }
+
+    // ---------------------------------------------------------------
+    // Energy smearing -- fractional Gaussian, clamped strictly > 0.
+    // ---------------------------------------------------------------
+    G4double E = c.ekin;
+    if (fSmearEfrac > 0.) {
+        const G4double f = 1.0 + G4RandGauss::shoot(0., fSmearEfrac);
+        if (f > 0.) E *= f;
+        // If f<=0 we keep E unchanged (extremely rare for sensible sigmas).
+    }
+
+    posLocal = G4ThreeVector(xL, yL, zL);
+    dirLocal = dir.unit();
+    ekin     = E;
+    weight   = 1.0;   // alias table already absorbs the input weights
+    pid      = c.pid;
     return true;
 }
 

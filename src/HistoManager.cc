@@ -66,6 +66,9 @@ void HistoManager::Book()
     }
 
     G4int idx;
+    
+    // force one histogram so empty files are still created
+    idx = analysisManager->CreateH1("_dummy", "_dummy", 1, 0, 1);
 
     // ntuple for primary particles
     idx = analysisManager->CreateNtuple("primary", "tree of primary particles");

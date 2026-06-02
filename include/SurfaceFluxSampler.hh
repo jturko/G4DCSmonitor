@@ -69,6 +69,20 @@ class SurfaceFluxSampler
 
     void SetMaxEntries(long int n) { fMaxEntries = n; }
 
+    // for smearing
+    void SetSmearing(G4double sigmaPhi_rad,
+                     G4double sigmaZ_mm,
+                     G4double sigmaAng_rad,
+                     G4double sigmaEfrac) {
+        fSmearPhi    = sigmaPhi_rad;
+        fSmearZ      = sigmaZ_mm;
+        fSmearAngle  = sigmaAng_rad;
+        fSmearEfrac  = sigmaEfrac;
+    }
+    void SetSmearPhi   (G4double v) { fSmearPhi   = v; }
+    void SetSmearZ     (G4double v) { fSmearZ     = v; }
+    void SetSmearAngle (G4double v) { fSmearAngle = v; }
+    void SetSmearEfrac (G4double v) { fSmearEfrac = v; }
 
   private:
     SurfaceFluxSampler() = default;
@@ -101,6 +115,12 @@ class SurfaceFluxSampler
     Bucket fAll;     // fallback when caller asks pid==0
 
     long int fMaxEntries = 0;
+
+    // for smearing
+    G4double fSmearPhi   = 0.;    // rad
+    G4double fSmearZ     = 0.;    // mm
+    G4double fSmearAngle = 0.;    // rad
+    G4double fSmearEfrac = 0.;    // dimensionless
 };
 
 #endif
