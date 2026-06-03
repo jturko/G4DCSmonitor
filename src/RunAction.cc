@@ -163,11 +163,3 @@ void RunAction::SetPrintFlag(G4bool flag)
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-
-void RunAction::StartSurfaceSourceRun(G4double measurement_time) {
-    if (isMaster) {
-        fPrimary->StartSurfaceSourceRun(measurement_time);
-    }
-}
-
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

@@ -74,8 +74,6 @@ class RunAction : public G4UserRunAction
     static std::atomic<G4bool> WritePrimaryTree;
     static std::atomic<G4bool> WriteCASTOR440SurfaceFluxTree;
 
-    void StartSurfaceSourceRun(G4double measurement_time);
-
   private:
     DetectorConstruction* fDetector = nullptr;
     PrimaryGeneratorAction* fPrimary = nullptr;

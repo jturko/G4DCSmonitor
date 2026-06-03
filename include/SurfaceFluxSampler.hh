@@ -32,8 +32,7 @@ class SurfaceFluxSampler
 
     // Sample one crossing for a given particle (pid==0 ⇒ any). Returns false
     // if no entries exist for the requested species.
-    bool Sample(G4int requestedPid,
-                G4ThreeVector& posLocal,
+    bool Sample(G4ThreeVector& posLocal,
                 G4ThreeVector& dirLocal,
                 G4double&      ekin,
                 G4double&      weight,
@@ -41,20 +40,6 @@ class SurfaceFluxSampler
 
     G4bool IsLoaded() const { return fLoaded; }
     G4int  NumEntries(G4int pid) const;
-
-    // local coordinates
-    //void SetSourceFile(const std::string& f) { fPendingFile = f; }
-    //const std::string& GetSourceFile() const { return fPendingFile; }
-    //void SetTreeName  (const std::string& t) { fPendingTree = t; }
-    //void SetGeometryParameters(G4double R_mm, G4double H_mm, 
-    //                           const G4ThreeVector& caskPos_mm, const G4RotationMatrix* caskRot,
-    //                           G4double tol_mm = 2.0) {
-    //    fPendingR_mm = R_mm; fPendingH_mm = H_mm; fPendingTol_mm = tol_mm;
-    //    // for global coords in surfaceFlux:
-    //    fPendingRot    = caskRot ? *caskRot : G4RotationMatrix();
-    //    fPendingRotInv = fPendingRot.inverse();
-    //    fPendingTol_mm = tol_mm;
-    //}
     
     // global coordinates
     void SetSourceFile(const std::string& f) { fPendingFile = f; }
@@ -67,7 +52,11 @@ class SurfaceFluxSampler
         fPendingTol_mm = tol_mm;
     }
 
-    void SetMaxEntries(long int n) { fMaxEntries = n; }
+    void  SetRequestedPid(G4int p) { fRequestedPid = p; }
+    G4int GetRequestedPid() const  { return fRequestedPid; }
+
+    void     SetSurfaceSourceMaxEntriesLoadedFromTree(long int n) { fSurfaceSourceMaxEntriesLoadedFromTree = n; }
+    long int GetSurfaceSourceMaxEntriesLoadedFromTree() const     { return fSurfaceSourceMaxEntriesLoadedFromTree; }
 
     // for smearing
     void SetSmearing(G4double sigmaPhi_rad,
@@ -84,15 +73,24 @@ class SurfaceFluxSampler
     void SetSmearAngle (G4double v) { fSmearAngle = v; }
     void SetSmearEfrac (G4double v) { fSmearEfrac = v; }
 
-    // for calculation of surface flux prob.
+    // for a run with a pre-computed numebr of primaries:
+    // surface_flux_ratio = n_surface / n_primary_step1
+    // n_assembly_emissions = emission_rate * run_time
+    // n_primary_step2 = n_assembly_emissions * surface_flux_ratio
     void SetNumPrimaries(long int n) { fNumPrimaries = n; }
-    long int GetNumPrimaries() { return fNumPrimaries; }
-    G4double GetKeptSideWeight() { return fKeptSideWeight; }   
+    void SetDecayRate(G4double rate) { fDecayRate = rate; }
+    // Force the lazy ROOT load now (master-side). Safe to call multiple
+    // times; only the first call does work. Returns false if the load
+    // failed or no crossings survived the side-surface filter.
+    bool ForceLoad();
+    void StartRun(G4double measurement_time);
 
   private:
     SurfaceFluxSampler() = default;
     SurfaceFluxSampler(const SurfaceFluxSampler&) = delete;
     SurfaceFluxSampler& operator=(const SurfaceFluxSampler&) = delete;
+    
+    long int fSurfaceSourceMaxEntriesLoadedFromTree = 0;
 
     void EnsureLoaded() const;          // const-qualified; uses mutable members
     void DoLoad();                       // the real work, called exactly once
@@ -104,6 +102,8 @@ class SurfaceFluxSampler
     G4double    fPendingH_mm   = -1.;
     G4double    fPendingTol_mm =  2.;
     G4bool fLoaded = false;
+
+    G4int fRequestedPid = 0;
 
     struct Bucket {
         std::vector<Crossing> data;
@@ -127,8 +127,8 @@ class SurfaceFluxSampler
     G4double fSmearEfrac = 0.;    // dimensionless
                                   
     // for calc. of surface flux prob.
-    long int fMaxEntries = 0;
     long int fNumPrimaries = 0;
+    G4double fDecayRate = 0.;
     long int fKeptSide = 0;
     G4double fKeptSideWeight = 0.;
 

@@ -1,9 +1,12 @@
 #include "SurfaceFluxSampler.hh"
 
-#include "G4SystemOfUnits.hh"
 #include "Randomize.hh"
+#include "G4SystemOfUnits.hh"
 #include "G4Exception.hh"
 #include "G4Threading.hh"
+#include "G4UImanager.hh"
+#include "G4RunManager.hh"
+#include "G4SystemOfUnits.hh"
 
 #include "ProgressBar.hh"
 
@@ -14,6 +17,7 @@
 #include <algorithm>
 #include <cmath>
 #include <queue>
+#include <string>
 
 SurfaceFluxSampler& SurfaceFluxSampler::Instance()
 {
@@ -96,12 +100,16 @@ void SurfaceFluxSampler::Load(const std::string& filename,
     t->SetBranchStatus("weight", 1);
     t->SetBranchAddress ("pid", &pid);
     t->SetBranchAddress ("weight", &w);
-    const Long64_t N = (fMaxEntries > 0 && fMaxEntries <= t->GetEntries()) ? fMaxEntries : t->GetEntries();
+    const Long64_t N = (fSurfaceSourceMaxEntriesLoadedFromTree > 0 &&
+                    fSurfaceSourceMaxEntriesLoadedFromTree <= t->GetEntries())
+                   ? fSurfaceSourceMaxEntriesLoadedFromTree
+                   : t->GetEntries();
+
     Long64_t nNeutrons = 0, nGammas = 0, nOther = 0;
     Double_t wNeutrons = 0.,wGammas = 0.,wOther = 0.;
     ProgressBar prog(N);
     for (Long64_t i = 0; i < N; ++i) {
-        if(i % 1000000 == (100000-1)) prog.Print(i);
+        if(i % 1000000 == (1000000-1)) prog.Print(i);
         t->GetEntry(i);
         const G4int p = static_cast<G4int>(pid);
         if      (p == 2112) { ++nNeutrons; wNeutrons += w; }
@@ -147,7 +155,7 @@ void SurfaceFluxSampler::Load(const std::string& filename,
              rejIncomingWeight = 0, rejUnknownPidWeight = 0;
 
     for (Long64_t i = 0; i < N; ++i) {
-        if(i % 1000000 == 1) prog2.Print(i);
+        if(i % 1000000 == (1000000-1)) prog2.Print(i);
         t->GetEntry(i);
 
         // No transform -- input is already in cask-local frame.
@@ -192,7 +200,7 @@ void SurfaceFluxSampler::Load(const std::string& filename,
         //else                    { ++rejUnknownPid; rejUnknownPid += w; continue; }
         if( c.pid != 2112 && c.pid != 22 ) { ++rejUnknownPid; rejUnknownPidWeight += w; continue; }
 
-        // Keep an "any species" pool too, so requestedPid==0 still works.
+        // Keep an "any species" pool too, so fRequestedPid==0 still works.
         fAll.data.push_back(c);
         ++keptSide;
         keptSideWeight += w;
@@ -235,37 +243,7 @@ G4int SurfaceFluxSampler::NumEntries(G4int pid) const
     return b ? static_cast<G4int>(b->data.size()) : 0;
 }
 
-// without smearing
-//bool SurfaceFluxSampler::Sample(G4int requestedPid,
-//                                G4ThreeVector& posLocal,
-//                                G4ThreeVector& dirLocal,
-//                                G4double&      ekin,
-//                                G4double&      weight,
-//                                G4int&         pid) const
-//{
-//    EnsureLoaded();
-//
-//    const Bucket* b = GetBucket(requestedPid);
-//    if (!b || b->data.empty()) return false;
-//
-//    // Walker alias step: O(1).
-//    const std::size_t N = b->data.size();
-//    const G4double u    = G4UniformRand() * N;
-//    const std::size_t i = static_cast<std::size_t>(u);
-//    const G4double frac = u - i;
-//    const std::size_t k = (frac < b->prob[i]) ? i : b->alias[i];
-//
-//    const auto& c = b->data[k];
-//    posLocal  = G4ThreeVector(c.x, c.y, c.z);
-//    dirLocal  = G4ThreeVector(c.px, c.py, c.pz).unit();
-//    ekin      = c.ekin;
-//    weight    = 1.0; // weight is already absorbed into the alias-table probabilities
-//    pid       = c.pid;
-//    return true;
-//}
-
-bool SurfaceFluxSampler::Sample(G4int requestedPid,
-                                G4ThreeVector& posLocal,
+bool SurfaceFluxSampler::Sample(G4ThreeVector& posLocal,
                                 G4ThreeVector& dirLocal,
                                 G4double&      ekin,
                                 G4double&      weight,
@@ -273,7 +251,7 @@ bool SurfaceFluxSampler::Sample(G4int requestedPid,
 {
     EnsureLoaded();
 
-    const Bucket* b = GetBucket(requestedPid);
+    const Bucket* b = GetBucket(fRequestedPid);
     if (!b || b->data.empty()) return false;
 
     // Walker alias step: O(1) pick of a kernel centre.
@@ -373,7 +351,7 @@ void SurfaceFluxSampler::DoLoad()
     if (fPendingFile.empty()) {
         G4Exception("SurfaceFluxSampler::DoLoad", "NoFile", FatalException,
                     "No source file has been set. Call "
-                    "/dcs-monitor/gun/surfaceSourceFile <path> before /run/beamOn.");
+                    "/dcs-monitor/surf/sourceFile <path> before /run/beamOn.");
         return;
     }
     if (fPendingR_mm <= 0. || fPendingH_mm <= 0.) {
@@ -397,4 +375,67 @@ void SurfaceFluxSampler::DoLoad()
 
     fLoaded = true;
     G4cout << "[SurfaceFluxSampler] Done loading! The run can start now..." << G4endl;
+}
+
+bool SurfaceFluxSampler::ForceLoad()
+{
+    EnsureLoaded();   // call_once does the work exactly once
+    return fLoaded && fKeptSide > 0;
+}
+
+void SurfaceFluxSampler::StartRun(G4double measurement_time)
+{
+    // Step 0: trigger / verify the lazy load.
+    if (!ForceLoad()) {
+        G4Exception("SurfaceFluxSampler::StartRun", "LoadFail", FatalException,
+                    "Sampler did not load any usable side-surface crossings. "
+                    "Check the input file, geometry parameters, and PID filter.");
+        return;
+    }
+
+    // Step 0.5: parameter sanity.
+    if (fKeptSideWeight <= 0. || fNumPrimaries <= 0 ||
+        fDecayRate <= 0. || measurement_time <= 0.) {
+        G4ExceptionDescription ed;
+        ed << "Invalid input(s): "
+           << "keptSideWeight="     << fKeptSideWeight
+           << ", numPrimaries="     << fNumPrimaries
+           << ", decayRate[1/s]="   << fDecayRate
+           << ", measTime[s]="      << measurement_time / CLHEP::s;
+        G4Exception("SurfaceFluxSampler::StartRun", "BadParams",
+                    FatalException, ed);
+        return;
+    }
+
+    // Steps 1..3: compute the number of primaries.
+    const G4double surfaceToPrimaryRatio =
+        fKeptSideWeight / static_cast<G4double>(fNumPrimaries);
+    const G4double numDecays    = (measurement_time / CLHEP::s) * fDecayRate;
+    const G4double numPrimaries = numDecays * surfaceToPrimaryRatio;
+
+    G4cout << "[SurfaceFluxSampler::StartRun] "
+           << "ratio = " << surfaceToPrimaryRatio
+           << "  ( " << fKeptSideWeight
+           << " weighted side crossings / "
+           << fNumPrimaries << " primaries )\n"
+           << "                              "
+           << "decays in " << measurement_time / CLHEP::s << " s = "
+           << numDecays << '\n'
+           << "                              "
+           << "primaries to generate = " << numPrimaries << G4endl;
+
+    // Step 4: launch the run.
+    if (numPrimaries < 1.0) {
+        G4Exception("SurfaceFluxSampler::StartRun", "TooFew", JustWarning,
+                    "Computed numPrimaries < 1; not starting a run.");
+        return;
+    }
+    if (numPrimaries >= 1e9) {
+        G4Exception("SurfaceFluxSampler::StartRun", "TooMany", FatalException,
+                    "More than 1e9 primaries requested; check inputs.");
+        return;
+    }
+
+    const long long N = static_cast<long long>(numPrimaries);
+    G4UImanager::GetUIpointer()->ApplyCommand("/run/beamOn " + std::to_string(N));
 }

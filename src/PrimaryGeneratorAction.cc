@@ -408,7 +408,8 @@ void PrimaryGeneratorAction::GenerateVertexCASTOR440SurfaceFromTree(G4Event* eve
     G4ThreeVector posLocal, dirLocal;
     G4double      ekin, weight;
     G4int         pid;
-    if (!s.Sample(fSurfaceSourcePid, posLocal, dirLocal, ekin, weight, pid)) {
+
+    if (!s.Sample(posLocal, dirLocal, ekin, weight, pid)) {
         G4Exception("PrimaryGeneratorAction", "SurfaceSampleFail",
                     FatalException, "No matching crossings in sampler.");
         return;
@@ -440,132 +441,5 @@ void PrimaryGeneratorAction::GenerateVertexCASTOR440SurfaceFromTree(G4Event* eve
     if (v) v->SetWeight(weight);
 }
 
-
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-
-//  global coordinates 
-//  void PrimaryGeneratorAction::GenerateVertexCASTOR440SurfaceFromTree(G4Event* event)
-//  {
-//      auto& s = SurfaceFluxSampler::Instance();
-//      // Push the geometry once before the (lazy) Load can fire. This is cheap
-//      // and idempotent; only the values from the first call matter because the
-//      // load itself happens at most once.
-//      if (auto* cask = fDetector->GetCASTOR440(fCaskNum)) {
-//          s.SetGeometryParameters(cask->GetCaskOuterRadius() / CLHEP::mm,
-//                                  cask->GetCaskHeight()      / CLHEP::mm,
-//                                  fDetector->GetCASTOR440Position(fCaskNum) / CLHEP::mm,
-//                                  fDetector->GetCASTOR440Rotation(fCaskNum),
-//                                  /*tol mm*/ 2.0);
-//      } else {
-//          G4Exception("PrimaryGeneratorAction", "NoCask", FatalException,
-//                      "Cask not constructed; did /run/initialize run before /run/beamOn?");
-//          return;
-//      }
-//  
-//      G4ThreeVector posLocal, dirLocal;
-//      G4double      ekin, weight;
-//      G4int         pid;
-//      if (!s.Sample(fSurfaceSourcePid, posLocal, dirLocal, ekin, weight, pid)) {
-//          G4Exception("PrimaryGeneratorAction", "SurfaceSampleFail",
-//                      FatalException, "No matching crossings in sampler.");
-//          return;
-//      }
-//  
-//      // Transform from cask-local back into world: the local frame stored is the
-//      // cask body frame, so we apply the same per-cask placement transform that
-//      // step 1 used (rotation, then translation).
-//      G4ThreeVector globalPos = posLocal;
-//      G4ThreeVector globalDir = dirLocal;
-//      if (auto* rot = fDetector->GetCASTOR440Rotation(fCaskNum)) {
-//          globalPos.transform(*rot);
-//          globalDir.transform(*rot);
-//      }
-//      globalPos += fDetector->GetCASTOR440Position(fCaskNum);
-//  
-//      auto* def = G4ParticleTable::GetParticleTable()->FindParticle(pid);
-//      if (!def) {
-//          G4ExceptionDescription ed; ed << "Unknown PDG code " << pid;
-//          G4Exception("PrimaryGeneratorAction", "BadPID", FatalException, ed);
-//          return;
-//      }
-//  
-//      fParticleGun->SetParticleDefinition(def);
-//      fParticleGun->SetParticleEnergy(ekin * MeV);
-//      fParticleGun->SetParticlePosition(globalPos);
-//      fParticleGun->SetParticleMomentumDirection(globalDir.unit());
-//      fParticleGun->GeneratePrimaryVertex(event);
-//  
-//      // weight is 1.0 because the alias table already encodes the input weights.
-//      auto* v = event->GetPrimaryVertex(event->GetNumberOfPrimaryVertex() - 1);
-//      if (v) v->SetWeight(weight);
-//  }
-
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-
-void PrimaryGeneratorAction::StartSurfaceSourceRun(G4double measurement_time) 
-{
-    auto& sampler = SurfaceFluxSampler::Instance();
-    
-    // step -1 : set geometry parameters
-    if (auto* cask = fDetector->GetCASTOR440(fCaskNum)) {
-        sampler.SetGeometryParameters(cask->GetCaskOuterRadius() / CLHEP::mm,
-                                      cask->GetCaskHeight()      / CLHEP::mm,
-                                      /*tol mm*/ 2.0);
-    } else {
-        G4Exception("PrimaryGeneratorAction", "NoCask", FatalException,
-                    "Cask not constructed; did /run/initialize run before /run/beamOn?");
-        return;
-    }
-
-    // step 0 : do the loading by testing one sample
-    G4ThreeVector posLocal, dirLocal;
-    G4double      ekin, weight;
-    G4int         pid;
-    if (!sampler.Sample(fSurfaceSourcePid, posLocal, dirLocal, ekin, weight, pid)) {
-        G4Exception("PrimaryGeneratorAction", "SurfaceSampleFail",
-                    FatalException, "No matching crossings in sampler.");
-        return;
-    }
-
-    // step 0.5 : check that parameters are set correctly
-    if(sampler.GetKeptSideWeight() <= 0. || sampler.GetNumPrimaries() <= 0 || fSurfaceSourceDecayRate <= 0.) {
-        G4Exception("PrimaryGeneratorAction::StartSurfaceSourceRun",
-                    "BadParameters", FatalException,
-                    "One of the input parameters for the method has not been set correctly");
-        return;
-    }
-
-    // step 1 : calculate the number of events which pass the SurfaceFluxSource load
-    G4double surfaceToPrimaryRatio = sampler.GetKeptSideWeight() / sampler.GetNumPrimaries();
-    G4cout << "[PrimaryGeneratorAction::StartSurfaceSourceRun] Step 1: surface-to-primary ratio = " << surfaceToPrimaryRatio
-           << "                                                  from " << sampler.GetNumPrimaries() << " primaries producing " 
-                                                                       << sampler.GetKeptSideWeight() << " weighted flux events" << G4endl;
-    
-    // step 2 : calculate the number of decays in the given measurement time
-    G4double numDecays = (measurement_time/s) * fSurfaceSourceDecayRate; 
-    G4cout << "[PrimaryGeneratorAction::StartSurfaceSourceRun] Step 2: " << numDecays << " decays in " << measurement_time / s << " seconds" << G4endl;
-
-    // step 3 : calculate number of primaries
-    G4double numPrimaries = numDecays * surfaceToPrimaryRatio;
-    G4cout << "[PrimaryGeneratorAction::StartSurfaceSourceRun] Step 3: " << numPrimaries << " primaries will be generated..." << G4endl;
-    
-    // step 4 : generate the primaries;
-    if(numPrimaries < 1e9) {
-        //G4RunManager::GetRunManager()->BeamOn(G4int(numPrimaries));
-        G4UImanager* UImanager = G4UImanager::GetUIpointer();
-        UImanager->ApplyCommand("/run/beamOn " + std::to_string(int(numPrimaries)));
-    }
-    else {
-        G4Exception("PrimaryGeneratorAction::StartSurfaceSourceRun",
-                    "TooManyPrimaries", FatalException,
-                    "More than 1e9 primaries to be generated, is it too much? Check the calculation again!");
-    }
-
-    
-
-}
-
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-
-
 

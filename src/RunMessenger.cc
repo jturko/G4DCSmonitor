@@ -56,14 +56,6 @@ RunMessenger::RunMessenger(RunAction* run) : fRun(run)
     fWriteCASTOR440SurfaceFluxCmd->SetDefaultValue(true);
     fWriteCASTOR440SurfaceFluxCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
     
-    fSurfaceSourceStartRunCmd = new G4UIcmdWithADoubleAndUnit("/dcs-monitor/gun/startSurfaceSourceRun", this);
-    fSurfaceSourceStartRunCmd->SetGuidance("start a surface flux source run with an automatically-computer number of events"
-                                           "determined by: i)   the primaries used to generate the input ROOT tree,"
-                                           "               ii)  the weighted surface flux thru the cask surface,"
-                                           "               iii) the given source rate in the fuel assembly, and"
-                                           "               iv)  the requested run time, given here");
-    fSurfaceSourceStartRunCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
-
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -73,8 +65,6 @@ RunMessenger::~RunMessenger()
     delete fRunDir;
     delete fWritePrimaryCmd;
     delete fWriteCASTOR440SurfaceFluxCmd;
-
-    delete fSurfaceSourceStartRunCmd;
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -86,9 +76,6 @@ void RunMessenger::SetNewValue(G4UIcommand* command, G4String newValue)
     }
     if (command == fWriteCASTOR440SurfaceFluxCmd) {
         RunAction::WriteCASTOR440SurfaceFluxTree = fWriteCASTOR440SurfaceFluxCmd->GetNewBoolValue(newValue);
-    }
-    if(command == fSurfaceSourceStartRunCmd) {
-        fRun->StartSurfaceSourceRun(fSurfaceSourceStartRunCmd->GetNewDoubleValue(newValue));
     }
 }
 

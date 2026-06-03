@@ -44,6 +44,9 @@
 #include "G4VisExecutive.hh"
 #include "Randomize.hh"
 
+#include "SurfaceFluxSamplerMessenger.hh"
+
+
 #include "TROOT.h"
 #include "TH1.h"
 #include "RootManager.hh"
@@ -171,6 +174,9 @@ int main(int argc, char** argv)
     runManager->SetUserInitialization(phys);
     runManager->SetUserInitialization(new ActionInitialization(det));
 
+    // set surface generator messenger
+    auto* surfMsg = new SurfaceFluxSamplerMessenger();   // master-only
+
     // Replaced HP environmental variables with C++ calls
     // TODO - can we put this into the physics list class?
     G4ParticleHPManager::GetInstance()->SetSkipMissingIsotopes(true); // testing
@@ -204,6 +210,7 @@ int main(int argc, char** argv)
 
     // job termination
     delete visManager;
+    delete surfMsg;
     delete runManager;
 
     rootManager.Cleanup();

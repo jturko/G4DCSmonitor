@@ -59,51 +59,6 @@ PrimaryGeneratorMessenger::PrimaryGeneratorMessenger(PrimaryGeneratorAction* gun
     fWattBCmd->SetParameterName("b", false);
     fWattBCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
 
-    // surface flux sampler from root TTree
-    fSurfaceSourceFileCmd = new G4UIcmdWithAString("/dcs-monitor/gun/surfaceSourceFile", this);
-    fSurfaceSourceFileCmd->SetGuidance("Path to step-1 ROOT file containing the 'surfaceFlux' tree.");
-    fSurfaceSourceFileCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
-    
-    fSurfaceSourcePidCmd = new G4UIcmdWithAnInteger("/dcs-monitor/gun/surfaceSourcePid", this);
-    fSurfaceSourcePidCmd->SetGuidance("PDG code filter: 0=any, 2112=neutron, 22=gamma.");
-    fSurfaceSourcePidCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
-
-    fSurfaceSourceMaxEntriesCmd = new G4UIcmdWithAnInteger("/dcs-monitor/gun/surfaceSourceMaxEntries", this);
-    fSurfaceSourceMaxEntriesCmd->SetGuidance("Set number of primaries to load from the surface source file");
-    fSurfaceSourceMaxEntriesCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
-
-    // smearing commands for surface flux sampler
-    fSmearPhiCmd = new G4UIcmdWithADouble("/dcs-monitor/gun/surfaceSmearPhi", this);
-    fSmearPhiCmd->SetGuidance("Gaussian sigma for azimuthal phi smearing on the cask "
-                              "side surface, in radians. 0 = no smearing (default).");
-    fSmearPhiCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
-
-    fSmearZCmd = new G4UIcmdWithADoubleAndUnit("/dcs-monitor/gun/surfaceSmearZ", this);
-    fSmearZCmd->SetGuidance("Gaussian sigma for axial z smearing on the cask side "
-                            "surface. 0 = no smearing (default).");
-    fSmearZCmd->SetDefaultUnit("mm");
-    fSmearZCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
-
-    fSmearAngleCmd = new G4UIcmdWithADouble("/dcs-monitor/gun/surfaceSmearAngle", this);
-    fSmearAngleCmd->SetGuidance("Gaussian sigma (rad) for direction smearing in a small "
-                                "cone about the stored direction. 0 = no smearing.");
-    fSmearAngleCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
-
-    fSmearEfracCmd = new G4UIcmdWithADouble("/dcs-monitor/gun/surfaceSmearEfrac", this);
-    fSmearEfracCmd->SetGuidance("Fractional Gaussian sigma for kinetic-energy smearing "
-                                "(E -> E*(1 + N(0,sigma))). 0 = no smearing.");
-    fSmearEfracCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
-
-    // for calc. of surface flux to primary ratio
-    fSurfaceSourceNumPrimariesCmd = new G4UIcmdWithAnInteger("/dcs-monitor/gun/surfaceSourceNumPrimaries", this);
-    fSurfaceSourceNumPrimariesCmd->SetGuidance("set number of primaries in the file, used to calculate "
-                                               "the surface flux to primaries ratio");
-    fSurfaceSourceNumPrimariesCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
-    
-    fSurfaceSourceDecayRateCmd = new G4UIcmdWithADouble("/dcs-monitor/gun/surfaceSourceDecayRate", this);
-    fSurfaceSourceDecayRateCmd->SetGuidance("set the decay rate of the priamries in the fuel assesmbly, used to calculate"
-                                            "the number of events to generate when running /dcs-monitor/gun/startSurfaceSourceRun");
-    fSurfaceSourceDecayRateCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -122,17 +77,6 @@ PrimaryGeneratorMessenger::~PrimaryGeneratorMessenger()
     delete fUseWattCmd;
     delete fWattACmd;
     delete fWattBCmd;
-
-    delete fSurfaceSourceFileCmd;
-    delete fSurfaceSourcePidCmd;
-    delete fSurfaceSourceMaxEntriesCmd;
-    delete fSmearPhiCmd;
-    delete fSmearZCmd;
-    delete fSmearAngleCmd;
-    delete fSmearEfracCmd;
-
-    delete fSurfaceSourceNumPrimariesCmd;
-    delete fSurfaceSourceDecayRateCmd;
 
 }
 
@@ -190,41 +134,6 @@ void PrimaryGeneratorMessenger::SetNewValue(G4UIcommand* command, G4String newVa
         // 'b' is treated as plain numeric value in 1/MeV; convert to internal units.
         const G4double bInternal = fWattBCmd->GetNewDoubleValue(newValue) / MeV;
         fPrimaryGeneratorAction->SetWattB(bInternal);
-    }
-
-    // surface flux sampler
-    if (command == fSurfaceSourceFileCmd) {
-        if(G4Threading::G4GetThreadId() == 0) 
-            G4cout << "[PrimaryGeneratorMessenger::SetNewValue] Setting the surface flux file to: " << newValue << G4endl;
-        SurfaceFluxSampler::Instance().SetSourceFile(newValue);
-    }
-    if (command == fSurfaceSourcePidCmd) {
-        fPrimaryGeneratorAction->SetSurfaceSourcePid(fSurfaceSourcePidCmd->GetNewIntValue(newValue));
-    }
-    if (command == fSurfaceSourceMaxEntriesCmd) {
-        if(G4Threading::G4GetThreadId() == 0) 
-            G4cout << "[PrimaryGeneratorMessenger::SetNewValue] Loading " << newValue << " entries from the input surface source file" << G4endl;
-        SurfaceFluxSampler::Instance().SetMaxEntries(fSurfaceSourceMaxEntriesCmd->GetNewIntValue(newValue));
-    }
-    // smearing
-    if (command == fSmearPhiCmd)
-        SurfaceFluxSampler::Instance().SetSmearPhi(
-            fSmearPhiCmd->GetNewDoubleValue(newValue));
-    if (command == fSmearZCmd)
-        SurfaceFluxSampler::Instance().SetSmearZ(
-            fSmearZCmd->GetNewDoubleValue(newValue));
-    if (command == fSmearAngleCmd)
-        SurfaceFluxSampler::Instance().SetSmearAngle(
-            fSmearAngleCmd->GetNewDoubleValue(newValue));
-    if (command == fSmearEfracCmd)
-        SurfaceFluxSampler::Instance().SetSmearEfrac(
-            fSmearEfracCmd->GetNewDoubleValue(newValue));
-    
-    if(command == fSurfaceSourceNumPrimariesCmd) {
-        SurfaceFluxSampler::Instance().SetNumPrimaries(fSurfaceSourceNumPrimariesCmd->GetNewIntValue(newValue));
-    }
-    if(command == fSurfaceSourceDecayRateCmd) {
-        fPrimaryGeneratorAction->SetSurfaceSourceDecayRate(fSurfaceSourceDecayRateCmd->GetNewDoubleValue(newValue));
     }
 
 }

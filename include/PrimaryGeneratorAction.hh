@@ -56,15 +56,7 @@ class PrimaryGeneratorAction : public G4VUserPrimaryGeneratorAction
     G4double GetWattA() const             { return fWattA; }
     G4double GetWattB() const             { return fWattB; }
     G4double SampleWattSpectrum() const;
-
-    // ROOT-based surface flux generation
-    void SetSurfaceSourceFile(const G4String& f) { fSurfaceSourceFile = f; }
-    void SetSurfaceSourcePid (G4int p)           { fSurfaceSourcePid  = p; }
     
-    // with computed number of primaries
-    void StartSurfaceSourceRun(G4double measurement_time);
-    void SetSurfaceSourceDecayRate(G4double rate) { fSurfaceSourceDecayRate = rate; }
-
   private:
     G4ParticleGun*             fParticleGun = nullptr;
     G4GeneralParticleSource*   fGPS         = nullptr;
@@ -100,7 +92,6 @@ class PrimaryGeneratorAction : public G4VUserPrimaryGeneratorAction
 
     G4String fSurfaceSourceFile;
     G4int    fSurfaceSourcePid = 0;       // 0 = any, 2112 = n, 22 = gamma
-    G4double fSurfaceSourceDecayRate = 0; // in seconds
 
 };
 
