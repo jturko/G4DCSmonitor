@@ -9,6 +9,7 @@
 
 #include "TFile.h"
 #include "TTree.h"
+#include "TError.h"
 
 #include <algorithm>
 #include <cmath>
@@ -77,9 +78,12 @@ void SurfaceFluxSampler::Load(const std::string& filename,
         return;
     }
 
-    //const G4double R    = caskOuterRadius_mm;
-    //const G4double Hhalf= 0.5 * caskHeight_mm;
-    //const G4double tol  = surfaceTolerance_mm;
+    // ===================================
+    gErrorIgnoreLevel = kError;
+    t->SetCacheSize(512LL * 1024 * 1024);  // 512 MB
+    t->AddBranchToCache("*", kTRUE);
+    t->StopCacheLearningPhase();
+    // ===================================
 
     // ------------------------------------------------------------------
     // First pass: count species exactly. Only the 'pid' branch is read,
@@ -92,13 +96,12 @@ void SurfaceFluxSampler::Load(const std::string& filename,
     t->SetBranchStatus("weight", 1);
     t->SetBranchAddress ("pid", &pid);
     t->SetBranchAddress ("weight", &w);
-    //const Long64_t N = t->GetEntries();
     const Long64_t N = (fMaxEntries > 0 && fMaxEntries <= t->GetEntries()) ? fMaxEntries : t->GetEntries();
     Long64_t nNeutrons = 0, nGammas = 0, nOther = 0;
     Double_t wNeutrons = 0.,wGammas = 0.,wOther = 0.;
     ProgressBar prog(N);
     for (Long64_t i = 0; i < N; ++i) {
-        prog.Print(i);
+        if(i % 1000000 == (100000-1)) prog.Print(i);
         t->GetEntry(i);
         const G4int p = static_cast<G4int>(pid);
         if      (p == 2112) { ++nNeutrons; wNeutrons += w; }
@@ -129,8 +132,8 @@ void SurfaceFluxSampler::Load(const std::string& filename,
     t->SetBranchAddress("pz",     &pz);
     t->SetBranchAddress("weight", &w);
 
-    fNeutrons.data.reserve(nNeutrons);
-    fGammas  .data.reserve(nGammas);
+    //fNeutrons.data.reserve(nNeutrons);
+    //fGammas  .data.reserve(nGammas);
     fAll     .data.reserve(nNeutrons + nGammas);
 
     const G4double R     = fPendingR_mm;
@@ -144,7 +147,7 @@ void SurfaceFluxSampler::Load(const std::string& filename,
              rejIncomingWeight = 0, rejUnknownPidWeight = 0;
 
     for (Long64_t i = 0; i < N; ++i) {
-        prog2.Print(i);
+        if(i % 1000000 == 1) prog2.Print(i);
         t->GetEntry(i);
 
         // No transform -- input is already in cask-local frame.
@@ -196,17 +199,26 @@ void SurfaceFluxSampler::Load(const std::string& filename,
     }
 
     G4cout << "[SurfaceFluxSampler] Load summary (cask-local input):\n"
-           << "[SurfaceFluxSampler]    kept (side)        : " << keptSide      << ",\t weight = " << keptSideWeight       << '\n'
-           << "[SurfaceFluxSampler]    rejected (endcap)  : " << rejEndcap     << ",\t weight = " << rejEndcapWeight      << '\n'
-           << "[SurfaceFluxSampler]    rejected (not surf): " << rejNotSurf    << ",\t weight = " << rejNotSurfWeight     << '\n'
-           << "[SurfaceFluxSampler]    rejected (incoming): " << rejIncoming   << ",\t weight = " << rejIncomingWeight    << '\n'
-           << "[SurfaceFluxSampler]    rejected (other id): " << rejUnknownPid << ",\t weight = " << rejUnknownPidWeight  << G4endl;
+           << "                         kept (side)        : " << keptSide      << ",\t weight = " << keptSideWeight       << '\n'
+           << "                         rejected (endcap)  : " << rejEndcap     << ",\t weight = " << rejEndcapWeight      << '\n'
+           << "                         rejected (not surf): " << rejNotSurf    << ",\t weight = " << rejNotSurfWeight     << '\n'
+           << "                         rejected (incoming): " << rejIncoming   << ",\t weight = " << rejIncomingWeight    << '\n'
+           << "                         rejected (other id): " << rejUnknownPid << ",\t weight = " << rejUnknownPidWeight  << G4endl;
+
+    G4cout << "[SurfaceFluxSampler] For " << fNumPrimaries << " primaries, we have " << keptSideWeight << " weighted entries leaving the cask sides" << '\n'
+           << "                     The surface flux to primaries ratio is: " << keptSideWeight/double(fNumPrimaries) << G4endl;
+    t->PrintCacheStats();
 
     //BuildAlias(fNeutrons);
     //BuildAlias(fGammas);
     BuildAlias(fAll);
 
     fLoaded = true;
+    
+    fKeptSide = keptSide;
+    fKeptSideWeight = keptSideWeight;
+
+    gErrorIgnoreLevel = kWarning;
 }
 
 const SurfaceFluxSampler::Bucket*
@@ -384,5 +396,5 @@ void SurfaceFluxSampler::DoLoad()
     );
 
     fLoaded = true;
-    G4cout << "[SurfaceFluxSampler] Done the load!" << G4endl;
+    G4cout << "[SurfaceFluxSampler] Done loading! The run can start now..." << G4endl;
 }

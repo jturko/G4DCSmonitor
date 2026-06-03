@@ -94,7 +94,16 @@ PrimaryGeneratorMessenger::PrimaryGeneratorMessenger(PrimaryGeneratorAction* gun
                                 "(E -> E*(1 + N(0,sigma))). 0 = no smearing.");
     fSmearEfracCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
 
-
+    // for calc. of surface flux to primary ratio
+    fSurfaceSourceNumPrimariesCmd = new G4UIcmdWithAnInteger("/dcs-monitor/gun/surfaceSourceNumPrimaries", this);
+    fSurfaceSourceNumPrimariesCmd->SetGuidance("set number of primaries in the file, used to calculate "
+                                               "the surface flux to primaries ratio");
+    fSurfaceSourceNumPrimariesCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+    
+    fSurfaceSourceDecayRateCmd = new G4UIcmdWithADouble("/dcs-monitor/gun/surfaceSourceDecayRate", this);
+    fSurfaceSourceDecayRateCmd->SetGuidance("set the decay rate of the priamries in the fuel assesmbly, used to calculate"
+                                            "the number of events to generate when running /dcs-monitor/gun/startSurfaceSourceRun");
+    fSurfaceSourceDecayRateCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -121,6 +130,9 @@ PrimaryGeneratorMessenger::~PrimaryGeneratorMessenger()
     delete fSmearZCmd;
     delete fSmearAngleCmd;
     delete fSmearEfracCmd;
+
+    delete fSurfaceSourceNumPrimariesCmd;
+    delete fSurfaceSourceDecayRateCmd;
 
 }
 
@@ -207,6 +219,13 @@ void PrimaryGeneratorMessenger::SetNewValue(G4UIcommand* command, G4String newVa
     if (command == fSmearEfracCmd)
         SurfaceFluxSampler::Instance().SetSmearEfrac(
             fSmearEfracCmd->GetNewDoubleValue(newValue));
+    
+    if(command == fSurfaceSourceNumPrimariesCmd) {
+        SurfaceFluxSampler::Instance().SetNumPrimaries(fSurfaceSourceNumPrimariesCmd->GetNewIntValue(newValue));
+    }
+    if(command == fSurfaceSourceDecayRateCmd) {
+        fPrimaryGeneratorAction->SetSurfaceSourceDecayRate(fSurfaceSourceDecayRateCmd->GetNewDoubleValue(newValue));
+    }
 
 }
 

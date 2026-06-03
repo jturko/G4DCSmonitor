@@ -17,6 +17,9 @@
 
 #include "G4PhysicalVolumeStore.hh"
 
+#include "G4RunManager.hh"
+#include "G4UImanager.hh"
+
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 PrimaryGeneratorAction::PrimaryGeneratorAction(DetectorConstruction* det)
@@ -498,3 +501,71 @@ void PrimaryGeneratorAction::GenerateVertexCASTOR440SurfaceFromTree(G4Event* eve
 //  }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+void PrimaryGeneratorAction::StartSurfaceSourceRun(G4double measurement_time) 
+{
+    auto& sampler = SurfaceFluxSampler::Instance();
+    
+    // step -1 : set geometry parameters
+    if (auto* cask = fDetector->GetCASTOR440(fCaskNum)) {
+        sampler.SetGeometryParameters(cask->GetCaskOuterRadius() / CLHEP::mm,
+                                      cask->GetCaskHeight()      / CLHEP::mm,
+                                      /*tol mm*/ 2.0);
+    } else {
+        G4Exception("PrimaryGeneratorAction", "NoCask", FatalException,
+                    "Cask not constructed; did /run/initialize run before /run/beamOn?");
+        return;
+    }
+
+    // step 0 : do the loading by testing one sample
+    G4ThreeVector posLocal, dirLocal;
+    G4double      ekin, weight;
+    G4int         pid;
+    if (!sampler.Sample(fSurfaceSourcePid, posLocal, dirLocal, ekin, weight, pid)) {
+        G4Exception("PrimaryGeneratorAction", "SurfaceSampleFail",
+                    FatalException, "No matching crossings in sampler.");
+        return;
+    }
+
+    // step 0.5 : check that parameters are set correctly
+    if(sampler.GetKeptSideWeight() <= 0. || sampler.GetNumPrimaries() <= 0 || fSurfaceSourceDecayRate <= 0.) {
+        G4Exception("PrimaryGeneratorAction::StartSurfaceSourceRun",
+                    "BadParameters", FatalException,
+                    "One of the input parameters for the method has not been set correctly");
+        return;
+    }
+
+    // step 1 : calculate the number of events which pass the SurfaceFluxSource load
+    G4double surfaceToPrimaryRatio = sampler.GetKeptSideWeight() / sampler.GetNumPrimaries();
+    G4cout << "[PrimaryGeneratorAction::StartSurfaceSourceRun] Step 1: surface-to-primary ratio = " << surfaceToPrimaryRatio
+           << "                                                  from " << sampler.GetNumPrimaries() << " primaries producing " 
+                                                                       << sampler.GetKeptSideWeight() << " weighted flux events" << G4endl;
+    
+    // step 2 : calculate the number of decays in the given measurement time
+    G4double numDecays = (measurement_time/s) * fSurfaceSourceDecayRate; 
+    G4cout << "[PrimaryGeneratorAction::StartSurfaceSourceRun] Step 2: " << numDecays << " decays in " << measurement_time / s << " seconds" << G4endl;
+
+    // step 3 : calculate number of primaries
+    G4double numPrimaries = numDecays * surfaceToPrimaryRatio;
+    G4cout << "[PrimaryGeneratorAction::StartSurfaceSourceRun] Step 3: " << numPrimaries << " primaries will be generated..." << G4endl;
+    
+    // step 4 : generate the primaries;
+    if(numPrimaries < 1e9) {
+        //G4RunManager::GetRunManager()->BeamOn(G4int(numPrimaries));
+        G4UImanager* UImanager = G4UImanager::GetUIpointer();
+        UImanager->ApplyCommand("/run/beamOn " + std::to_string(int(numPrimaries)));
+    }
+    else {
+        G4Exception("PrimaryGeneratorAction::StartSurfaceSourceRun",
+                    "TooManyPrimaries", FatalException,
+                    "More than 1e9 primaries to be generated, is it too much? Check the calculation again!");
+    }
+
+    
+
+}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+
+

@@ -39,6 +39,7 @@
 class RunAction;
 class G4UIdirectory;
 class G4UIcmdWithABool;
+class G4UIcmdWithADoubleAndUnit;
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
@@ -56,6 +57,8 @@ class RunMessenger : public G4UImessenger
     G4UIdirectory* fRunDir = nullptr;
     G4UIcmdWithABool* fWritePrimaryCmd = nullptr;
     G4UIcmdWithABool* fWriteCASTOR440SurfaceFluxCmd = nullptr;
+
+    G4UIcmdWithADoubleAndUnit*  fSurfaceSourceStartRunCmd = nullptr;
 };
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

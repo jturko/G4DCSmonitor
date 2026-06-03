@@ -51,6 +51,9 @@ class PrimaryGeneratorMessenger: public G4UImessenger
         G4UIcmdWithADouble*        fSmearAngleCmd   = nullptr;
         G4UIcmdWithADouble*        fSmearEfracCmd   = nullptr;
 
+        G4UIcmdWithAnInteger*       fSurfaceSourceNumPrimariesCmd = nullptr;
+        G4UIcmdWithADouble*         fSurfaceSourceDecayRateCmd = nullptr;
+
 };
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

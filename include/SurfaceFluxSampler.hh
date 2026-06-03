@@ -84,6 +84,11 @@ class SurfaceFluxSampler
     void SetSmearAngle (G4double v) { fSmearAngle = v; }
     void SetSmearEfrac (G4double v) { fSmearEfrac = v; }
 
+    // for calculation of surface flux prob.
+    void SetNumPrimaries(long int n) { fNumPrimaries = n; }
+    long int GetNumPrimaries() { return fNumPrimaries; }
+    G4double GetKeptSideWeight() { return fKeptSideWeight; }   
+
   private:
     SurfaceFluxSampler() = default;
     SurfaceFluxSampler(const SurfaceFluxSampler&) = delete;
@@ -110,17 +115,23 @@ class SurfaceFluxSampler
     void BuildAlias(Bucket& b);
     const Bucket* GetBucket(G4int pid) const;
 
-    Bucket fNeutrons;
-    Bucket fGammas;
+    //Bucket fNeutrons;
+    //Bucket fGammas;
     Bucket fAll;     // fallback when caller asks pid==0
 
-    long int fMaxEntries = 0;
 
     // for smearing
     G4double fSmearPhi   = 0.;    // rad
     G4double fSmearZ     = 0.;    // mm
     G4double fSmearAngle = 0.;    // rad
     G4double fSmearEfrac = 0.;    // dimensionless
+                                  
+    // for calc. of surface flux prob.
+    long int fMaxEntries = 0;
+    long int fNumPrimaries = 0;
+    long int fKeptSide = 0;
+    G4double fKeptSideWeight = 0.;
+
 };
 
 #endif
