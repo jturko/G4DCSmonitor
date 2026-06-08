@@ -31,14 +31,9 @@ SurfaceFluxSamplerMessenger::SurfaceFluxSamplerMessenger()
     fMaxEntriesLoadedFromTreeCmd->SetParameterName("nEntries", false);
     fMaxEntriesLoadedFromTreeCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
 
-
     fPidCmd = new G4UIcmdWithAnInteger("/dcs-monitor/surf/sourcePid", this);
     fPidCmd->SetGuidance("PDG-code filter: 0=any, 2112=neutron, 22=gamma.");
     fPidCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
-
-    fMaxEntriesCmd = new G4UIcmdWithAnInteger("/dcs-monitor/surf/maxEntries", this);
-    fMaxEntriesCmd->SetGuidance("Maximum entries to read from the input tree (<=0 = all).");
-    fMaxEntriesCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
 
     fSmearPhiCmd = new G4UIcmdWithADouble("/dcs-monitor/surf/smearPhi", this);
     fSmearPhiCmd->SetGuidance("Gaussian sigma for azimuthal phi smearing [rad].");
@@ -87,7 +82,6 @@ SurfaceFluxSamplerMessenger::~SurfaceFluxSamplerMessenger()
     delete fSmearAngleCmd;
     delete fSmearZCmd;
     delete fSmearPhiCmd;
-    delete fMaxEntriesCmd;
     delete fPidCmd;
     delete fFileCmd;
     delete fDir;
@@ -99,9 +93,10 @@ void SurfaceFluxSamplerMessenger::SetNewValue(G4UIcommand* cmd, G4String val)
     auto& s = SurfaceFluxSampler::Instance();
     
     if (cmd == fMaxEntriesLoadedFromTreeCmd) {
-    s.SetSurfaceSourceMaxEntriesLoadedFromTree(
-        fMaxEntriesLoadedFromTreeCmd->GetNewIntValue(val));
-    return;
+        s.SetSurfaceSourceMaxEntriesLoadedFromTree(
+            fMaxEntriesLoadedFromTreeCmd->GetNewIntValue(val));
+        return;
+    }
 
     // ---- sampler configuration (single source of truth: master) ----
     if (cmd == fFileCmd)        { s.SetSourceFile(val); return; }
@@ -150,6 +145,5 @@ void SurfaceFluxSamplerMessenger::SetNewValue(G4UIcommand* cmd, G4String val)
 
         s.StartRun(measurement_time);
     }
-}
 }
 

@@ -24,12 +24,11 @@ class SurfaceFluxSamplerMessenger : public G4UImessenger
     G4double fDecayRate = 0.0;   // [1/s]
 
     G4UIdirectory*             fDir = nullptr;
-    G4UIcmdWithAnInteger* fMaxEntriesLoadedFromTreeCmd = nullptr;
 
     // sampler configuration
     G4UIcmdWithAString*        fFileCmd          = nullptr;
+    G4UIcmdWithAnInteger*      fMaxEntriesLoadedFromTreeCmd = nullptr;
     G4UIcmdWithAnInteger*      fPidCmd           = nullptr;
-    G4UIcmdWithAnInteger*      fMaxEntriesCmd    = nullptr;
     G4UIcmdWithADouble*        fSmearPhiCmd      = nullptr;
     G4UIcmdWithADoubleAndUnit* fSmearZCmd        = nullptr;
     G4UIcmdWithADouble*        fSmearAngleCmd    = nullptr;
