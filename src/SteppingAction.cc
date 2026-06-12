@@ -129,14 +129,14 @@ void SteppingAction::UserSteppingAction(const G4Step* aStep)
     //    }
     //}
 
-    if(particle == G4NeutrinoE::NeutrinoE() ||
-       particle == G4AntiNeutrinoE::AntiNeutrinoE() ||
-       particle == G4NeutrinoMu::NeutrinoMu() ||
-       particle == G4AntiNeutrinoMu::AntiNeutrinoMu() ||
-       particle == G4NeutrinoTau::NeutrinoTau() ||
-       particle == G4AntiNeutrinoTau::AntiNeutrinoTau()) {
-        aStep->GetTrack()->SetTrackStatus(fStopAndKill);
-    }
+    //if(particle == G4NeutrinoE::NeutrinoE() ||
+    //   particle == G4AntiNeutrinoE::AntiNeutrinoE() ||
+    //   particle == G4NeutrinoMu::NeutrinoMu() ||
+    //   particle == G4AntiNeutrinoMu::AntiNeutrinoMu() ||
+    //   particle == G4NeutrinoTau::NeutrinoTau() ||
+    //   particle == G4AntiNeutrinoTau::AntiNeutrinoTau()) {
+    //    aStep->GetTrack()->SetTrackStatus(fStopAndKill);
+    //}
 
     // CASTOR 440 surface flux tracker
     if(RunAction::WriteCASTOR440SurfaceFluxTree) {

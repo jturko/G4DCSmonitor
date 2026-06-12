@@ -56,7 +56,8 @@
 #include "TFile.h"
 #include "TROOT.h"
 
-
+#include "G4GDMLParser.hh"
+#include "G4TransportationManager.hh"
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
@@ -108,15 +109,23 @@ void RunAction::BeginOfRunAction(const G4Run* run)
     // histograms
     //
     G4AnalysisManager* analysisManager = G4AnalysisManager::Instance();
-    //if (analysisManager->IsActive()) {
-        analysisManager->OpenFile();
-    //}
+    analysisManager->OpenFile();
 
     ProgressBar::gEvtNb.store(0, std::memory_order_relaxed);
     if(fProgBar)
         delete fProgBar;
     fProgBar = new ProgressBar(run->GetNumberOfEventToBeProcessed(), 1.0, 25);
-    //fProgBar = new ProgressBar(run->GetNumberOfEventToBeProcessed());
+
+
+    //if (run->GetRunID() == 0)
+    //{
+    //    G4VPhysicalVolume* world =
+    //        G4TransportationManager::GetTransportationManager()
+    //            ->GetNavigatorForTracking()->GetWorldVolume();
+
+    //    G4GDMLParser parser;
+    //    parser.Write("myGeometry.gdml", world->GetLogicalVolume());
+    //}
 
 }
 
@@ -149,10 +158,8 @@ void RunAction::EndOfRunAction(const G4Run* run)
 
     // save histograms
     G4AnalysisManager* analysisManager = G4AnalysisManager::Instance();
-    //if (analysisManager->IsActive()) {
-        analysisManager->Write();
-        analysisManager->CloseFile();
-    //}
+    analysisManager->Write();
+    analysisManager->CloseFile();
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

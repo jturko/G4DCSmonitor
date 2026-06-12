@@ -67,7 +67,7 @@ DetectorConstruction::DetectorConstruction(G4String biasParticle)
     fPosition = G4ThreeVector(0., 0., 0.);
     fRotation = G4ThreeVector(0., 0., 0.);
 
-    fWorldXYZ = 10. * m; // could need tweaking, as CASTOR 440's are pretty large (d2660 x 4080 mm3)
+    fWorldXYZ = 20. * m; // could need tweaking, as CASTOR 440's are pretty large (d2660 x 4080 mm3)
 
     DefineMaterials();
     fDetectorMessenger = new DetectorMessenger(this);
