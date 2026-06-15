@@ -35,7 +35,10 @@ include(${Geant4_USE_FILE})
 list(APPEND CMAKE_PREFIX_PATH $ENV{ROOTSYS})
 
 #---Locate the ROOT package and defines a number of variables (e.g. ROOT_INCLUDE_DIRS)
-find_package(ROOT REQUIRED COMPONENTS RIO Net)
+find_package(ROOT REQUIRED COMPONENTS RIO Net
+             ROOTDataFrame Imt          
+
+)
 
 # ROOT version 6 required
 if(ROOT_FOUND)
@@ -97,7 +100,10 @@ foreach(_script ${G4DCSmonitor_SCRIPTS})
 endforeach()
 
 # link the libraries (geant4, root, eve)
-target_link_libraries(G4DCSmonitor ${Geant4_LIBRARIES} ${ROOT_LIBRARIES} Eve)
+#target_link_libraries(G4DCSmonitor ${Geant4_LIBRARIES} ${ROOT_LIBRARIES} Eve)
+target_link_libraries(G4DCSmonitor ${Geant4_LIBRARIES} ${ROOT_LIBRARIES} Eve
+                      ROOT::ROOTDataFrame ROOT::Imt)
+
 
 #----------------------------------------------------------------------------
 # Install the executable to 'bin' directory under CMAKE_INSTALL_PREFIX
