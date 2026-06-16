@@ -222,6 +222,9 @@ void GeometryCLYC::BuildMaterials()
     G4Material* mat_Al      = nist->FindOrBuildMaterial("G4_Al");
     G4Material* mat_Pb      = nist->FindOrBuildMaterial("G4_Pb");
     G4Material* mat_PE      = nist->FindOrBuildMaterial("G4_POLYETHYLENE");
+    G4Material* mat_PSC     = nist->FindOrBuildMaterial("G4_PLASTIC_SC_VINYLTOLUENE");
+    G4Material* mat_Air     = nist->FindOrBuildMaterial("G4_AIR");
+    G4Material* mat_W       = nist->FindOrBuildMaterial("G4_W");
     // CLYC
     G4Material* mat_CLYC = new G4Material("CLYC", 3.31 * g/cm3, 4);
     mat_CLYC->AddElement(el_Cs,     2);
@@ -250,19 +253,3 @@ G4ThreeVector GeometryCLYC::GetCrystalCenterLocal() const
     return G4ThreeVector(0., 0., crystalCenterZ);
 }
 
-//void GeometryCLYC::PlaceDetectorByCrystalCenter(G4LogicalVolume* logic_world, G4ThreeVector move, G4RotationMatrix* rotate, G4int copyNo)
-//{
-//    G4ThreeVector localOffset = GetCrystalCenterLocal();
-//    G4ThreeVector globalOffset = localOffset;
-//
-//    // Rotate the offset vector if a rotation matrix is provided
-//    if (rotate) {
-//        globalOffset.transform(*rotate);
-//    }
-//
-//    // Shift the assembly origin so the crystal center aligns with the requested 'move' position
-//    G4ThreeVector assemblyPos = move - globalOffset;
-//
-//    G4bool surfCheck = true;
-//    fCLYCAssembly->MakeImprint(logic_world, assemblyPos, rotate, copyNo, surfCheck);
-//}
