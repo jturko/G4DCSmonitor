@@ -76,6 +76,10 @@ class SurfaceFluxSampler
     void     SetLoadThreads(long int n) { fLoadThreads = n; }   // 0 = all cores
     long int GetLoadThreads() const     { return fLoadThreads; }
 
+    void     SetSourceRotZ(G4double rad) { fSourceRotZ = rad; }
+    G4double GetSourceRotZ() const       { return fSourceRotZ; }
+    void     SetPlacementCask(G4int c)   { fPlacementCask = c; }
+    G4int    GetPlacementCask() const    { return fPlacementCask; }
 
   private:
     SurfaceFluxSampler() = default;
@@ -123,6 +127,8 @@ class SurfaceFluxSampler
                                        
     long int fLoadThreads = 32;   // 0 => ROOT::EnableImplicitMT(0) uses all cores
 
+    G4double fSourceRotZ    = 0.;   // in rad  
+    G4int    fPlacementCask = 0;    // 
 
 };
 

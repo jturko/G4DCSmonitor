@@ -57,6 +57,13 @@ SurfaceFluxSamplerMessenger::SurfaceFluxSamplerMessenger()
     fCaskNumCmd->SetGuidance("Cask index whose geometry to use for the surface filter.");
     fCaskNumCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
 
+    fSourceRotZCmd = new G4UIcmdWithADoubleAndUnit("/dcs-monitor/surf/sourceRotZ", this);
+    fSourceRotZCmd->SetGuidance("Rotate the loaded surface source about +z (C6 hexant reuse).");
+    fSourceRotZCmd->SetParameterName("phi", false);
+    fSourceRotZCmd->SetUnitCategory("Angle");
+    fSourceRotZCmd->SetDefaultUnit("deg");
+    fSourceRotZCmd->AvailableForStates(G4State_Idle);
+
     fNumPrimariesCmd = new G4UIcmdWithAnInteger("/dcs-monitor/surf/numPrimaries", this);
     fNumPrimariesCmd->SetGuidance("Number of primaries that produced the input ROOT tree.");
     fNumPrimariesCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
@@ -78,6 +85,7 @@ SurfaceFluxSamplerMessenger::~SurfaceFluxSamplerMessenger()
     delete fDecayRateCmd;
     delete fNumPrimariesCmd;
     delete fCaskNumCmd;
+    delete fSourceRotZCmd;
     delete fSmearEfracCmd;
     delete fSmearAngleCmd;
     delete fSmearZCmd;
@@ -115,7 +123,16 @@ void SurfaceFluxSamplerMessenger::SetNewValue(G4UIcommand* cmd, G4String val)
     if (cmd == fSmearEfracCmd)  { s.SetSmearEfrac(fSmearEfracCmd->GetNewDoubleValue(val)); return; }
 
     // ---- driver state ----
-    if (cmd == fCaskNumCmd)       { fCaskNum = fCaskNumCmd->GetNewIntValue(val); return; }
+    if (cmd == fCaskNumCmd)       { 
+        fCaskNum = fCaskNumCmd->GetNewIntValue(val); 
+        s.SetPlacementCask(fCaskNum);                  
+        return; 
+    }
+    if (cmd == fSourceRotZCmd) {
+        s.SetSourceRotZ(fSourceRotZCmd->GetNewDoubleValue(val));  
+        return;
+    }
+
     if (cmd == fNumPrimariesCmd)  { s.SetNumPrimaries(fNumPrimariesCmd->GetNewIntValue(val)); return; }
     if (cmd == fDecayRateCmd)     { s.SetDecayRate(fDecayRateCmd->GetNewDoubleValue(val)); return; }
 

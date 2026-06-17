@@ -59,6 +59,9 @@
 #include "G4GDMLParser.hh"
 #include "G4TransportationManager.hh"
 
+#include <filesystem>   // C++17
+namespace fs = std::filesystem;
+
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 std::atomic<G4bool> RunAction::WritePrimaryTree{false};
@@ -101,22 +104,37 @@ G4Run* RunAction::GenerateRun()
 void RunAction::BeginOfRunAction(const G4Run* run)
 {
     // show Rndm status
-    if (isMaster) {
-        G4Random::showEngineStatus();
-        G4cout << *(G4Material::GetMaterialTable()) << G4endl;
-    }
+    //
+    //if (isMaster) {
+    //    G4Random::showEngineStatus();
+    //    G4cout << *(G4Material::GetMaterialTable()) << G4endl;
+    //}
 
     // histograms
     //
     G4AnalysisManager* analysisManager = G4AnalysisManager::Instance();
-    analysisManager->OpenFile();
+    //analysisManager->OpenFile();
+    // --- ensure the output directory exists ---
+    fs::path outPath = analysisManager->GetFileName();   // whatever was set as default
+    if (outPath.has_parent_path()) {
+        fs::create_directories(outPath.parent_path());    // makes nested dirs if missing
+    }
 
+    if (!analysisManager->OpenFile()) {
+        G4Exception("RunAction::BeginOfRunAction", "OpenFail",
+                    FatalException, "Could not open analysis output file.");
+    }
+
+    // prog bar
+    //
     ProgressBar::gEvtNb.store(0, std::memory_order_relaxed);
     if(fProgBar)
         delete fProgBar;
     fProgBar = new ProgressBar(run->GetNumberOfEventToBeProcessed(), 1.0, 25);
 
 
+    // GDML output
+    //
     //if (run->GetRunID() == 0)
     //{
     //    G4VPhysicalVolume* world =

@@ -401,6 +401,14 @@ bool SurfaceFluxSampler::Sample(G4ThreeVector& posLocal,
 
     posLocal = G4ThreeVector(xL, yL, zL);
     dirLocal = dir.unit();
+
+    // C6 hexant reuse: rotate this crossing about the cask axis (+z).
+    // Equivalent to rotating cask0 by the same angle, since the cask is
+    // cylindrically symmetric and primaries are emitted outward.
+    if (fSourceRotZ != 0.) {
+        posLocal.rotateZ(fSourceRotZ);
+        dirLocal.rotateZ(fSourceRotZ);
+    }
     ekin     = E;
     weight   = 1.0;          // alias table already absorbs the input weights
     pid      = c.pid;
