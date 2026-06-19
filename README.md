@@ -264,7 +264,8 @@ The `examples/` directory contains validated workflows:
 - [x] Create example simulations directory (`examples/`).
 
 ## Example Run Macro
-~~macro
+
+```text
 # Enable multithreading
 /run/numberOfThreads 4
 
@@ -309,5 +310,4 @@ The `examples/` directory contains validated workflows:
 
 # Execute Run
 /run/beamOn 1000000
-~~
-
+```
