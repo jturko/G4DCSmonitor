@@ -1,0 +1,17 @@
+
+# set the output file
+# ------------------------------------------
+/analysis/setFileName ../data/surface_{partTag}_fuel{fuelTag}_nShells{nShell}_nEvts{nPrimary}
+
+# print some info
+# ------------------------------------------
+/control/shell echo ">>> STARTING: {partTag} at {fuelTag} with {nShell} shells, shooting {nPrimary} primaries"
+
+# start the run
+# ------------------------------------------
+/run/beamOn {nPrimary}
+
+# print some info
+# ------------------------------------------
+/control/shell echo ">>> FINISHING: {partTag} at {fuelTag} with {nShell} shells, just shot {nPrimary} primaries"
+

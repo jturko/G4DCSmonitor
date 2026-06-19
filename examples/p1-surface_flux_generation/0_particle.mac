@@ -1,0 +1,36 @@
+
+# source mode
+# ------------------------------------------
+/dcs-monitor/gun/sourceMode CASTOR440_fuel
+
+# particle/energy
+# ------------------------------------------
+#
+# gammas
+# ------------------------------------------
+/gun/particle                       gamma
+/gun/energy                         1173 keV
+/control/alias partTag              gamma-1173keV
+#
+# radioactive decay
+# ------------------------------------------
+#/gun/particle                       ion
+#/gun/ion                            63 154 0 0 # Eu154
+#/gun/energy                         0 eV
+#/control/alias partTag              isotope-Eu154
+#
+# neutron Watt spectrum
+# ------------------------------------------
+#/gun/particle                       neutron
+#/dcs-monitor/gun/useWattSpectrum    true
+#/dcs-monitor/gun/wattA              0.85
+#/dcs-monitor/gun/wattB              3.4
+#/control/alias partTag              neutron-Watt-a-0p85-b-3p4
+
+# start run loop -- all assemblies
+# ------------------------------------------
+#/control/loop                       1_fuel_scan.mac fuelTag 0 83 1
+#
+# start run loop -- 6-fold symmetry
+# ------------------------------------------
+/control/foreach                    1_fuel_scan.mac fuelTag "0 1 2 3 5 6 7 8 13 14 15 22 23 32"

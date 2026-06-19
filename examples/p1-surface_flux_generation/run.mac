@@ -1,0 +1,27 @@
+
+# configure the global environment 
+# (sweep radius, nPrimary, nThreads, etc...)
+# ------------------------------------------
+/control/execute globals.mac
+
+# define the geometry 
+# ------------------------------------------
+#
+# CASTOR 440/84
+# ------------------------------------------
+/dcs-monitor/det/setPosition        0 0 0 m
+/dcs-monitor/det/setRotation        0 0 0
+/dcs-monitor/det/castor440/add
+
+# initialize the run
+# ------------------------------------------
+/run/initialize
+
+# setup long threshold for radioactive decay
+# ------------------------------------------
+/process/had/rdm/thresholdForVeryLongDecayTime 1e60 year
+
+# pass run execution to beamOn script
+# ------------------------------------------
+/control/execute 0_particle.mac
+

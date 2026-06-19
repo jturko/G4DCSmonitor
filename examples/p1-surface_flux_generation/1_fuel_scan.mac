@@ -1,0 +1,5 @@
+
+/dcs-monitor/gun/caskNum    0
+/dcs-monitor/gun/fuelNum    {fuelTag}
+/control/execute 2_beamOn.mac
+

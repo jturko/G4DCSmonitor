@@ -1,0 +1,25 @@
+# output verbosity
+# ------------------------------------------
+/control/verbose                    0
+/run/verbose                        0
+/event/verbose                      0
+/tracking/verbose                   0
+
+# MT settings
+# ------------------------------------------
+/run/numberOfThreads                128
+
+# importance biasing 
+# ------------------------------------------
+/control/alias nShell               22
+/dcs-monitor/det/useBiasing         true
+/dcs-monitor/det/setBiasingShells   {nShell}     
+
+# ROOT output
+# ------------------------------------------
+/dcs-monitor/run/writePrimary       false
+/dcs-monitor/run/writeSurfaceFlux   true
+
+# paramters
+# ------------------------------------------
+/control/alias nPrimary             1000000000
