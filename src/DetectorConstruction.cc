@@ -37,6 +37,7 @@
 #include "DCSMonitorSD.hh"
 
 #include "GeometryCLYC.hh"
+#include "GeometryPlastic.hh"
 #include "GeometryCASTOR440.hh"
 
 #include "G4Box.hh"
@@ -102,6 +103,9 @@ DetectorConstruction::~DetectorConstruction()
     for (auto rot : fCLYCRotations) {
         delete rot;
     }
+
+    for (auto p : fPlasticDetectors) delete p;
+    for (auto r : fPlasticRotations) delete r;
 
     for (auto castor : fCASTOR440Detectors) {
         delete castor;
@@ -196,6 +200,23 @@ G4VPhysicalVolume* DetectorConstruction::ConstructVolumes()
         fCLYCDetectors[i]->PlaceDetector(fLWorld, fCLYCPositions[i], fCLYCRotations[i], i);
     }
 
+    // Plastic detector(s)
+    for (size_t i = 0; i < fPlasticDetectors.size(); ++i) {
+        fPlasticDetectors[i]->Build();
+        G4ThreeVector localOffset =
+            fPlasticPlaceByCrystalCenter[i]
+                ? fPlasticDetectors[i]->GetCrystalCenterLocal()
+                : G4ThreeVector(0., 0., fPlasticDetectors[i]->GetFrontFaceLocalZ());
+
+        G4ThreeVector globalOffset = localOffset;
+        if (fPlasticRotations[i]) globalOffset.transform(*fPlasticRotations[i]);
+
+        fPlasticPositions[i] -= globalOffset;   // convert requested anchor -> assembly origin
+        fPlasticDetectors[i]->PlaceDetector(fLWorld, fPlasticPositions[i],
+                                            fPlasticRotations[i], i);
+    }
+
+
     // CASTOR 440 cask(s)
     for (size_t i = 0; i < fCASTOR440Detectors.size(); ++i) {
         fCASTOR440Detectors[i]->Build();
@@ -228,6 +249,14 @@ void DetectorConstruction::ConstructSDandField()
             }
         }
     }
+
+    if (!fPlasticDetectors.empty()) {
+        auto* plasticSD = new DCSMonitorSD("PlasticSD", "PlasticHitsCollection");
+        G4SDManager::GetSDMpointer()->AddNewDetector(plasticSD);
+        for (auto p : fPlasticDetectors)
+            if (p->GetCrystalLog()) SetSensitiveDetector(p->GetCrystalLog(), plasticSD);
+    }
+
 
 }
 
@@ -308,6 +337,70 @@ void DetectorConstruction::SetCLYCPEColMaterialName(G4String val)   { if (!fCLYC
 void DetectorConstruction::SetCLYCPEPlugMaterialName(G4String val)  { if (!fCLYCDetectors.empty()) fCLYCDetectors.back()->SetPEPlugMaterialName(val); }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+//....oooOO0OOooo  Plastic (shadowed) detector  oooOO0OOooo....
+
+void DetectorConstruction::AddPlastic()
+{
+    fPlasticDetectors.push_back(new GeometryPlastic());
+    fPlasticPositions.push_back(fPosition);
+    G4RotationMatrix* rot = new G4RotationMatrix();
+    rot->rotateX(fRotation.x()*M_PI/180.);
+    rot->rotateY(fRotation.y()*M_PI/180.);
+    rot->rotateZ(fRotation.z()*M_PI/180.);
+    fPlasticRotations.push_back(rot);
+    fPlasticPlaceByCrystalCenter.push_back(false);
+}
+
+void DetectorConstruction::AddPlasticByCrystalCenter()
+{
+    AddPlastic();
+    fPlasticPlaceByCrystalCenter.back() = true;
+}
+
+#define PL fPlasticDetectors.back()
+#define IFPL if (!fPlasticDetectors.empty())
+void DetectorConstruction::SetPlasticCrystalRadius(G4double v){ IFPL PL->SetCrystalRadius(v); }
+void DetectorConstruction::SetPlasticCrystalLength(G4double v){ IFPL PL->SetCrystalLength(v); }
+void DetectorConstruction::SetPlasticCasingThickness(G4double v){ IFPL PL->SetCasingThickness(v); }
+void DetectorConstruction::SetPlasticPbColInnerRadius(G4double v){ IFPL PL->SetPbColInnerRadius(v); }
+void DetectorConstruction::SetPlasticPbColOuterRadius(G4double v){ IFPL PL->SetPbColOuterRadius(v); }
+void DetectorConstruction::SetPlasticPbColLength(G4double v){ IFPL PL->SetPbColLength(v); }
+void DetectorConstruction::SetPlasticPEColInnerRadius(G4double v){ IFPL PL->SetPEColInnerRadius(v); }
+void DetectorConstruction::SetPlasticPEColOuterRadius(G4double v){ IFPL PL->SetPEColOuterRadius(v); }
+void DetectorConstruction::SetPlasticPEColLength(G4double v){ IFPL PL->SetPEColLength(v); }
+void DetectorConstruction::SetPlasticLiFColInnerRadius(G4double v){ IFPL PL->SetLiFColInnerRadius(v); }
+void DetectorConstruction::SetPlasticLiFColOuterRadius(G4double v){ IFPL PL->SetLiFColOuterRadius(v); }
+void DetectorConstruction::SetPlasticLiFColLength(G4double v){ IFPL PL->SetLiFColLength(v); }
+void DetectorConstruction::SetPlasticShadowStandoff(G4double v){ IFPL PL->SetShadowStandoff(v); }
+void DetectorConstruction::SetPlasticShadowRadiusDet(G4double v){ IFPL PL->SetShadowRadiusDet(v); }
+void DetectorConstruction::SetPlasticShadowRadiusSrc(G4double v){ IFPL PL->SetShadowRadiusSrc(v); }
+void DetectorConstruction::SetPlasticShadowBackLength(G4double v){ IFPL PL->SetShadowBackLength(v); }
+void DetectorConstruction::SetPlasticShadowBodyLength(G4double v){ IFPL PL->SetShadowBodyLength(v); }
+void DetectorConstruction::SetPlasticShadowFrontLength(G4double v){ IFPL PL->SetShadowFrontLength(v); }
+void DetectorConstruction::SetPlasticSnoutInnerRadius(G4double v){ IFPL PL->SetSnoutInnerRadius(v); }
+void DetectorConstruction::SetPlasticSnoutOuterRadius(G4double v){ IFPL PL->SetSnoutOuterRadius(v); }
+void DetectorConstruction::SetPlasticSnoutLength(G4double v){ IFPL PL->SetSnoutLength(v); }
+void DetectorConstruction::SetPlasticBackShieldRadius(G4double v){ IFPL PL->SetBackShieldRadius(v); }
+void DetectorConstruction::SetPlasticBackShieldLength(G4double v){ IFPL PL->SetBackShieldLength(v); }
+void DetectorConstruction::SetPlasticSideShieldInnerRadius(G4double v){ IFPL PL->SetSideShieldInnerRadius(v); }
+void DetectorConstruction::SetPlasticSideShieldOuterRadius(G4double v){ IFPL PL->SetSideShieldOuterRadius(v); }
+void DetectorConstruction::SetPlasticSideShieldLength(G4double v){ IFPL PL->SetSideShieldLength(v); }
+void DetectorConstruction::SetPlasticCrystalMaterialName(G4String v){ IFPL PL->SetCrystalMaterialName(v); }
+void DetectorConstruction::SetPlasticCasingMaterialName(G4String v){ IFPL PL->SetCasingMaterialName(v); }
+void DetectorConstruction::SetPlasticPbColMaterialName(G4String v){ IFPL PL->SetPbColMaterialName(v); }
+void DetectorConstruction::SetPlasticPEColMaterialName(G4String v){ IFPL PL->SetPEColMaterialName(v); }
+void DetectorConstruction::SetPlasticLiFColMaterialName(G4String v){ IFPL PL->SetLiFColMaterialName(v); }
+void DetectorConstruction::SetPlasticShadowBackMaterialName(G4String v){ IFPL PL->SetShadowBackMaterialName(v); }
+void DetectorConstruction::SetPlasticShadowBodyMaterialName(G4String v){ IFPL PL->SetShadowBodyMaterialName(v); }
+void DetectorConstruction::SetPlasticShadowFrontMaterialName(G4String v){ IFPL PL->SetShadowFrontMaterialName(v); }
+void DetectorConstruction::SetPlasticSnoutMaterialName(G4String v){ IFPL PL->SetSnoutMaterialName(v); }
+void DetectorConstruction::SetPlasticBackShieldMaterialName(G4String v){ IFPL PL->SetBackShieldMaterialName(v); }
+void DetectorConstruction::SetPlasticSideShieldMaterialName(G4String v){ IFPL PL->SetSideShieldMaterialName(v); }
+#undef PL
+#undef IFPL
+
+//....oooOO0OOooo  Plastic (shadowed) detector  oooOO0OOooo....
 
 void DetectorConstruction::AddCASTOR440() 
 {

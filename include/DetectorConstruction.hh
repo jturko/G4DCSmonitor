@@ -11,6 +11,7 @@ class G4Material;
 
 class DetectorMessenger;
 class GeometryCLYC;
+class GeometryPlastic;
 class GeometryCASTOR440;
 
 class DetectorConstruction : public G4VUserDetectorConstruction
@@ -81,6 +82,50 @@ class DetectorConstruction : public G4VUserDetectorConstruction
         void SetCLYCPEColMaterialName(G4String val);
         void SetCLYCPEPlugMaterialName(G4String val);
 
+        // Plastic
+        // Plastic (shadowed)
+        void  AddPlastic();
+        void  AddPlasticByCrystalCenter();
+        G4int GetNumPlastic() const { return (G4int)fPlasticDetectors.size(); }
+
+        void SetPlasticCrystalRadius(G4double v);
+        void SetPlasticCrystalLength(G4double v);
+        void SetPlasticCasingThickness(G4double v);
+        void SetPlasticPbColInnerRadius(G4double v);
+        void SetPlasticPbColOuterRadius(G4double v);
+        void SetPlasticPbColLength(G4double v);
+        void SetPlasticPEColInnerRadius(G4double v);
+        void SetPlasticPEColOuterRadius(G4double v);
+        void SetPlasticPEColLength(G4double v);
+        void SetPlasticLiFColInnerRadius(G4double v);
+        void SetPlasticLiFColOuterRadius(G4double v);
+        void SetPlasticLiFColLength(G4double v);
+        void SetPlasticShadowStandoff(G4double v);
+        void SetPlasticShadowRadiusDet(G4double v);
+        void SetPlasticShadowRadiusSrc(G4double v);
+        void SetPlasticShadowBackLength(G4double v);
+        void SetPlasticShadowBodyLength(G4double v);
+        void SetPlasticShadowFrontLength(G4double v);
+        void SetPlasticSnoutInnerRadius(G4double v);
+        void SetPlasticSnoutOuterRadius(G4double v);
+        void SetPlasticSnoutLength(G4double v);
+        void SetPlasticBackShieldRadius(G4double v);
+        void SetPlasticBackShieldLength(G4double v);
+        void SetPlasticSideShieldInnerRadius(G4double v);
+        void SetPlasticSideShieldOuterRadius(G4double v);
+        void SetPlasticSideShieldLength(G4double v);
+        void SetPlasticCrystalMaterialName(G4String v);
+        void SetPlasticCasingMaterialName(G4String v);
+        void SetPlasticPbColMaterialName(G4String v);
+        void SetPlasticPEColMaterialName(G4String v);
+        void SetPlasticLiFColMaterialName(G4String v);
+        void SetPlasticShadowBackMaterialName(G4String v);
+        void SetPlasticShadowBodyMaterialName(G4String v);
+        void SetPlasticShadowFrontMaterialName(G4String v);
+        void SetPlasticSnoutMaterialName(G4String v);
+        void SetPlasticBackShieldMaterialName(G4String v);
+        void SetPlasticSideShieldMaterialName(G4String v);
+
         // CASTOR 440
         void AddCASTOR440();
         const std::vector<G4LogicalVolume*> GetLCASTOR440s() { return fLCASTOR440s; }
@@ -133,6 +178,11 @@ class DetectorConstruction : public G4VUserDetectorConstruction
         std::vector<G4ThreeVector>        fCLYCPositions;
         std::vector<G4RotationMatrix*>    fCLYCRotations;
         std::vector<G4bool>               fCLYCPlaceByCrystalCenter;
+
+        std::vector<GeometryPlastic*>     fPlasticDetectors;
+        std::vector<G4ThreeVector>        fPlasticPositions;
+        std::vector<G4RotationMatrix*>    fPlasticRotations;
+        std::vector<G4bool>               fPlasticPlaceByCrystalCenter;
 
         std::vector<GeometryCASTOR440*>   fCASTOR440Detectors;
         std::vector<G4ThreeVector>        fCASTOR440Positions;

@@ -36,6 +36,9 @@
 #include "G4UImessenger.hh"
 #include "globals.hh"
 
+#include <map>
+#include <functional>
+
 class DetectorConstruction;
 class G4UIdirectory;
 class G4UIcommand;
@@ -108,6 +111,10 @@ class DetectorMessenger : public G4UImessenger
     G4UIcmdWithAString* fSetCLYCPbColMaterialNameCmd = nullptr;
     G4UIcmdWithAString* fSetCLYCPEColMaterialNameCmd = nullptr;
     G4UIcmdWithAString* fSetCLYCPEPlugMaterialNameCmd = nullptr;
+
+    // Plastic (shadowed) commands: command -> action(value-string)
+    std::map<G4UIcommand*, std::function<void(const G4String&)>> fPlasticActions;
+    void BuildPlasticCommands();
 
     // castor 440
     G4UIcmdWithoutParameter* fAddCASTOR440Cmd = nullptr;

@@ -48,7 +48,7 @@
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 DetectorMessenger::DetectorMessenger(DetectorConstruction* Det) : fDetector(Det)
-{
+{   
     // directory
     fDir = new G4UIdirectory("/dcs-monitor/det/");
     fDir->SetGuidance("detector construction commands for DCS monitor project");
@@ -149,7 +149,10 @@ DetectorMessenger::DetectorMessenger(DetectorConstruction* Det) : fDetector(Det)
     fSetCLYCPEColMaterialNameCmd->AvailableForStates(G4State_PreInit);
     fSetCLYCPEPlugMaterialNameCmd = new G4UIcmdWithAString("/dcs-monitor/det/clyc/setPEPlugMaterial", this);
     fSetCLYCPEPlugMaterialNameCmd->AvailableForStates(G4State_PreInit);
-    
+
+    // plastic
+        BuildPlasticCommands();
+
     // CASTOR 440
     fAddCASTOR440Cmd = new G4UIcmdWithoutParameter("/dcs-monitor/det/castor440/add", this);
     fAddCASTOR440Cmd->AvailableForStates(G4State_PreInit);
@@ -208,6 +211,9 @@ DetectorMessenger::~DetectorMessenger()
     delete fSetCLYCPEColMaterialNameCmd;
     delete fSetCLYCPEPlugMaterialNameCmd;
     
+    for (auto& kv : fPlasticActions) delete kv.first;
+
+        
     // CASTOR 440
     delete fAddCASTOR440Cmd;
 }
@@ -234,6 +240,11 @@ void DetectorMessenger::SetNewValue(G4UIcommand* command, G4String value)
     if(command == fSetRotationCmd) 
         fDetector->SetRotation(fSetRotationCmd->GetNew3VectorValue(value));
     
+    {
+        auto it = fPlasticActions.find(command);
+        if (it != fPlasticActions.end()) { it->second(value); return; }
+    }
+
     // DCS monitor
     if(command == fAddCLYCCmd)                      fDetector->AddCLYC();
     if(command == fAddCLYCByCrystalCenterCmd)       fDetector->AddCLYCByCrystalCenter();
@@ -274,4 +285,77 @@ void DetectorMessenger::SetNewValue(G4UIcommand* command, G4String value)
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
+//....oooOO0OOooo  Plastic (shadowed) detector commands  oooOO0OOooo....
+
+void DetectorMessenger::BuildPlasticCommands()
+{
+    const G4String p = "/dcs-monitor/det/plastic/";
+
+    auto addVoid = [&](const G4String& nm, std::function<void()> fn){
+        auto* c = new G4UIcmdWithoutParameter((p+nm).c_str(), this);
+        c->AvailableForStates(G4State_PreInit);
+        fPlasticActions[c] = [fn](const G4String&){ fn(); };
+    };
+    auto addLen = [&](const G4String& nm, std::function<void(G4double)> fn){
+        auto* c = new G4UIcmdWithADoubleAndUnit((p+nm).c_str(), this);
+        c->SetDefaultUnit("mm");
+        c->AvailableForStates(G4State_PreInit);
+        fPlasticActions[c] = [c,fn](const G4String& v){ fn(c->GetNewDoubleValue(v)); };
+    };
+    auto addStr = [&](const G4String& nm, std::function<void(const G4String&)> fn){
+        auto* c = new G4UIcmdWithAString((p+nm).c_str(), this);
+        c->AvailableForStates(G4State_PreInit);
+        fPlasticActions[c] = [fn](const G4String& v){ fn(v); };
+    };
+
+    DetectorConstruction* d = fDetector;
+
+    addVoid("add",                [d](){ d->AddPlastic(); });
+    addVoid("addByCrystalCenter", [d](){ d->AddPlasticByCrystalCenter(); });
+
+    addLen("setCrystalRadius",       [d](G4double v){ d->SetPlasticCrystalRadius(v); });
+    addLen("setCrystalLength",       [d](G4double v){ d->SetPlasticCrystalLength(v); });
+    addLen("setCasingThickness",     [d](G4double v){ d->SetPlasticCasingThickness(v); });
+
+    addLen("setPbColInnerRadius",    [d](G4double v){ d->SetPlasticPbColInnerRadius(v); });
+    addLen("setPbColOuterRadius",    [d](G4double v){ d->SetPlasticPbColOuterRadius(v); });
+    addLen("setPbColLength",         [d](G4double v){ d->SetPlasticPbColLength(v); });
+
+    addLen("setPEColInnerRadius",    [d](G4double v){ d->SetPlasticPEColInnerRadius(v); });
+    addLen("setPEColOuterRadius",    [d](G4double v){ d->SetPlasticPEColOuterRadius(v); });
+    addLen("setPEColLength",         [d](G4double v){ d->SetPlasticPEColLength(v); });
+
+    addLen("setLiFColInnerRadius",   [d](G4double v){ d->SetPlasticLiFColInnerRadius(v); });
+    addLen("setLiFColOuterRadius",   [d](G4double v){ d->SetPlasticLiFColOuterRadius(v); });
+    addLen("setLiFColLength",        [d](G4double v){ d->SetPlasticLiFColLength(v); });
+
+    addLen("setShadowStandoff",      [d](G4double v){ d->SetPlasticShadowStandoff(v); });
+    addLen("setShadowRadiusDet",     [d](G4double v){ d->SetPlasticShadowRadiusDet(v); });
+    addLen("setShadowRadiusSrc",     [d](G4double v){ d->SetPlasticShadowRadiusSrc(v); });
+    addLen("setShadowBackLength",    [d](G4double v){ d->SetPlasticShadowBackLength(v); });
+    addLen("setShadowBodyLength",    [d](G4double v){ d->SetPlasticShadowBodyLength(v); });
+    addLen("setShadowFrontLength",   [d](G4double v){ d->SetPlasticShadowFrontLength(v); });
+
+    addLen("setSnoutInnerRadius",    [d](G4double v){ d->SetPlasticSnoutInnerRadius(v); });
+    addLen("setSnoutOuterRadius",    [d](G4double v){ d->SetPlasticSnoutOuterRadius(v); });
+    addLen("setSnoutLength",         [d](G4double v){ d->SetPlasticSnoutLength(v); });
+
+    addLen("setBackShieldRadius",    [d](G4double v){ d->SetPlasticBackShieldRadius(v); });
+    addLen("setBackShieldLength",    [d](G4double v){ d->SetPlasticBackShieldLength(v); });
+    addLen("setSideShieldInnerRadius",[d](G4double v){ d->SetPlasticSideShieldInnerRadius(v); });
+    addLen("setSideShieldOuterRadius",[d](G4double v){ d->SetPlasticSideShieldOuterRadius(v); });
+    addLen("setSideShieldLength",    [d](G4double v){ d->SetPlasticSideShieldLength(v); });
+
+    addStr("setCrystalMaterial",     [d](const G4String& v){ d->SetPlasticCrystalMaterialName(v); });
+    addStr("setCasingMaterial",      [d](const G4String& v){ d->SetPlasticCasingMaterialName(v); });
+    addStr("setPbColMaterial",       [d](const G4String& v){ d->SetPlasticPbColMaterialName(v); });
+    addStr("setPEColMaterial",       [d](const G4String& v){ d->SetPlasticPEColMaterialName(v); });
+    addStr("setLiFColMaterial",      [d](const G4String& v){ d->SetPlasticLiFColMaterialName(v); });
+    addStr("setShadowBackMaterial",  [d](const G4String& v){ d->SetPlasticShadowBackMaterialName(v); });
+    addStr("setShadowBodyMaterial",  [d](const G4String& v){ d->SetPlasticShadowBodyMaterialName(v); });
+    addStr("setShadowFrontMaterial", [d](const G4String& v){ d->SetPlasticShadowFrontMaterialName(v); });
+    addStr("setSnoutMaterial",       [d](const G4String& v){ d->SetPlasticSnoutMaterialName(v); });
+    addStr("setBackShieldMaterial",  [d](const G4String& v){ d->SetPlasticBackShieldMaterialName(v); });
+    addStr("setSideShieldMaterial",  [d](const G4String& v){ d->SetPlasticSideShieldMaterialName(v); });
+}
 
