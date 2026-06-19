@@ -37,27 +37,29 @@
 #include "PrimaryGeneratorAction.hh"
 #include "Run.hh"
 #include "RunMessenger.hh"
+#include "GeometryCASTOR440.hh"
+#include "SurfaceFluxSampler.hh"
+#include "ProgressBar.hh"
 
 #include "G4Run.hh"
 #include "G4SystemOfUnits.hh"
 #include "G4UnitsTable.hh"
+#include "G4Material.hh"
 #include "Randomize.hh"
 #include "G4PhysicalVolumeStore.hh"
-#include "G4Material.hh"
-
-#include "ProgressBar.hh"
-
-#include "SurfaceFluxSampler.hh"
-#include "GeometryCASTOR440.hh"
+#include "G4LogicalVolumeStore.hh"
+#include "G4LogicalVolume.hh"
+#include "G4SystemOfUnits.hh"
+#include "globals.hh"
 #include "G4Threading.hh"
+
+#include "G4GDMLParser.hh"
+#include "G4TransportationManager.hh"
 
 #include <iomanip>
 
 #include "TFile.h"
 #include "TROOT.h"
-
-#include "G4GDMLParser.hh"
-#include "G4TransportationManager.hh"
 
 #include <filesystem>   // C++17
 namespace fs = std::filesystem;
@@ -103,6 +105,11 @@ G4Run* RunAction::GenerateRun()
 
 void RunAction::BeginOfRunAction(const G4Run* run)
 {
+    // print mass table
+    //
+    if (IsMaster())
+        MakeMassTable();
+
     // show Rndm status
     //
     //if (isMaster) {
@@ -185,6 +192,73 @@ void RunAction::EndOfRunAction(const G4Run* run)
 void RunAction::SetPrintFlag(G4bool flag)
 {
     fPrint = flag;
+}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+void RunAction::MakeMassTable() const
+{
+    G4LogicalVolumeStore* lvStore = G4LogicalVolumeStore::GetInstance();
+    if (!lvStore || lvStore->empty())
+    {
+        G4cout << "[MassTable] Logical volume store is empty." << G4endl;
+        return;
+    }
+
+    // --- Header ---------------------------------------------------------
+    G4cout << "\n"
+           << "=================================================================="
+              "==================\n"
+           << "  GEOMETRY MASS TABLE  (local masses, daughters listed separately)\n"
+           << "=================================================================="
+              "==================\n";
+
+    G4cout << std::left
+           << std::setw(22) << "Logical Volume"
+           << std::setw(25) << "Material"
+           << std::right
+           << std::setw(14) << "Density[g/cm3]"
+           << std::setw(16) << "Volume[cm3]"
+           << std::setw(16) << "Mass[g]"
+           << "\n"
+           << "------------------------------------------------------------------"
+              "------------------\n";
+
+    G4double totalMass = 0.;
+
+    for (auto* lv : *lvStore)
+    {
+        if (!lv) continue;
+
+        G4Material* mat = lv->GetMaterial();
+        if (!mat) continue;   // e.g. parallel/world helper volumes with no material
+
+        // Local mass only (do NOT propagate into daughters here)
+        const G4double mass    = lv->GetMass(false, false);          // internal units
+        const G4double volume  = lv->GetSolid()->GetCubicVolume();   // internal units
+        const G4double density = mat->GetDensity();                  // internal units
+
+        totalMass += mass;
+
+        G4cout << std::left
+               << std::setw(22) << lv->GetName()
+               << std::setw(25) << mat->GetName()
+               << std::right << std::fixed << std::setprecision(4)
+               << std::setw(14) << density / (g / cm3)
+               << std::setw(16) << volume  / cm3
+               << std::setw(16) << mass    / g
+               << "\n";
+    }
+
+    G4cout << "------------------------------------------------------------------"
+              "------------------\n"
+           << std::left << std::setw(54) << "  TOTAL (sum of all local masses)"
+           << std::right << std::fixed << std::setprecision(4)
+           << std::setw(16) << totalMass / g << " g"
+           << "\n"
+           << "=================================================================="
+              "==================\n"
+           << G4endl;
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

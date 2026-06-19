@@ -70,6 +70,8 @@ class RunAction : public G4UserRunAction
     void SetPrintFlag(G4bool);
     ProgressBar * GetProgBar() { return fProgBar; }
     
+    void MakeMassTable() const;
+
     //static G4bool WritePrimaryTree;
     static std::atomic<G4bool> WritePrimaryTree;
     static std::atomic<G4bool> WriteCASTOR440SurfaceFluxTree;
