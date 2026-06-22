@@ -46,50 +46,16 @@
 
 #include "SurfaceFluxSamplerMessenger.hh"
 
-
-#include "TROOT.h"
-#include "TH1.h"
-#include "RootManager.hh"
-
 #include <csignal>
-
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-
-// for ctrl-c quitting, properly closing the ROOT file
-volatile std::sig_atomic_t g_sigint_received = 0;
-
-void sigint_handler(int signal) {
-    g_sigint_received = signal;
-}
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 int main(int argc, char** argv)
 {
-    //std::signal(SIGINT, sigint_handler);
-
-    // ROOT memory management
-    gROOT->SetBatch(kTRUE);
-    TH1::AddDirectory(kFALSE);
-
     // set seed
     G4Random::setTheSeed(time(NULL));
     G4Random::showEngineStatus();
-
-    //// --- CASTOR-MOD: comment the entire rootManager setup out, as we do not have a catcher phase-space file 
-    //// --- to sample from. Instead, we will start with just the a simple G4GeneralParticleSource
-    //// initialize ROOT manager for phase space sampling
-    TFile::SetCacheFileDir("/tmp/root_cache"); // Optional: set cache dir
-    RootManager& rootManager = RootManager::GetInstance();
-    ////rootManager.Initialize("root_files/G4Li_3mm_1e9_phase.root", "hsparse");
-    ////rootManager.Initialize("root_files/catchers/protons_iso_Be_1e8_phase.root", "hsparse2");
-    //rootManager.Initialize("root_files/catchers/phase/protons_cos_Be_1e9_phase.root", "hsparse2");
-    //if (!rootManager.IsInitialized()) {
-    //    G4cerr << "Failed to initialize RootManager! Exiting." << G4endl;
-    //    return 1;
-    //}
-
-
+    
     // -----------------------------------------------------------------
     // CLI parsing.
     //
@@ -143,21 +109,9 @@ int main(int argc, char** argv)
         }
     }
     
-    // 2nd positional arg = file number, if present
-    if (positional.size() > 1) {
-        rootManager.SetFileNum(std::atoi(positional[1].c_str()));
-    }
-    //// file number
-    //if(argc > 2) {
-    //    G4int fileNum = atoi(argv[2]);
-    //    rootManager.SetFileNum(fileNum);
-    //}
-
     G4UIExecutive* ui = nullptr;
     if (positional.empty()) ui = new G4UIExecutive(argc, argv);
     //// detect interactive mode (if no arguments) and define UI session
-    //G4UIExecutive* ui = nullptr;
-    //if (argc == 1) ui = new G4UIExecutive(argc, argv);
 
     // use G4SteppingVerboseWithUnits
     G4int precision = 4;
@@ -213,7 +167,6 @@ int main(int argc, char** argv)
     delete surfMsg;
     delete runManager;
 
-    rootManager.Cleanup();
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

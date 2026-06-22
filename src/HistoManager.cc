@@ -32,8 +32,6 @@
 
 #include "HistoManager.hh"
 
-#include "RootManager.hh"
-
 #include "G4UnitsTable.hh"
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -56,14 +54,6 @@ void HistoManager::Book()
     analysisManager->SetVerboseLevel(1);
     //analysisManager->SetActivation(true);  // enable inactivation of histograms
     analysisManager->SetNtupleMerging(true);
-
-    // check if file number set
-    RootManager& rootManager = RootManager::GetInstance();
-    if(rootManager.GetFileNum() >= 0) {
-        std::ostringstream oss;
-        oss << fFileName << "_" << std::setw(6) << std::setfill('0') << rootManager.GetFileNum();
-        analysisManager->SetFileName(oss.str());
-    }
 
     G4int idx;
     
