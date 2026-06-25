@@ -74,6 +74,7 @@ class RunAction : public G4UserRunAction
 
     //static G4bool WritePrimaryTree;
     static std::atomic<G4bool> WritePrimaryTree;
+    static std::atomic<G4bool> WritePrimaryTreeOnlyOnHit;
     static std::atomic<G4bool> WriteCASTOR440SurfaceFluxTree;
 
   private:

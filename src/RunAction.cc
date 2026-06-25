@@ -67,6 +67,7 @@ namespace fs = std::filesystem;
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 std::atomic<G4bool> RunAction::WritePrimaryTree{false};
+std::atomic<G4bool> RunAction::WritePrimaryTreeOnlyOnHit{false};
 std::atomic<G4bool> RunAction::WriteCASTOR440SurfaceFluxTree{false};
 
 std::once_flag RunAction::fSurfaceSamplerOnce;

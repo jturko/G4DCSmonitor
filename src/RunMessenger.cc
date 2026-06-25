@@ -50,6 +50,12 @@ RunMessenger::RunMessenger(RunAction* run) : fRun(run)
     fWritePrimaryCmd->SetDefaultValue(true);
     fWritePrimaryCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
     
+    fWritePrimaryOnlyOnHitCmd = new G4UIcmdWithABool("/dcs-monitor/run/writePrimaryOnlyOnHit", this);
+    fWritePrimaryOnlyOnHitCmd->SetGuidance("Toggle filling of the primary vertex ntuple, which is only done if a sensitive detector is triggered (edep>0)");
+    fWritePrimaryOnlyOnHitCmd->SetParameterName("write", true);
+    fWritePrimaryOnlyOnHitCmd->SetDefaultValue(true);
+    fWritePrimaryOnlyOnHitCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+    
     fWriteCASTOR440SurfaceFluxCmd = new G4UIcmdWithABool("/dcs-monitor/run/writeSurfaceFlux", this);
     fWriteCASTOR440SurfaceFluxCmd->SetGuidance("Toggle filling of the CASTOR 440 surface flux ntuple");
     fWriteCASTOR440SurfaceFluxCmd->SetParameterName("write", true);
@@ -74,6 +80,11 @@ void RunMessenger::SetNewValue(G4UIcommand* command, G4String newValue)
     if (command == fWritePrimaryCmd) {
         RunAction::WritePrimaryTree = fWritePrimaryCmd->GetNewBoolValue(newValue);
     }
+
+    if (command == fWritePrimaryOnlyOnHitCmd) {
+        RunAction::WritePrimaryTreeOnlyOnHit = fWritePrimaryOnlyOnHitCmd->GetNewBoolValue(newValue);
+    }
+
     if (command == fWriteCASTOR440SurfaceFluxCmd) {
         RunAction::WriteCASTOR440SurfaceFluxTree = fWriteCASTOR440SurfaceFluxCmd->GetNewBoolValue(newValue);
     }

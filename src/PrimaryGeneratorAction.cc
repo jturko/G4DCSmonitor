@@ -72,34 +72,6 @@ PrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
             return;
     }
 
-    // Optional primary-vertex ntuple
-    if (RunAction::WritePrimaryTree) {
-        G4PrimaryVertex* vertex =
-            anEvent->GetPrimaryVertex(anEvent->GetNumberOfPrimaryVertex() - 1);
-        if (!vertex) return;
-
-        G4PrimaryParticle* primary = vertex->GetPrimary(0);
-        if (!primary) return;
-
-        G4int         particle = primary->GetPDGcode();
-        G4double      ekin     = primary->GetKineticEnergy();
-        G4double      time     = vertex->GetT0();
-        G4ThreeVector pos      = vertex->GetPosition();
-        G4ThreeVector mom      = primary->GetMomentumDirection();
-
-        G4AnalysisManager* analysis = G4AnalysisManager::Instance();
-        const G4int idx = 0;
-        analysis->FillNtupleDColumn(idx, 0, particle);
-        analysis->FillNtupleDColumn(idx, 1, ekin);
-        analysis->FillNtupleDColumn(idx, 2, time);
-        analysis->FillNtupleDColumn(idx, 3, pos.x());
-        analysis->FillNtupleDColumn(idx, 4, pos.y());
-        analysis->FillNtupleDColumn(idx, 5, pos.z());
-        analysis->FillNtupleDColumn(idx, 6, mom.x());
-        analysis->FillNtupleDColumn(idx, 7, mom.y());
-        analysis->FillNtupleDColumn(idx, 8, mom.z());
-        analysis->AddNtupleRow(idx);
-    }
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

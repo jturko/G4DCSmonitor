@@ -239,7 +239,7 @@ void DetectorConstruction::ConstructSDandField()
     // Sensitive detectors
     if (!fCLYCDetectors.empty()) {
         G4String clycSDname = "ClycSD";
-        auto clycSD = new DCSMonitorSD(clycSDname, "ClycHitsCollection"); 
+        auto clycSD = new DCSMonitorSD(clycSDname, "DCSHitsCollection"); 
         G4SDManager::GetSDMpointer()->AddNewDetector(clycSD);
         
         for (auto clyc : fCLYCDetectors) {
@@ -251,7 +251,7 @@ void DetectorConstruction::ConstructSDandField()
     }
 
     if (!fPlasticDetectors.empty()) {
-        auto* plasticSD = new DCSMonitorSD("PlasticSD", "PlasticHitsCollection");
+        auto* plasticSD = new DCSMonitorSD("PlasticSD", "DCSHitsCollection");
         G4SDManager::GetSDMpointer()->AddNewDetector(plasticSD);
         for (auto p : fPlasticDetectors)
             if (p->GetCrystalLog()) SetSensitiveDetector(p->GetCrystalLog(), plasticSD);

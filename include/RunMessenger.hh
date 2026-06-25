@@ -56,6 +56,7 @@ class RunMessenger : public G4UImessenger
     
     G4UIdirectory* fRunDir = nullptr;
     G4UIcmdWithABool* fWritePrimaryCmd = nullptr;
+    G4UIcmdWithABool* fWritePrimaryOnlyOnHitCmd = nullptr;
     G4UIcmdWithABool* fWriteCASTOR440SurfaceFluxCmd = nullptr;
 };
 
