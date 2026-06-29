@@ -149,7 +149,8 @@ void SteppingAction::UserSteppingAction(const G4Step* aStep)
             G4bool inBodyOrFin =  (preLV == thisCask->GetCASTORLog() ||
                                    preLV == thisCask->GetFinLog());
             G4bool inBody      =  (preLV == thisCask->GetCASTORLog());
-            G4bool inFinAfter  =  (postLV == thisCask->GetFinLog());
+            G4bool inFinAfter  =  (postLV == thisCask->GetFinLog() ||
+                                   postLV == thisCask->GetFinCutLog());
             G4bool inWorldAfter=  (aStep->GetPostStepPoint()->GetPhysicalVolume() == fDetector->GetWorld());
 
             
