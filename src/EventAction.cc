@@ -114,6 +114,7 @@ void EventAction::EndOfEventAction(const G4Event * evt)
     analysis->FillNtupleDColumn(idx, 6, mom.x());
     analysis->FillNtupleDColumn(idx, 7, mom.y());
     analysis->FillNtupleDColumn(idx, 8, mom.z());
+    analysis->FillNtupleDColumn(idx, 9, (G4double)evt->GetEventID());
     analysis->AddNtupleRow(idx);
 
 

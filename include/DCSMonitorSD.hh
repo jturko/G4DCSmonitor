@@ -1,50 +1,18 @@
-//
-// ********************************************************************
-// * License and Disclaimer                                           *
-// *                                                                  *
-// * The  Geant4 software  is  copyright of the Copyright Holders  of *
-// * the Geant4 Collaboration.  It is provided  under  the terms  and *
-// * conditions of the Geant4 Software License,  included in the file *
-// * LICENSE and available at  http://cern.ch/geant4/license .  These *
-// * include a list of copyright holders.                             *
-// *                                                                  *
-// * Neither the authors of this software system, nor their employing *
-// * institutes,nor the agencies providing financial support for this *
-// * work  make  any representation or  warranty, express or implied, *
-// * regarding  this  software system or assume any liability for its *
-// * use.  Please see the license in the file  LICENSE  and URL above *
-// * for the full disclaimer and the limitation of liability.         *
-// *                                                                  *
-// * This  code  implementation is the result of  the  scientific and *
-// * technical work of the GEANT4 collaboration.                      *
-// * By using,  copying,  modifying or  distributing the software (or *
-// * any work based  on the software)  you  agree  to acknowledge its *
-// * use  in  resulting  scientific  publications,  and indicate your *
-// * acceptance of all terms of the Geant4 Software license.          *
-// ********************************************************************
-//
-//
-/// \file B2/B2a/include/TrackerSD.hh
-/// \brief Definition of the B2::TrackerSD class
-
 #ifndef DCSMonitorSD_h
 #define DCSMonitorSD_h 1
 
 #include "DCSMonitorHit.hh"
 
 #include "G4VSensitiveDetector.hh"
+#include "G4ThreeVector.hh"
+#include "G4SystemOfUnits.hh"
 
 #include <vector>
 #include <map>
 
 class G4Step;
 class G4HCofThisEvent;
-
-/// Tracker sensitive detector class
-///
-/// The hits are accounted in hits in ProcessHits() function which is called
-/// by Geant4 kernel at each step. A hit is created with each step with non zero
-/// energy deposit.
+class G4LogicalVolume;
 
 class DCSMonitorSD : public G4VSensitiveDetector
 {
@@ -52,17 +20,48 @@ class DCSMonitorSD : public G4VSensitiveDetector
     DCSMonitorSD(const G4String& name, const G4String& hitsCollectionName);
     ~DCSMonitorSD() override = default;
 
-    // methods from base class
-    void Initialize(G4HCofThisEvent* hitCollection) override;
+    void   Initialize(G4HCofThisEvent* hitCollection) override;
     G4bool ProcessHits(G4Step* step, G4TouchableHistory* history) override;
-    void EndOfEvent(G4HCofThisEvent* hitCollection) override;
+    void   EndOfEvent(G4HCofThisEvent* hitCollection) override;
+
+    // Register a sensitive logical volume <-> detector ID. Called once per
+    // detector from DetectorConstruction::ConstructSDandField().
+    void SetDetectorID(const G4LogicalVolume* lv, G4int id) { fDetMap[lv] = id; }
+
+    // Digitizer pulse-pair resolving time. Deposits in the SAME shower that
+    // are separated by more than this gap form distinct pulses.
+    void     SetResolvingTime(G4double t) { fResolvingTime = t; }
+    G4double GetResolvingTime() const     { return fResolvingTime; }
 
   private:
-    DCSMonitorHitsCollection* fHitsCollection = nullptr;
-    G4bool fTrig = false;
+    // A single raw energy deposit (not yet merged).
+    struct Deposit {
+        G4double      t    = 0.;   // global time
+        G4double      edep = 0.;   // deposited energy
+        G4ThreeVector pos;         // post-step position
+        G4int         pid  = 0;    // PDG code of the depositing track
+    };
 
-    std::map<G4int, G4int> fTrackHitIndexMap;
+    // One statistically-independent shower: a single track that entered the
+    // crystal from outside, plus its secondaries created inside. It carries
+    // ONE weight (the entry weight). Deposits from DIFFERENT showers -- e.g.
+    // distinct geometric-biasing clones of the same primary -- must NEVER be
+    // summed together.
+    struct Shower {
+        G4int                det    = -1;
+        G4double             weight = 1.0;
+        std::vector<Deposit> deps;
+    };
+
+    DCSMonitorHitsCollection* fHitsCollection = nullptr;
+
+    std::map<G4int, G4int>    fTrackShowerMap;   // trackID -> index in fShowers
+    std::vector<Shower>       fShowers;
+
+    std::map<const G4LogicalVolume*, G4int> fDetMap;  // logical volume -> det id
+
+    G4double fResolvingTime = 1.0 * CLHEP::us;
 };
 
-
 #endif
+

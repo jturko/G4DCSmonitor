@@ -63,48 +63,46 @@ void HistoManager::Book()
     // ntuple for primary particles
     idx = analysisManager->CreateNtuple("primary", "tree of primary particles");
     analysisManager->SetNtupleActivation(idx, true);
-    analysisManager->CreateNtupleDColumn("pid");
-    analysisManager->CreateNtupleDColumn("ekin");
-    analysisManager->CreateNtupleDColumn("t");
-    analysisManager->CreateNtupleDColumn("x");
-    analysisManager->CreateNtupleDColumn("y");
-    analysisManager->CreateNtupleDColumn("z");
-    analysisManager->CreateNtupleDColumn("px");
-    analysisManager->CreateNtupleDColumn("py");
-    analysisManager->CreateNtupleDColumn("pz");
+    analysisManager->CreateNtupleDColumn("pid");    // 0
+    analysisManager->CreateNtupleDColumn("ekin");   // 1  
+    analysisManager->CreateNtupleDColumn("t");      // 2
+    analysisManager->CreateNtupleDColumn("x");      // 3
+    analysisManager->CreateNtupleDColumn("y");      // 4
+    analysisManager->CreateNtupleDColumn("z");      // 5
+    analysisManager->CreateNtupleDColumn("px");     // 6
+    analysisManager->CreateNtupleDColumn("py");     // 7
+    analysisManager->CreateNtupleDColumn("pz");     // 8
+    analysisManager->CreateNtupleDColumn("evtNb");  // 9 
     analysisManager->FinishNtuple();
-    //G4cout << " Created ntuple \"primary\" (id " << idx << ")" << G4endl;
     
     // ntuple for detector hits
     idx = analysisManager->CreateNtuple("hits", "tree of sensitive detector hits");
     analysisManager->SetNtupleActivation(idx, true);
-    analysisManager->CreateNtupleDColumn("pid");
-    analysisManager->CreateNtupleDColumn("edep");
-    analysisManager->CreateNtupleDColumn("t");
-    analysisManager->CreateNtupleDColumn("x");
-    analysisManager->CreateNtupleDColumn("y");
-    analysisManager->CreateNtupleDColumn("z");
-    analysisManager->CreateNtupleIColumn("det");
-    analysisManager->CreateNtupleDColumn("weight");
-    analysisManager->FinishNtuple();
-    //G4cout << " Created ntuple \"hits\" (id " << idx << ")" << G4endl;
+    analysisManager->CreateNtupleDColumn("pid");    // 0
+    analysisManager->CreateNtupleDColumn("edep");   // 1  
+    analysisManager->CreateNtupleDColumn("t");      // 2
+    analysisManager->CreateNtupleDColumn("x");      // 3
+    analysisManager->CreateNtupleDColumn("y");      // 4
+    analysisManager->CreateNtupleDColumn("z");      // 5
+    analysisManager->CreateNtupleIColumn("det");    // 6
+    analysisManager->CreateNtupleDColumn("weight"); // 7
+    analysisManager->CreateNtupleDColumn("evtNb");  // 8
     
     // ntuple for CASTOR 440 surface tracker
     idx = analysisManager->CreateNtuple("surfaceFlux", "tree of CASTOR 440 surface flux (particles leaving the cask)");
     analysisManager->SetNtupleActivation(idx, true);
-    analysisManager->CreateNtupleDColumn("pid");
-    analysisManager->CreateNtupleDColumn("ekin");
-    analysisManager->CreateNtupleDColumn("t");
-    analysisManager->CreateNtupleDColumn("x");
-    analysisManager->CreateNtupleDColumn("y");
-    analysisManager->CreateNtupleDColumn("z");
-    analysisManager->CreateNtupleDColumn("px");
-    analysisManager->CreateNtupleDColumn("py");
-    analysisManager->CreateNtupleDColumn("pz");
-    analysisManager->CreateNtupleDColumn("weight");
-    analysisManager->CreateNtupleDColumn("evtNb");
+    analysisManager->CreateNtupleDColumn("pid");    // 0
+    analysisManager->CreateNtupleDColumn("ekin");   // 1
+    analysisManager->CreateNtupleDColumn("t");      // 2
+    analysisManager->CreateNtupleDColumn("x");      // 3
+    analysisManager->CreateNtupleDColumn("y");      // 4
+    analysisManager->CreateNtupleDColumn("z");      // 5
+    analysisManager->CreateNtupleDColumn("px");     // 6
+    analysisManager->CreateNtupleDColumn("py");     // 7
+    analysisManager->CreateNtupleDColumn("pz");     // 8
+    analysisManager->CreateNtupleDColumn("weight"); // 9
+    analysisManager->CreateNtupleDColumn("evtNb");  // 10
     analysisManager->FinishNtuple();
-    //G4cout << " Created ntuple \"castor_surf\" (id " << idx << ")" << G4endl;
     
 }
 

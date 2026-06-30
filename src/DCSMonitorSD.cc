@@ -1,32 +1,3 @@
-//
-// ********************************************************************
-// * License and Disclaimer                                           *
-// *                                                                  *
-// * The  Geant4 software  is  copyright of the Copyright Holders  of *
-// * the Geant4 Collaboration.  It is provided  under  the terms  and *
-// * conditions of the Geant4 Software License,  included in the file *
-// * LICENSE and available at  http://cern.ch/geant4/license .  These *
-// * include a list of copyright holders.                             *
-// *                                                                  *
-// * Neither the authors of this software system, nor their employing *
-// * institutes,nor the agencies providing financial support for this *
-// * work  make  any representation or  warranty, express or implied, *
-// * regarding  this  software system or assume any liability for its *
-// * use.  Please see the license in the file  LICENSE  and URL above *
-// * for the full disclaimer and the limitation of liability.         *
-// *                                                                  *
-// * This  code  implementation is the result of  the  scientific and *
-// * technical work of the GEANT4 collaboration.                      *
-// * By using,  copying,  modifying or  distributing the software (or *
-// * any work based  on the software)  you  agree  to acknowledge its *
-// * use  in  resulting  scientific  publications,  and indicate your *
-// * acceptance of all terms of the Geant4 Software license.          *
-// ********************************************************************
-//
-//
-/// \file B2/B2a/src/TrackerSD.cc
-/// \brief Implementation of the B2::TrackerSD class
-
 #include "DCSMonitorSD.hh"
 
 #include "G4HCofThisEvent.hh"
@@ -34,11 +5,17 @@
 #include "G4Step.hh"
 #include "G4StepPoint.hh"
 #include "G4Track.hh"
+#include "G4VPhysicalVolume.hh"
+#include "G4LogicalVolume.hh"
 #include "G4ParticleDefinition.hh"
 #include "G4ThreeVector.hh"
+#include "G4EventManager.hh"
+#include "G4Event.hh"
 #include "G4ios.hh"
 
 #include "G4AnalysisManager.hh"
+
+#include <algorithm>
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
@@ -52,69 +29,72 @@ DCSMonitorSD::DCSMonitorSD(const G4String& name, const G4String& hitsCollectionN
 
 void DCSMonitorSD::Initialize(G4HCofThisEvent* hce)
 {
-    // Create hits collection
-    fHitsCollection = new DCSMonitorHitsCollection(SensitiveDetectorName, collectionName[0]);
+    fHitsCollection =
+        new DCSMonitorHitsCollection(SensitiveDetectorName, collectionName[0]);
 
-    // Add this collection in hce
     G4int hcID = G4SDManager::GetSDMpointer()->GetCollectionID(collectionName[0]);
     hce->AddHitsCollection(hcID, fHitsCollection);
 
-    fTrackHitIndexMap.clear();
+    fTrackShowerMap.clear();
+    fShowers.clear();
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 G4bool DCSMonitorSD::ProcessHits(G4Step* step, G4TouchableHistory*)
 {
-    G4int trackID = step->GetTrack()->GetTrackID();
-    G4int parentID = step->GetTrack()->GetParentID();
-    G4int hitIndex = -1;
+    const G4int trackID  = step->GetTrack()->GetTrackID();
+    const G4int parentID = step->GetTrack()->GetParentID();
 
-    // Detect if this track is crossing into the detector from the outside
-    G4bool isEntering = (step->GetPreStepPoint()->GetStepStatus() == fGeomBoundary);
+    const G4bool isEntering =
+        (step->GetPreStepPoint()->GetStepStatus() == fGeomBoundary);
 
-    // 1. Resolve Ancestry
-    if (fTrackHitIndexMap.find(trackID) != fTrackHitIndexMap.end()) {
-        // Track is already registered
-        hitIndex = fTrackHitIndexMap[trackID];
-    } else if (!isEntering && fTrackHitIndexMap.find(parentID) != fTrackHitIndexMap.end()) {
-        // Track was created INSIDE the detector (physical secondary). Map to parent's hit.
-        hitIndex = fTrackHitIndexMap[parentID];
-        fTrackHitIndexMap[trackID] = hitIndex;
+    // ---- 1. Resolve which shower this step belongs to --------------------
+    G4int showerIdx = -1;
+
+    auto itTrk = fTrackShowerMap.find(trackID);
+    if (itTrk != fTrackShowerMap.end()) {
+        // Track is already attached to a shower (e.g. it entered earlier, or
+        // it exited and re-entered the same crystal).
+        showerIdx = itTrk->second;
+    }
+    else if (!isEntering) {
+        // Track was BORN inside the crystal -> physical secondary of its
+        // parent's shower. Same statistical realization, same weight.
+        auto itPar = fTrackShowerMap.find(parentID);
+        if (itPar != fTrackShowerMap.end()) {
+            showerIdx = itPar->second;
+            fTrackShowerMap[trackID] = showerIdx;
+        }
     }
 
-    G4double w = step->GetPreStepPoint()->GetWeight(); 
+    // ---- 2. No shower yet -> this is an INDEPENDENT entrant. -------------
+    // Every track crossing into the crystal from outside -- including each
+    // separate geometric-biasing clone of the same primary -- opens its own
+    // shower with its OWN weight. These showers are never merged together.
+    if (showerIdx == -1) {
+        Shower s;
+        s.weight = step->GetPreStepPoint()->GetWeight();
 
-    // 2. Create the "Shower Container" if no valid hit index exists
-    if (hitIndex == -1) {
-        auto newHit = new DCSMonitorHit();
-        newHit->SetTrackID(trackID);
-        newHit->SetEdep(0.); // Initialise to zero
-        newHit->SetWeight(w);
-        
-        hitIndex = fHitsCollection->insert(newHit) - 1;
-        fTrackHitIndexMap[trackID] = hitIndex;
-    } 
+        const G4LogicalVolume* lv =
+            step->GetPreStepPoint()->GetPhysicalVolume()->GetLogicalVolume();
+        auto itDet = fDetMap.find(lv);
+        s.det = (itDet != fDetMap.end()) ? itDet->second : -1;
 
-    G4double edep = step->GetTotalEnergyDeposit();
+        showerIdx = static_cast<G4int>(fShowers.size());
+        fShowers.push_back(std::move(s));
+        fTrackShowerMap[trackID] = showerIdx;
+    }
 
-    // 3. Record physical data ONLY when energy is deposited
+    // ---- 3. Record the deposit (if any) into this shower -----------------
+    const G4double edep = step->GetTotalEnergyDeposit();
     if (edep > 0.) {
-        auto oldHit = (DCSMonitorHit*)fHitsCollection->GetHit(hitIndex);
-        G4double t = step->GetPreStepPoint()->GetGlobalTime();
-        
-        if (oldHit->GetEdep() == 0.) {
-            oldHit->SetTime(t);
-            oldHit->SetPos(step->GetPostStepPoint()->GetPosition());
-            oldHit->SetPID(step->GetTrack()->GetParticleDefinition()->GetPDGEncoding());
-        } 
-        else if (t < oldHit->GetTime()) {
-            oldHit->SetTime(t);
-            oldHit->SetPos(step->GetPostStepPoint()->GetPosition());
-            oldHit->SetPID(step->GetTrack()->GetParticleDefinition()->GetPDGEncoding());
-        }
-
-        oldHit->AddEdep(edep);
+        Deposit d;
+        d.t    = step->GetPreStepPoint()->GetGlobalTime();
+        d.edep = edep;
+        d.pos  = step->GetPostStepPoint()->GetPosition();
+        d.pid  = step->GetTrack()->GetParticleDefinition()->GetPDGEncoding();
+        fShowers[showerIdx].deps.push_back(d);
     }
 
     return true;
@@ -124,41 +104,74 @@ G4bool DCSMonitorSD::ProcessHits(G4Step* step, G4TouchableHistory*)
 
 void DCSMonitorSD::EndOfEvent(G4HCofThisEvent*)
 {
-    std::size_t nofHits = fHitsCollection->entries();
-    
-    if (verboseLevel > 1) {
-        G4cout << G4endl << "-------->Hits Collection: in this event they are " << nofHits
-            << " hits in the tracker chambers: " << G4endl;
-        for (std::size_t i = 0; i < nofHits; i++)
-            (*fHitsCollection)[i]->Print();
-    }
+    auto* analysis = G4AnalysisManager::Instance();
+    const G4int idx = 1;   // 'hits' ntuple
 
-    G4AnalysisManager* analysis = G4AnalysisManager::Instance();
-    for (std::size_t i = 0; i < nofHits; i++) {
-        G4double edep       = (*fHitsCollection)[i]->GetEdep();
-        if(edep == 0.) continue; // skip hits which exist only due to the shower tracker,
-                                 // which will generate a hit even for edep=0
-        G4double pid        = (*fHitsCollection)[i]->GetPID();
-        G4double t          = (*fHitsCollection)[i]->GetTime();
-        G4ThreeVector pos   = (*fHitsCollection)[i]->GetPos();
-        G4int det           = (*fHitsCollection)[i]->GetDetNum();
-        G4double weight     = (*fHitsCollection)[i]->GetWeight();
-        
-        // 2nd ntuple is for detector hits
-        G4int idx = 1;
-        analysis->FillNtupleDColumn(idx, 0, pid);
-        analysis->FillNtupleDColumn(idx, 1, edep);
-        analysis->FillNtupleDColumn(idx, 2, t);
-        analysis->FillNtupleDColumn(idx, 3, pos.x());
-        analysis->FillNtupleDColumn(idx, 4, pos.y());
-        analysis->FillNtupleDColumn(idx, 5, pos.z());
-        analysis->FillNtupleIColumn(idx, 6, det);
-        analysis->FillNtupleDColumn(idx, 7, weight);
-        analysis->AddNtupleRow(idx);
-    }
+    const G4int evtNb = G4EventManager::GetEventManager()
+                          ->GetConstCurrentEvent()->GetEventID();
 
-    fTrig = false;
+    // Each shower is one independent, single-weight realization. We form
+    // pulses by time-clustering WITHIN a shower only. Because distinct showers
+    // are processed in separate iterations, deposits from different biasing
+    // clones are structurally prevented from ever being summed.
+    for (auto& sh : fShowers) {
+        if (sh.deps.empty()) continue;
+
+        std::sort(sh.deps.begin(), sh.deps.end(),
+                  [](const Deposit& a, const Deposit& b){ return a.t < b.t; });
+
+        std::size_t i = 0;
+        while (i < sh.deps.size()) {
+            const G4double tLead = sh.deps[i].t;     // pulse leading-edge time
+            G4double      sumE = 0.0, eMax = -1.0;
+            G4int         pidPulse = sh.deps[i].pid;  // pid of largest deposit
+            G4ThreeVector cen(0., 0., 0.);
+
+            G4double    tPrev = sh.deps[i].t;
+            std::size_t j     = i;
+
+            // Gap-based clustering: a new pulse begins when the gap to the
+            // PREVIOUS deposit exceeds the resolving time. (For a fixed
+            // integration gate instead, test (sh.deps[j].t - tLead).)
+            while (j < sh.deps.size() &&
+                   (sh.deps[j].t - tPrev) <= fResolvingTime) {
+                const Deposit& d = sh.deps[j];
+                sumE += d.edep;
+                cen  += d.edep * d.pos;
+                if (d.edep > eMax) { eMax = d.edep; pidPulse = d.pid; }
+                tPrev = d.t;
+                ++j;
+            }
+
+            if (sumE > 0.) cen /= sumE;
+
+            analysis->FillNtupleDColumn(idx, 0, (G4double)pidPulse);
+            analysis->FillNtupleDColumn(idx, 1, sumE);
+            analysis->FillNtupleDColumn(idx, 2, tLead);
+            analysis->FillNtupleDColumn(idx, 3, cen.x());
+            analysis->FillNtupleDColumn(idx, 4, cen.y());
+            analysis->FillNtupleDColumn(idx, 5, cen.z());
+            analysis->FillNtupleIColumn(idx, 6, sh.det);
+            analysis->FillNtupleDColumn(idx, 7, sh.weight);   
+            analysis->FillNtupleDColumn(idx, 8, (G4double)evtNb);
+            analysis->AddNtupleRow(idx);
+
+            // Mirror each pulse into the hits collection so that
+            // EventAction::EndOfEventAction's writePrimaryOnlyOnHit check
+            // (which scans for any GetEdep() > 0) keeps working unchanged.
+            // NOTE: the SD's EndOfEvent runs BEFORE the user EventAction's,
+            // so this is visible to it.
+            auto* hit = new DCSMonitorHit();
+            hit->SetEdep(sumE);
+            hit->SetTime(tLead);
+            hit->SetPos(cen);
+            hit->SetPID(pidPulse);
+            hit->SetDetNum(sh.det);
+            hit->SetWeight(sh.weight);
+            fHitsCollection->insert(hit);
+
+            i = j;
+        }
+    }
 }
-
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
