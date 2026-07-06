@@ -253,7 +253,7 @@ G4int GeometryPlastic::Build()
 void GeometryPlastic::PlaceDetector(G4LogicalVolume* world, G4ThreeVector move,
                                     G4RotationMatrix* rotate, G4int copyNo)
 {
-    fAssembly->MakeImprint(world, move, rotate, copyNo, /*surfCheck*/true);
+    fAssembly->MakeImprint(world, move, rotate, copyNo, /*surfCheck*/false);
 }
 
 G4ThreeVector GeometryPlastic::GetCrystalCenterLocal() const

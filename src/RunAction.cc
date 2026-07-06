@@ -108,8 +108,8 @@ void RunAction::BeginOfRunAction(const G4Run* run)
 {
     // print mass table
     //
-    if (IsMaster())
-        MakeMassTable();
+    //if (IsMaster())
+    //    MakeMassTable();
 
     // show Rndm status
     //

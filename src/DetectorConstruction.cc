@@ -228,6 +228,16 @@ G4VPhysicalVolume* DetectorConstruction::ConstructVolumes()
     //PrintParameters();
     //G4cout << *(G4Material::GetMaterialTable()) << G4endl;
 
+    // Quiet overlap check: verbose=false -> prints ONLY on overlap.
+    {
+        auto* pvStore = G4PhysicalVolumeStore::GetInstance();
+        for (auto* pv : *pvStore) {
+            if (pv) pv->CheckOverlaps(/*nStat=*/1000,
+                                      /*tol=*/0.,
+                                      /*verbose=*/false);
+        }
+    }
+
     // always return the root volume
     return fPWorld;
 }

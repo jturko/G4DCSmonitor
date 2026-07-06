@@ -186,7 +186,7 @@ G4int GeometryCLYC::Build()
 
 void GeometryCLYC::PlaceDetector(G4LogicalVolume* logic_world, G4ThreeVector move, G4RotationMatrix* rotate, G4int copyNo) 
 {
-    G4bool surfCheck = true;
+    G4bool surfCheck = false;
     fCLYCAssembly->MakeImprint(logic_world, move, rotate, copyNo, surfCheck);
 }
 

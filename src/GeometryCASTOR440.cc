@@ -19,7 +19,7 @@
 #include "GeometryCASTOR440.hh"
 #include <cmath>
 
-static constexpr G4bool kCheckOverlaps = true;   // keep ON for the first build
+static constexpr G4bool kCheckOverlaps = false;   // keep ON for the first build
 
 //....oooOO0OOooo......
 
@@ -496,7 +496,7 @@ void GeometryCASTOR440::GenerateFuelPositions()
             fFuelPositions.emplace_back(x,y,0.);
         }
     }
-    G4cout << " -> Generated " << (int)fFuelPositions.size() << " fuel positions" << G4endl;
+    //G4cout << " -> Generated " << (int)fFuelPositions.size() << " fuel positions" << G4endl;
 }
 
 G4ThreeVector GeometryCASTOR440::GetFuelPosition(G4int index) const
