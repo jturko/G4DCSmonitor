@@ -224,44 +224,20 @@ G4int GeometryCLYC::Build()
         move = G4ThreeVector(0., 0., zC(dXtalB, dOptB));
         fCLYCAssembly->AddPlacedVolume(fOpticalInterfaceLog, move, norot);
     }
-
-    // --- 5. PMT (Ø51): front window, side envelope, vacuum, back window ---
-    //{
-    //    auto* w = new G4Tubs("PMTWindow_solid", 0., Rpmt, gT/2.0, sPhi, ePhi);
-    //    fPMTWindowLog = new G4LogicalVolume(w, mGlass, "PMTWindowLog");
-    //    fPMTWindowLog->SetVisAttributes(new G4VisAttributes(true, fPMTColour));
-    //    move = G4ThreeVector(0., 0., zC(dPmtF, dPmtF+gT));
-    //    fCLYCAssembly->AddPlacedVolume(fPMTWindowLog, move, norot);
-
-    //    auto* e = new G4Tubs("PMTGlass_solid", Rpmt-gT, Rpmt, (dPmtB-dPmtF-2*gT)/2.0, sPhi, ePhi);
-    //    fPMTGlassLog = new G4LogicalVolume(e, mGlass, "PMTGlassLog");
-    //    fPMTGlassLog->SetVisAttributes(new G4VisAttributes(true, fPMTColour));
-    //    move = G4ThreeVector(0., 0., zC(dPmtF+gT, dPmtB-gT));
-    //    fCLYCAssembly->AddPlacedVolume(fPMTGlassLog, move, norot);
-
-    //    auto* v = new G4Tubs("PMTVacuum_solid", 0., Rpmt-gT, (dPmtB-dPmtF-2*gT)/2.0, sPhi, ePhi);
-    //    fPMTVacuumLog = new G4LogicalVolume(v, mVac, "PMTVacuumLog");
-    //    //fPMTVacuumLog->SetVisAttributes(new G4VisAttributes(true, fVacuumColour));
-    //    fPMTVacuumLog->SetVisAttributes(G4VisAttributes::GetInvisible());
-    //    move = G4ThreeVector(0., 0., zC(dPmtF+gT, dPmtB-gT));
-    //    fCLYCAssembly->AddPlacedVolume(fPMTVacuumLog, move, norot);
-
-    //    auto* b = new G4Tubs("PMTBack_solid", 0., Rpmt, gT/2.0, sPhi, ePhi);
-    //    fPMTBackLog = new G4LogicalVolume(b, mGlass, "PMTBackLog");
-    //    fPMTBackLog->SetVisAttributes(new G4VisAttributes(true, fPMTColour));
-    //    move = G4ThreeVector(0., 0., zC(dPmtB-gT, dPmtB));
-    //    fCLYCAssembly->AddPlacedVolume(fPMTBackLog, move, norot);
-    //}
+    
+    // --- 5. PMT
     {
-        // Glass cup: closed front window, side wall (thk gT), closed back.
-        // Contour traced (r, depth) around the solid glass cross-section:
-        //   outer wall from front to back, then inner wall back to front,
-        //   leaving a gT-thick window at dPmtF and a gT-thick back at dPmtB.
+        //std::vector<G4double> r = {
+        //    0.,    Rpmt,  Rpmt,      Rpmt-gT,   Rpmt-gT,   0.
+        //};
+        //std::vector<G4double> d = {
+        //    dPmtF, dPmtF, dPmtB,     dPmtB,     dPmtF+gT,  dPmtF+gT
+        //};
         std::vector<G4double> r = {
-            0.,    Rpmt,  Rpmt,      Rpmt-gT,   Rpmt-gT,   0.
+            0.,     Rpmt,   Rpmt,   0.,      0.,        Rpmt-gT,   Rpmt-gT,   0.
         };
         std::vector<G4double> d = {
-            dPmtF, dPmtF, dPmtB,     dPmtB,     dPmtF+gT,  dPmtF+gT
+            dPmtF,  dPmtF,  dPmtB,  dPmtB,   dPmtB-gT,  dPmtB-gT,  dPmtF+gT,  dPmtF+gT
         };
         std::vector<G4double> z(d.size());
         for (size_t i=0;i<d.size();++i) z[i]=Z(d[i]);
