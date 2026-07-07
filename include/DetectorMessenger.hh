@@ -119,6 +119,9 @@ class DetectorMessenger : public G4UImessenger
     // castor 440
     G4UIcmdWithoutParameter* fAddCASTOR440Cmd = nullptr;
 
+    // hemi-shield
+    G4UIcmdWithoutParameter* fAddHemiShieldCmd = nullptr;
+
 };
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

@@ -37,6 +37,7 @@
 #include "DCSMonitorSD.hh"
 
 #include "GeometryCLYC.hh"
+#include "GeometryHemiShield.hh"
 #include "GeometryPlastic.hh"
 #include "GeometryCASTOR440.hh"
 
@@ -113,6 +114,9 @@ DetectorConstruction::~DetectorConstruction()
     for (auto rot : fCASTOR440Rotations) {
         delete rot;
     }
+
+    for(auto h : fHemiShieldDetectors) delete h;
+    for(auto h : fHemiShieldRotations) delete h;
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -224,6 +228,16 @@ G4VPhysicalVolume* DetectorConstruction::ConstructVolumes()
 
         fLCASTOR440s.push_back(fCASTOR440Detectors[i]->GetCASTORLog());
     }
+ 
+    G4cout << " -> Gonna build/place " << (int)fHemiShieldDetectors.size() << " hemi-shields..." << std::flush;   
+    for (size_t i = 0; i < fHemiShieldDetectors.size(); ++i) {
+        G4cout << ", building " << i << std::flush;
+        fHemiShieldDetectors[i]->Build();
+        G4cout << ", done!, placing " << i << std::flush;
+        fHemiShieldDetectors[i]->PlaceDetector(fLWorld, fHemiShieldPositions[i], fHemiShieldRotations[i], i);
+        G4cout << ", done!" << std::flush;
+    }
+    G4cout << ", all done the hemi-stuff! " << G4endl;
 
     //PrintParameters();
     //G4cout << *(G4Material::GetMaterialTable()) << G4endl;
@@ -274,11 +288,6 @@ void DetectorConstruction::ConstructSDandField()
         }
     }
 }
-
-
-
-
-
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
@@ -432,6 +441,18 @@ void DetectorConstruction::AddCASTOR440()
     rot->rotateY(fRotation.y()*M_PI/180.);
     rot->rotateZ(fRotation.z()*M_PI/180.); 
     fCASTOR440Rotations.push_back(rot);
+}
+
+void DetectorConstruction::AddHemiShield() 
+{
+    fHemiShieldDetectors.push_back(new GeometryHemiShield());
+    fHemiShieldPositions.push_back(fPosition);
+    
+    G4RotationMatrix* rot = new G4RotationMatrix();
+    rot->rotateX(fRotation.x()*M_PI/180.);
+    rot->rotateY(fRotation.y()*M_PI/180.);
+    rot->rotateZ(fRotation.z()*M_PI/180.); 
+    fHemiShieldRotations.push_back(rot);
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

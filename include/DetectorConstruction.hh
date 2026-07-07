@@ -11,6 +11,7 @@ class G4Material;
 
 class DetectorMessenger;
 class GeometryCLYC;
+class GeometryHemiShield;
 class GeometryPlastic;
 class GeometryCASTOR440;
 
@@ -126,6 +127,9 @@ class DetectorConstruction : public G4VUserDetectorConstruction
         void SetPlasticBackShieldMaterialName(G4String v);
         void SetPlasticSideShieldMaterialName(G4String v);
 
+        // HemiShield
+        void AddHemiShield();
+
         // CASTOR 440
         void AddCASTOR440();
         const std::vector<G4LogicalVolume*> GetLCASTOR440s() { return fLCASTOR440s; }
@@ -188,6 +192,10 @@ class DetectorConstruction : public G4VUserDetectorConstruction
         std::vector<G4ThreeVector>        fCASTOR440Positions;
         std::vector<G4RotationMatrix*>    fCASTOR440Rotations;
         std::vector<G4LogicalVolume*>     fLCASTOR440s;
+        
+        std::vector<GeometryHemiShield*>  fHemiShieldDetectors;
+        std::vector<G4ThreeVector>        fHemiShieldPositions;
+        std::vector<G4RotationMatrix*>    fHemiShieldRotations;
 
     private:
         void DefineMaterials();

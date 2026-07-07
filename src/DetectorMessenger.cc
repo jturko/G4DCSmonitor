@@ -151,11 +151,15 @@ DetectorMessenger::DetectorMessenger(DetectorConstruction* Det) : fDetector(Det)
     fSetCLYCPEPlugMaterialNameCmd->AvailableForStates(G4State_PreInit);
 
     // plastic
-        BuildPlasticCommands();
+    BuildPlasticCommands();
 
     // CASTOR 440
     fAddCASTOR440Cmd = new G4UIcmdWithoutParameter("/dcs-monitor/det/castor440/add", this);
     fAddCASTOR440Cmd->AvailableForStates(G4State_PreInit);
+
+    // HemiShield
+    fAddHemiShieldCmd = new G4UIcmdWithoutParameter("/dcs-monitor/det/hemishield/add", this);
+    fAddHemiShieldCmd->AvailableForStates(G4State_PreInit);
 
 }
 
@@ -216,6 +220,9 @@ DetectorMessenger::~DetectorMessenger()
         
     // CASTOR 440
     delete fAddCASTOR440Cmd;
+
+    // HemiShield
+    delete fAddHemiShieldCmd;
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -280,6 +287,9 @@ void DetectorMessenger::SetNewValue(G4UIcommand* command, G4String value)
     
     // CASTOR 440
     if(command == fAddCASTOR440Cmd)                 fDetector->AddCASTOR440();
+
+    // HemiShield
+    if(command == fAddHemiShieldCmd)                fDetector->AddHemiShield();
 
 }
 
