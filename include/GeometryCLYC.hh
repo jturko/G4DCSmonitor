@@ -20,36 +20,46 @@ class GeometryCLYC
     G4ThreeVector GetCrystalCenterLocal() const;
 
     G4LogicalVolume* GetCLYCLog() { return fCrystalLog; }
-    
-    // Dimension Setters
-    void SetCrystalRadius(G4double radius) { fCrystalRadius = radius; }
-    void SetCrystalLength(G4double length) { fCrystalLength = length; }
-    void SetCasingThickness(G4double thickness) { fCasingThickness = thickness; }
-    
+
+    // crystal / casing (unchanged API)
+    void SetCrystalRadius(G4double r) { fCrystalRadius = r; }
+    void SetCrystalLength(G4double l) { fCrystalLength = l; }
+    void SetCasingThickness(G4double t) { fCasingThickness = t; }
+
+    // optional front collimators / plug (unchanged API)
     void SetLiFCollimatorInnerRadius(G4double r){ fLiFCollimatorInnerRadius = r; }
     void SetLiFCollimatorOuterRadius(G4double r){ fLiFCollimatorOuterRadius = r; }
     void SetLiFCollimatorLength(G4double l)     { fLiFCollimatorLength = l; }
-    
     void SetPbCollimatorInnerRadius(G4double r) { fPbCollimatorInnerRadius = r; }
     void SetPbCollimatorOuterRadius(G4double r) { fPbCollimatorOuterRadius = r; }
     void SetPbCollimatorLength(G4double l)      { fPbCollimatorLength = l; }
-    
     void SetPECollimatorInnerRadius(G4double r) { fPECollimatorInnerRadius = r; }
     void SetPECollimatorOuterRadius(G4double r) { fPECollimatorOuterRadius = r; }
     void SetPECollimatorLength(G4double l)      { fPECollimatorLength = l; }
-    
-    void SetPEPlugInnerRadius(G4double r)       { fPEPlugInnerRadius    = r; }
-    void SetPEPlugLipRadius(G4double r)         { fPEPlugLipRadius      = r; }
-    void SetPEPlugInnerLength(G4double l)       { fPEPlugInnerLength    = l; }
-    void SetPEPlugLipLength(G4double l)         { fPEPlugLipLength      = l; }
+    void SetPEPlugInnerRadius(G4double r)       { fPEPlugInnerRadius = r; }
+    void SetPEPlugLipRadius(G4double r)         { fPEPlugLipRadius   = r; }
+    void SetPEPlugInnerLength(G4double l)       { fPEPlugInnerLength = l; }
+    void SetPEPlugLipLength(G4double l)         { fPEPlugLipLength   = l; }
 
-    // Material Setters
-    void SetCrystalMaterialName(G4String name)      { fCrystalMatName = name; }
-    void SetCasingMaterialName(G4String name)       { fCasingMatName = name; }
-    void SetLiFColMaterialName(G4String name)       { fLiFColMatName = name; }
-    void SetPbColMaterialName(G4String name)        { fPbColMatName = name; }
-    void SetPEColMaterialName(G4String name)        { fPEColMatName = name; }
-    void SetPEPlugMaterialName(G4String name)       { fPEPlugMatName = name; }
+    // materials (unchanged API)
+    void SetCrystalMaterialName(G4String n)      { fCrystalMatName = n; }
+    void SetCasingMaterialName(G4String n)       { fCasingMatName = n; }
+    void SetLiFColMaterialName(G4String n)       { fLiFColMatName = n; }
+    void SetPbColMaterialName(G4String n)        { fPbColMatName = n; }
+    void SetPEColMaterialName(G4String n)        { fPEColMatName = n; }
+    void SetPEPlugMaterialName(G4String n)       { fPEPlugMatName = n; }
+
+    // NEW fixed real-sensor package (drawing VS-0889-305)
+    void SetSnoutOuterRadius(G4double r)         { fSnoutOuterRadius = r; }      // Ø29 -> 14.5
+    void SetSnoutLength(G4double l)              { fSnoutLength = l; }           // "15"
+    void SetReflectorThickness(G4double v)       { fReflectorThickness = v; }
+    void SetOpticalInterfaceThickness(G4double v){ fOpticalInterfaceThickness = v; }
+    void SetMagShieldThickness(G4double v)       { fMagShieldThickness = v; }    // 0.64
+    void SetMagShieldOuterRadius(G4double v)     { fMagShieldOuterRadius = v; }  // Ø58.8 -> 29.4
+    void SetTotalLength(G4double v)              { fTotalLength = v; }           // 125
+    void SetPMTRadius(G4double v)                { fPMTRadius = v; }             // Ø51 -> 25.5
+    void SetPMTGlassThickness(G4double v)        { fPMTGlassThickness = v; }
+    void SetBaseLength(G4double v)               { fBaseLength = v; }
 
   private:
     void BuildMaterials();
@@ -57,46 +67,41 @@ class GeometryCLYC
     G4AssemblyVolume* fCLYCAssembly;
 
     G4LogicalVolume* fCrystalLog;
-    G4LogicalVolume* fCasingLog;
+    G4LogicalVolume* fCasingLog;            // stepped Al body (snout+shoulder+wide)
+    G4LogicalVolume* fReflectorLog;
+    G4LogicalVolume* fOpticalInterfaceLog;
+    G4LogicalVolume* fMagShieldLog;
+    G4LogicalVolume* fPMTWindowLog;
+    G4LogicalVolume* fPMTGlassLog;
+    G4LogicalVolume* fPMTVacuumLog;
+    G4LogicalVolume* fPMTBackLog;
+    G4LogicalVolume* fBaseLog;
     G4LogicalVolume* fLiFCollimatorLog;
     G4LogicalVolume* fPbCollimatorLog;
     G4LogicalVolume* fPECollimatorLog;
     G4LogicalVolume* fPEPlugLog;
 
-    G4double fCrystalRadius;
-    G4double fCrystalLength;
-    G4double fCasingThickness;
-    
-    G4double fLiFCollimatorInnerRadius;
-    G4double fLiFCollimatorOuterRadius;
-    G4double fLiFCollimatorLength;
+    G4double fCrystalRadius, fCrystalLength, fCasingThickness;
 
-    G4double fPbCollimatorInnerRadius;
-    G4double fPbCollimatorOuterRadius;
-    G4double fPbCollimatorLength;
-    
-    G4double fPECollimatorInnerRadius;
-    G4double fPECollimatorOuterRadius;
-    G4double fPECollimatorLength;
+    G4double fLiFCollimatorInnerRadius, fLiFCollimatorOuterRadius, fLiFCollimatorLength;
+    G4double fPbCollimatorInnerRadius,  fPbCollimatorOuterRadius,  fPbCollimatorLength;
+    G4double fPECollimatorInnerRadius,  fPECollimatorOuterRadius,  fPECollimatorLength;
+    G4double fPEPlugInnerRadius, fPEPlugLipRadius, fPEPlugInnerLength, fPEPlugLipLength;
 
-    G4double fPEPlugInnerRadius;
-    G4double fPEPlugLipRadius;
-    G4double fPEPlugInnerLength;
-    G4double fPEPlugLipLength;
+    G4double fSnoutOuterRadius, fSnoutLength;
+    G4double fReflectorThickness, fOpticalInterfaceThickness;
+    G4double fMagShieldThickness, fMagShieldOuterRadius, fTotalLength;
+    G4double fPMTRadius, fPMTGlassThickness, fBaseLength;
 
-    G4String fCrystalMatName;
-    G4String fCasingMatName;
-    G4String fLiFColMatName;
-    G4String fPbColMatName;
-    G4String fPEColMatName;
-    G4String fPEPlugMatName;
+    G4String fCrystalMatName, fCasingMatName, fLiFColMatName, fPbColMatName,
+             fPEColMatName, fPEPlugMatName;
+    G4String fReflectorMatName, fOpticalInterfaceMatName, fMagShieldMatName,
+             fPMTGlassMatName, fPMTVacuumMatName, fBaseMatName;
 
-    G4Colour fCrystalColour;
-    G4Colour fCasingColour;
-    G4Colour fLiFColColour;
-    G4Colour fPbColColour;
-    G4Colour fPEColColour;
-    G4Colour fPEPlugColour;
+    G4Colour fCrystalColour, fCasingColour, fLiFColColour, fPbColColour,
+             fPEColColour, fPEPlugColour, fReflectorColour, fOpticalColour,
+             fMagShieldColour, fPMTColour, fVacuumColour, fBaseColour;
 };
 
 #endif
+
