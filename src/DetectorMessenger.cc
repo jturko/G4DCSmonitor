@@ -35,6 +35,7 @@
 #include "DetectorConstruction.hh"
 
 #include "G4UIcmdWithADoubleAndUnit.hh"
+#include "G4UIcmdWithADouble.hh"
 #include "G4UIcmdWith3Vector.hh"
 #include "G4UIcmdWith3VectorAndUnit.hh"
 #include "G4UIcmdWithAString.hh"
@@ -158,8 +159,7 @@ DetectorMessenger::DetectorMessenger(DetectorConstruction* Det) : fDetector(Det)
     fAddCASTOR440Cmd->AvailableForStates(G4State_PreInit);
 
     // HemiShield
-    fAddHemiShieldCmd = new G4UIcmdWithoutParameter("/dcs-monitor/det/hemishield/add", this);
-    fAddHemiShieldCmd->AvailableForStates(G4State_PreInit);
+    BuildHemiShieldCommands();
 
 }
 
@@ -222,7 +222,8 @@ DetectorMessenger::~DetectorMessenger()
     delete fAddCASTOR440Cmd;
 
     // HemiShield
-    delete fAddHemiShieldCmd;
+    for (auto& kv : fHemiShieldActions) delete kv.first;
+
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -289,7 +290,11 @@ void DetectorMessenger::SetNewValue(G4UIcommand* command, G4String value)
     if(command == fAddCASTOR440Cmd)                 fDetector->AddCASTOR440();
 
     // HemiShield
-    if(command == fAddHemiShieldCmd)                fDetector->AddHemiShield();
+    {
+        auto it = fHemiShieldActions.find(command);
+        if (it != fHemiShieldActions.end()) { it->second(value); return; }
+    }
+
 
 }
 
@@ -367,5 +372,49 @@ void DetectorMessenger::BuildPlasticCommands()
     addStr("setSnoutMaterial",       [d](const G4String& v){ d->SetPlasticSnoutMaterialName(v); });
     addStr("setBackShieldMaterial",  [d](const G4String& v){ d->SetPlasticBackShieldMaterialName(v); });
     addStr("setSideShieldMaterial",  [d](const G4String& v){ d->SetPlasticSideShieldMaterialName(v); });
+}
+
+void DetectorMessenger::BuildHemiShieldCommands()
+{
+    const G4String p = "/dcs-monitor/det/hemishield/";
+    DetectorConstruction* d = fDetector;
+
+    auto addVoid = [&](const G4String& nm, std::function<void()> fn){
+        auto* c = new G4UIcmdWithoutParameter((p+nm).c_str(), this);
+        c->AvailableForStates(G4State_PreInit);
+        fHemiShieldActions[c] = [fn](const G4String&){ fn(); };
+    };
+    auto addLen = [&](const G4String& nm, std::function<void(G4double)> fn){
+        auto* c = new G4UIcmdWithADoubleAndUnit((p+nm).c_str(), this);
+        c->SetDefaultUnit("cm");
+        c->AvailableForStates(G4State_PreInit);
+        fHemiShieldActions[c] = [c,fn](const G4String& v){ fn(c->GetNewDoubleValue(v)); };
+    };
+    auto addNum = [&](const G4String& nm, std::function<void(G4double)> fn){
+        auto* c = new G4UIcmdWithADouble((p+nm).c_str(), this);   // unitless (e.g. mass fraction)
+        c->AvailableForStates(G4State_PreInit);
+        fHemiShieldActions[c] = [c,fn](const G4String& v){ fn(c->GetNewDoubleValue(v)); };
+    };
+    auto addStr = [&](const G4String& nm, std::function<void(const G4String&)> fn){
+        auto* c = new G4UIcmdWithAString((p+nm).c_str(), this);
+        c->AvailableForStates(G4State_PreInit);
+        fHemiShieldActions[c] = [fn](const G4String& v){ fn(v); };
+    };
+
+    addVoid("add",                [d](){ d->AddHemiShield(); });
+
+    addLen("setCavityRadius",     [d](G4double v){ d->SetHemiCavityRadius(v); });
+    addLen("setGammaThickness",   [d](G4double v){ d->SetHemiGammaThickness(v); });
+    addLen("setLinerThickness",   [d](G4double v){ d->SetHemiLinerThickness(v); });
+    addLen("setPEThickness",      [d](G4double v){ d->SetHemiPEThickness(v); });
+    addLen("setFacePEThickness",  [d](G4double v){ d->SetHemiFacePEThickness(v); });
+    addLen("setBoreRadius",       [d](G4double v){ d->SetHemiBoreRadius(v); });
+    addLen("setBoreOffsetY",      [d](G4double v){ d->SetHemiBoreOffsetY(v); });
+
+    addNum("setBoronMassFraction",[d](G4double v){ d->SetHemiBoronMassFraction(v); }); // 0..1
+
+    addStr("setGammaMaterial",    [d](const G4String& v){ d->SetHemiGammaMaterialName(v); });
+    addStr("setLinerMaterial",    [d](const G4String& v){ d->SetHemiLinerMaterialName(v); });
+    addStr("setFacePEMaterial",   [d](const G4String& v){ d->SetHemiFacePEMaterialName(v); });
 }
 

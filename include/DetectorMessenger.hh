@@ -120,7 +120,9 @@ class DetectorMessenger : public G4UImessenger
     G4UIcmdWithoutParameter* fAddCASTOR440Cmd = nullptr;
 
     // hemi-shield
-    G4UIcmdWithoutParameter* fAddHemiShieldCmd = nullptr;
+    std::map<G4UIcommand*, std::function<void(const G4String&)>> fHemiShieldActions;
+    void BuildHemiShieldCommands();
+
 
 };
 

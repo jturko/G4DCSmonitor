@@ -447,6 +447,7 @@ void DetectorConstruction::AddCASTOR440()
     rot->rotateZ(fRotation.z()*M_PI/180.); 
     fCASTOR440Rotations.push_back(rot);
 }
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 void DetectorConstruction::AddHemiShield() 
 {
@@ -459,6 +460,22 @@ void DetectorConstruction::AddHemiShield()
     rot->rotateZ(fRotation.z()*M_PI/180.); 
     fHemiShieldRotations.push_back(rot);
 }
+
+#define HS   fHemiShieldDetectors.back()
+#define IFHS if (!fHemiShieldDetectors.empty())
+void DetectorConstruction::SetHemiCavityRadius(G4double v)     { IFHS HS->SetCavityRadius(v); }
+void DetectorConstruction::SetHemiGammaThickness(G4double v)   { IFHS HS->SetGammaThickness(v); }
+void DetectorConstruction::SetHemiLinerThickness(G4double v)   { IFHS HS->SetLinerThickness(v); }
+void DetectorConstruction::SetHemiPEThickness(G4double v)      { IFHS HS->SetPEThickness(v); }
+void DetectorConstruction::SetHemiFacePEThickness(G4double v)  { IFHS HS->SetFacePEThickness(v); }
+void DetectorConstruction::SetHemiBoreRadius(G4double v)       { IFHS HS->SetBoreRadius(v); }
+void DetectorConstruction::SetHemiBoreOffsetY(G4double v)      { IFHS HS->SetBoreOffsetY(v); }
+void DetectorConstruction::SetHemiBoronMassFraction(G4double v){ IFHS HS->SetBoronMassFraction(v); }
+void DetectorConstruction::SetHemiGammaMaterialName(G4String v){ IFHS HS->SetGammaMaterialName(v); }
+void DetectorConstruction::SetHemiLinerMaterialName(G4String v){ IFHS HS->SetLinerMaterialName(v); }
+void DetectorConstruction::SetHemiFacePEMaterialName(G4String v){ IFHS HS->SetFacePEMaterialName(v); }
+#undef HS
+#undef IFHS
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 

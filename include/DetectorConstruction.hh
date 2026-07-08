@@ -129,6 +129,17 @@ class DetectorConstruction : public G4VUserDetectorConstruction
 
         // HemiShield
         void AddHemiShield();
+        void SetHemiCavityRadius(G4double v);
+        void SetHemiGammaThickness(G4double v);
+        void SetHemiLinerThickness(G4double v);
+        void SetHemiPEThickness(G4double v);
+        void SetHemiFacePEThickness(G4double v);
+        void SetHemiBoreRadius(G4double v);
+        void SetHemiBoreOffsetY(G4double v);
+        void SetHemiBoronMassFraction(G4double v);
+        void SetHemiGammaMaterialName(G4String v);
+        void SetHemiLinerMaterialName(G4String v);
+        void SetHemiFacePEMaterialName(G4String v);
 
         // CASTOR 440
         void AddCASTOR440();
