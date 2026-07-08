@@ -1,5 +1,4 @@
-#include "DetectorConstruction.hh"
-#include "DetectorMessenger.hh"
+#include "GeometryHemiShield.hh"
 
 #include "G4Material.hh"
 #include "G4NistManager.hh"
@@ -9,7 +8,6 @@
 #include "G4Tubs.hh"
 #include "G4Sphere.hh"
 #include "G4SubtractionSolid.hh"
-#include "G4GenericPolycone.hh"
 #include "G4LogicalVolume.hh"
 #include "G4AssemblyVolume.hh"
 
@@ -17,124 +15,180 @@
 #include "G4Colour.hh"
 #include "G4SystemOfUnits.hh"
 
-#include "GeometryHemiShield.hh"
-#include "G4Region.hh"
-#include "G4RegionStore.hh"
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-#include <vector>
-#include <string>
+GeometryHemiShield::GeometryHemiShield() {}
+GeometryHemiShield::~GeometryHemiShield() {}
 
-GeometryHemiShield::GeometryHemiShield() 
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+G4VSolid* GeometryHemiShield::MakeCutHemisphere(const G4String& name,
+                                                G4double rMin, G4double rMax,
+                                                G4VSolid* bore,
+                                                const G4ThreeVector& boreShift) const
 {
-
+    // Hemisphere: full polar sweep, azimuth 0->180 deg => material at y >= 0.
+    auto* shell = new G4Sphere(name + "_precut", rMin, rMax,
+                               0.*deg, 180.*deg,   // phi
+                               0.*deg, 180.*deg);  // theta
+    return new G4SubtractionSolid(name, shell, bore, nullptr, boreShift);
 }
 
-GeometryHemiShield::~GeometryHemiShield() {}
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 G4int GeometryHemiShield::Build()
 {
-    fHemiShieldAssembly = new G4AssemblyVolume();
-    G4ThreeVector     move;
-    G4RotationMatrix* rot = nullptr;
-    G4RotationMatrix* mrot;
-        
     BuildMaterials();
     G4NistManager* man = G4NistManager::Instance();
 
-    G4Material* mPb = man->FindOrBuildMaterial("G4_Pb");
-    auto pPb_precut = new G4Sphere("pPb_precut", 6.*cm, 8.*cm, 0.*deg, 180.*deg, 0.*deg, 180.*deg);
-    auto pPb_cutter = new G4Tubs("pPb_cutter", 0.*cm, 3.*cm, 50.*cm, 0.*deg, 360.*deg);
-    auto pPb = new G4SubtractionSolid("pPb", pPb_precut, pPb_cutter, nullptr, G4ThreeVector(0., 3.*cm, -50.*cm));
-    auto lPb = new G4LogicalVolume(pPb, mPb, "lPb");
-    lPb->SetVisAttributes(new G4VisAttributes(true, G4Colour(1.0,0.0,0.0,   1.0)));
-    fHemiShieldAssembly->AddPlacedVolume(lPb, move, rot);
+    fHemiShieldAssembly = new G4AssemblyVolume();
 
-    G4Material* mLiF = man->FindOrBuildMaterial("LiF");
-    auto pLiF_precut = new G4Sphere("pLiF_precut", 8.*cm, 8.5*cm, 0.*deg, 180.*deg, 0.*deg, 180.*deg);
-    auto pLiF = new G4SubtractionSolid("pLiF", pLiF_precut, pPb_cutter, nullptr, G4ThreeVector(0., 3.*cm, -50.*cm));
-    auto lLiF = new G4LogicalVolume(pLiF, mLiF, "lLiF");
-    lLiF->SetVisAttributes(new G4VisAttributes(true, G4Colour(1.0,1.0,0.0,   1.0)));
-    fHemiShieldAssembly->AddPlacedVolume(lLiF, move, rot);
+    // AddPlacedVolume() takes the translation by non-const reference, so it must
+    // be a named lvalue (never a temporary). Reuse 'move' for every call.
+    G4ThreeVector     move;
+    G4RotationMatrix* noRot = nullptr;
 
-    G4Material* mPE = man->FindOrBuildMaterial("PEHD_borated");
-    auto pPE_precut = new G4Sphere("pPE_precut", 8.5*cm, 25.*cm, 0.*deg, 180.*deg, 0.*deg, 180.*deg);
-    auto pPE = new G4SubtractionSolid("pPE", pPE_precut, pPb_cutter, nullptr, G4ThreeVector(0., 3.*cm, -50.*cm));
-    auto lPE = new G4LogicalVolume(pPE, mPE, "lPE");
-    lPE->SetVisAttributes(new G4VisAttributes(true, G4Colour(0.95,1.0,0.95,   1.0)));
-    fHemiShieldAssembly->AddPlacedVolume(lPE, move, rot);
-    
-    auto pLiF2_precut = new G4Sphere("pLiF2_precut", 25.*cm, 25.5*cm, 0.*deg, 180.*deg, 0.*deg, 180.*deg);
-    auto pLiF2 = new G4SubtractionSolid("pLiF2", pLiF2_precut, pPb_cutter, nullptr, G4ThreeVector(0., 3.*cm, -50.*cm));
-    auto lLiF2 = new G4LogicalVolume(pLiF2, mLiF, "lLiF2");
-    lLiF2->SetVisAttributes(new G4VisAttributes(true, G4Colour(1.0,1.0,0.0,   1.0)));
-    fHemiShieldAssembly->AddPlacedVolume(lLiF2, move, rot);
+    // ------------------------------------------------------------------
+    // Radial build-up. The LiF liner (thickness fLiFThickness) wraps the PE on
+    // both its inner and outer spherical faces => it fully encapsulates the PE.
+    // ------------------------------------------------------------------
+    const G4double rPbI     = fCavityRadius;                 // 6.0
+    const G4double rPbO     = rPbI    + fPbThickness;        // 8.0
+    const G4double rInLiFO  = rPbO    + fLiFThickness;       // 8.5  (= PE inner)
+    const G4double rPEO     = rInLiFO + fPEThickness;        // 25.0 (= PE outer)
+    const G4double rOutLiFO = rPEO    + fLiFThickness;       // 25.5 (overall outer)
+    const G4double rTotal   = rOutLiFO;
 
-    auto pLiF3 = new G4Tubs("pLiF3", 8.*cm, 25.5*cm, 0.5/2.*cm, 0.*deg, 360.*deg); 
-    auto lLiF3 = new G4LogicalVolume(pLiF3, mLiF, "lLiF3");
-    lLiF3->SetVisAttributes(new G4VisAttributes(true, G4Colour(1.0,1.0,0.0,   1.0)));
-    move = G4ThreeVector(0., -0.5/2.*cm, 0.);
-    mrot = new G4RotationMatrix;
-    mrot->rotateX(90.*deg);
-    fHemiShieldAssembly->AddPlacedVolume(lLiF3, move, mrot);
+    // ------------------------------------------------------------------
+    // Detector bore: cylinder along +z, offset +y by fBoreOffsetY, drilling
+    // ONLY the front (z < 0) hemisphere. Half-length is derived to just clear
+    // the shell, positioned so its front face lands on the z = 0 plane.
+    // ------------------------------------------------------------------
+    const G4double boreHalfLen = rTotal + 1.*cm;
+    auto* bore = new G4Tubs("HemiBore", 0., fBoreRadius, boreHalfLen, 0.*deg, 360.*deg);
+    const G4ThreeVector boreShift(0., fBoreOffsetY, -boreHalfLen);
 
-    mPE = man->FindOrBuildMaterial("PEHD");
-    auto pPEplug = new G4Tubs("pPEplug", 0.*cm, 25.5*cm, 4.5/2.*cm, 0.*deg, 360.*deg);
-    auto lPEplug = new G4LogicalVolume(pPEplug, mPE, "lPEplug");
-    lPEplug->SetVisAttributes(new G4VisAttributes(true, G4Colour(0,0,0.8,   1.0)));
-    move = G4ThreeVector(0., -4.5/2.*cm - 0.5*cm, 0.);
-    mrot = new G4RotationMatrix;
-    mrot->rotateX(90.*deg);
-    fHemiShieldAssembly->AddPlacedVolume(lPEplug, move, mrot);
-        
+    G4Material* mPb      = man->FindOrBuildMaterial(fPbMatName);
+    G4Material* mLiF     = man->FindOrBuildMaterial(fLiFMatName);
+    G4Material* mShellPE = man->FindOrBuildMaterial(fShellPEMatName);
+    G4Material* mFacePE  = man->FindOrBuildMaterial(fFacePEMatName);
+
+    // ---------------- concentric hemispherical shells ----------------
+    // 1) Pb gamma shield
+    fPbLog = new G4LogicalVolume(
+        MakeCutHemisphere("pPb", rPbI, rPbO, bore, boreShift), mPb, "lPb");
+    fPbLog->SetVisAttributes(new G4VisAttributes(true, fPbColour));
+    move = G4ThreeVector();
+    fHemiShieldAssembly->AddPlacedVolume(fPbLog, move, noRot);
+
+    // 2) inner LiF liner (thermal-neutron absorber, caps PE inner face)
+    fInnerLiFLog = new G4LogicalVolume(
+        MakeCutHemisphere("pLiF", rPbO, rInLiFO, bore, boreShift), mLiF, "lLiF");
+    fInnerLiFLog->SetVisAttributes(new G4VisAttributes(true, fLiFColour));
+    move = G4ThreeVector();
+    fHemiShieldAssembly->AddPlacedVolume(fInnerLiFLog, move, noRot);
+
+    // 3) borated-PE moderator (bulk of the shield)
+    fPELog = new G4LogicalVolume(
+        MakeCutHemisphere("pPE", rInLiFO, rPEO, bore, boreShift), mShellPE, "lPE");
+    fPELog->SetVisAttributes(new G4VisAttributes(true, fPEColour));
+    move = G4ThreeVector();
+    fHemiShieldAssembly->AddPlacedVolume(fPELog, move, noRot);
+
+    // 4) outer LiF liner (caps PE outer face)
+    fOuterLiFLog = new G4LogicalVolume(
+        MakeCutHemisphere("pLiF2", rPEO, rOutLiFO, bore, boreShift), mLiF, "lLiF2");
+    fOuterLiFLog->SetVisAttributes(new G4VisAttributes(true, fLiFColour));
+    move = G4ThreeVector();
+    fHemiShieldAssembly->AddPlacedVolume(fOuterLiFLog, move, noRot);
+
+    // ---------------- opening-face stack (below the y = 0 plane) ----------------
+    // Both disks are rotated so their thickness is measured along y.
+    //
+    // (a) Flat-face LiF disk: the third part of the uniform LiF encapsulation.
+    //     Radially it spans the PE annulus plus its liner on both edges
+    //     (rPbO -> rTotal), and it is one liner-thickness thick, sitting flush
+    //     under the opening face: y in [-fLiFThickness, 0].
+    {
+        auto* s = new G4Tubs("pFaceLiF", rPbO, rTotal, fLiFThickness/2.,
+                             0.*deg, 360.*deg);
+        fFaceLiFLog = new G4LogicalVolume(s, mLiF, "lFaceLiF");
+        fFaceLiFLog->SetVisAttributes(new G4VisAttributes(true, fLiFColour));
+
+        auto* rot = new G4RotationMatrix();
+        rot->rotateX(90.*deg);
+        move = G4ThreeVector(0., -fLiFThickness/2., 0.);
+        fHemiShieldAssembly->AddPlacedVolume(fFaceLiFLog, move, rot);
+    }
+
+    // (b) Full PE moderator slab: solid disk (r 0 -> rTotal) stacked directly
+    //     below the LiF disk, for moderating on-axis (-y) neutrons.
+    //     y in [-(fFacePEThick + fLiFThickness), -fLiFThickness].
+    {
+        auto* s = new G4Tubs("pFacePE", 0., rTotal, fFacePEThick/2.,
+                             0.*deg, 360.*deg);
+        fFacePELog = new G4LogicalVolume(s, mFacePE, "lFacePE");
+        fFacePELog->SetVisAttributes(new G4VisAttributes(true, fFacePEColour));
+
+        auto* rot = new G4RotationMatrix();
+        rot->rotateX(90.*deg);
+        move = G4ThreeVector(0., -(fFacePEThick/2. + fLiFThickness), 0.);
+        fHemiShieldAssembly->AddPlacedVolume(fFacePELog, move, rot);
+    }
+
+    G4cout << " -> GeometryHemiShield built: cavity r=" << rPbI/cm
+           << " cm, outer r=" << rTotal/cm << " cm; "
+           << "bore Ø" << 2*fBoreRadius/cm << " cm @ y=+" << fBoreOffsetY/cm << " cm; "
+           << "face PE slab " << fFacePEThick/cm << " cm thick." << G4endl;
     return 1;
 }
 
-void GeometryHemiShield::PlaceDetector(G4LogicalVolume* logic_world, G4ThreeVector move,
-                                 G4RotationMatrix* rotate, G4int copyNo)
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+void GeometryHemiShield::PlaceDetector(G4LogicalVolume* worldLog, G4ThreeVector move,
+                                       G4RotationMatrix* rotate, G4int copyNo)
 {
-    fHemiShieldAssembly->MakeImprint(logic_world, move, rotate, copyNo, /*surfCheck*/true);
+    fHemiShieldAssembly->MakeImprint(worldLog, move, rotate, copyNo, /*surfCheck*/true);
 }
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 void GeometryHemiShield::BuildMaterials()
 {
     G4NistManager* nist = G4NistManager::Instance();
 
-    // NIST elements
-    G4Element* el_F  = nist->FindOrBuildElement("F");
-    G4Element* el_C  = nist->FindOrBuildElement("C");
-    G4Element* el_H  = nist->FindOrBuildElement("H");
-    G4Element* el_B  = nist->FindOrBuildElement("B");
-
-    // custom elements
-    // enr. Lithium
-    G4Isotope* Li6 = new G4Isotope("Li6", 3, 6, 6.015*g/mole);
-    G4Isotope* Li7 = new G4Isotope("Li7", 3, 7, 7.016*g/mole);
-    G4Element* el_Li_enr = new G4Element("Enriched Lithium", "Li", 2);
-    el_Li_enr->AddIsotope(Li6, 95.*perCent);
-    el_Li_enr->AddIsotope(Li7,  5.*perCent);
-    // H (from polyethelene) with S(alpha,beta) for thermal stopping
-    G4Element* el_TS_H = new G4Element("TS_H_of_Polyethylene", "H_POLYETHYLENE", 1.0, 1.0079*g/mole);
-
-    // NIST materials
     nist->FindOrBuildMaterial("G4_Pb");
     nist->FindOrBuildMaterial("G4_POLYETHYLENE");
     nist->FindOrBuildMaterial("G4_AIR");
 
-    // custom materials
-    // LiF
+    // Enriched-Li LiF (95% Li-6) thermal-neutron absorber. Guarded so it is a
+    // no-op if GeometryCLYC (or a previous shield) already defined it.
     if (nist->FindOrBuildMaterial("LiF", false) == nullptr) {
-        G4Material* lif = new G4Material("LiF", 2.635*g/cm3, 2);
-        lif->AddElement(el_Li_enr, 1); lif->AddElement(el_F, 1);
+        auto* Li6 = new G4Isotope("Li6", 3, 6, 6.015*g/mole);
+        auto* Li7 = new G4Isotope("Li7", 3, 7, 7.016*g/mole);
+        auto* elLi = new G4Element("Enriched Lithium", "Li", 2);
+        elLi->AddIsotope(Li6, 95.*perCent);
+        elLi->AddIsotope(Li7,  5.*perCent);
+
+        auto* lif = new G4Material("LiF", 2.635*g/cm3, 2);
+        lif->AddElement(elLi, 1);
+        lif->AddElement(nist->FindOrBuildElement("F"), 1);
     }
-    // PEHD
+
+    // Polyethylene with a thermal-scattering (S(alpha,beta)) hydrogen hook.
     if (nist->FindOrBuildMaterial("PEHD", false) == nullptr) {
-        G4Material* pehd = new G4Material("PEHD", 0.96*g/cm3, 2);
-        pehd->AddElement(el_TS_H, 2); pehd->AddElement(el_C, 1);
+        auto* elTSH = new G4Element("TS_H_of_Polyethylene", "H_POLYETHYLENE",
+                                    1.0, 1.0079*g/mole);
+        auto* pehd = new G4Material("PEHD", 0.96*g/cm3, 2);
+        pehd->AddElement(elTSH, 2);
+        pehd->AddElement(nist->FindOrBuildElement("C"), 1);
     }
-    // borated PEHD
+
+    // Borated polyethylene (shield bulk).
     if (nist->FindOrBuildMaterial("PEHD_borated", false) == nullptr) {
-        G4Material* pehdb = new G4Material("PEHD_borated", 1.01*g/cm3, 2);
-        G4Material* pehd = nist->FindOrBuildMaterial("PEHD");
-        pehdb->AddMaterial(pehd, 95.*perCent); pehdb->AddElement(el_B, 5.*perCent);
+        auto* pehdb = new G4Material("PEHD_borated", 1.01*g/cm3, 2);
+        pehdb->AddMaterial(nist->FindOrBuildMaterial("PEHD"), 95.*perCent);
+        pehdb->AddElement(nist->FindOrBuildElement("B"), 5.*perCent);
     }
 }
+

@@ -229,15 +229,20 @@ G4VPhysicalVolume* DetectorConstruction::ConstructVolumes()
         fLCASTOR440s.push_back(fCASTOR440Detectors[i]->GetCASTORLog());
     }
  
-    G4cout << " -> Gonna build/place " << (int)fHemiShieldDetectors.size() << " hemi-shields..." << std::flush;   
     for (size_t i = 0; i < fHemiShieldDetectors.size(); ++i) {
-        G4cout << ", building " << i << std::flush;
         fHemiShieldDetectors[i]->Build();
-        G4cout << ", done!, placing " << i << std::flush;
-        fHemiShieldDetectors[i]->PlaceDetector(fLWorld, fHemiShieldPositions[i], fHemiShieldRotations[i], i);
-        G4cout << ", done!" << std::flush;
+
+        G4ThreeVector localAnchor  = fHemiShieldDetectors[i]->GetCrystalAnchorLocal();
+        G4ThreeVector globalOffset = localAnchor;
+        if (fHemiShieldRotations[i]) globalOffset.transform(*fHemiShieldRotations[i]);
+        fHemiShieldPositions[i] -= globalOffset;
+
+        fHemiShieldDetectors[i]->PlaceDetector(fLWorld, fHemiShieldPositions[i],
+                                               fHemiShieldRotations[i], i);
     }
-    G4cout << ", all done the hemi-stuff! " << G4endl;
+    
+
+
 
     //PrintParameters();
     //G4cout << *(G4Material::GetMaterialTable()) << G4endl;
