@@ -101,13 +101,49 @@ GeometryCASTOR440::GeometryCASTOR440() :
     fTrunnionAxialInset = 350. * mm;
     fTrunnionZ[0] = 0.; fTrunnionZ[1] = 0.;
 
+
+
+
+    //// ---------------- basket cell / shroud ----------------
+    //fAssyPitch        = 147.  * mm;
+    //fAssyPhiStart     =  30.  * deg;
+    //fCellApothem      = fAssyPitch/2.0 - 0.1*mm;   // 73.4
+    //fBasketWall       = 0.5  * mm;
+    //fShroudApothemOut = 72.0 * mm;                 // flat-to-flat 144 mm
+    //fShroudWall       = 1.5  * mm;
+
     // ---------------- basket cell / shroud ----------------
-    fAssyPitch        = 147.  * mm;
-    fAssyPhiStart     =  30.  * deg;
-    fCellApothem      = fAssyPitch/2.0 - 0.1*mm;   // 73.4
-    fBasketWall       = 0.5  * mm;
-    fShroudApothemOut = 72.0 * mm;                 // flat-to-flat 144 mm
+    // Assembly SIZE (drawing-confirmed) is kept fixed; only the placement
+    // PITCH is changed so the 84 assemblies spread out to fill the cavity.
+    fShroudApothemOut = 72.0 * mm;                 // flat-to-flat 144 mm (correct)
     fShroudWall       = 1.5  * mm;
+    fBasketWall       = 0.5  * mm;
+    fAssyPhiStart     = 30.  * deg;
+
+    // He cell now hugs a SINGLE assembly (basket wall over the shroud) instead
+    // of being tied to the pitch. The gap between assemblies becomes cavity He.
+    fCellApothem      = fShroudApothemOut + fBasketWall + 0.1*mm;   // 72.6 mm
+
+    // Auto-fit the placement pitch to the cavity. The farthest retained lattice
+    // site (a ring-5 edge site next to a removed corner) sits at sqrt(21)*pitch
+    // from the axis; add the cell circumradius and keep a 15 mm clearance to
+    // the R = 900 mm wall.
+    {
+        const G4double cellCircumR = fCellApothem / std::cos(CLHEP::pi/6.);      // ~83.8 mm
+        const G4double clearance   = 15. * mm;
+        const G4double maxCenterR  = fCaskInnerRadius - cellCircumR - clearance; // ~801 mm
+        const G4double fitPitch    = maxCenterR / std::sqrt(21.0);               // ~175 mm
+        const G4double minPitch    = 2.0*fCellApothem + 0.2*mm;                  // no overlap
+        fAssyPitch = std::max(minPitch, fitPitch);
+        G4cout << " [CASTOR440] Assembly placement pitch auto-fit to "
+               << fAssyPitch/mm << " mm (cell F2F " << 2*fCellApothem/mm
+               << " mm, outermost centre " << std::sqrt(21.0)*fAssyPitch/mm
+               << " mm)." << G4endl;
+    }
+
+
+
+
 
     // ---------------- axial assembly layout (cell-local) ----------------
     fNozzleBotLen = 380. * mm;
