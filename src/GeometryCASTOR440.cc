@@ -248,6 +248,8 @@ void GeometryCASTOR440::GenerateRodPositions()
 //....oooOO0OOooo......
 G4LogicalVolume* GeometryCASTOR440::BuildFuelAssemblyCell()
 {
+    G4bool minimalVis = true;
+
     G4NistManager* man = G4NistManager::Instance();
     G4Material* He     = man->FindOrBuildMaterial(fHeliumMatName);
     G4Material* fuel   = man->FindOrBuildMaterial(fFuelMatName);
@@ -276,6 +278,7 @@ G4LogicalVolume* GeometryCASTOR440::BuildFuelAssemblyCell()
         auto* s = new G4Polyhedra("Basket", fAssyPhiStart, 360.*deg, 6, 2, zC, ri, ro);
         auto* l = new G4LogicalVolume(s, steel, "BasketLog");
         l->SetVisAttributes(new G4VisAttributes(G4Colour(0.40,0.40,0.50)));
+        if(minimalVis) l->SetVisAttributes(new G4VisAttributes(false));
         new G4PVPlacement(nullptr, {}, l, "BasketPhys", fFuelCellLog, false, 0, kCheckOverlaps);
     }
 
@@ -286,6 +289,7 @@ G4LogicalVolume* GeometryCASTOR440::BuildFuelAssemblyCell()
         auto* s = new G4Polyhedra("Shroud", fAssyPhiStart, 360.*deg, 6, 2, zC, ri, ro);
         auto* l = new G4LogicalVolume(s, shroud, "ShroudLog");
         l->SetVisAttributes(new G4VisAttributes(G4Colour(0.70,0.70,0.80)));
+        if(minimalVis) l->SetVisAttributes(new G4VisAttributes(false));
         new G4PVPlacement(nullptr, {}, l, "ShroudPhys", fFuelCellLog, false, 0, kCheckOverlaps);
     }
 
@@ -298,6 +302,7 @@ G4LogicalVolume* GeometryCASTOR440::BuildFuelAssemblyCell()
             auto* s = new G4Polyhedra("NozzleBot", fAssyPhiStart, 360.*deg, 6, 2, zN, r0, ro);
             auto* l = new G4LogicalVolume(s, steel, "NozzleBotLog");
             l->SetVisAttributes(new G4VisAttributes(G4Colour(0.55,0.55,0.60)));
+            if(minimalVis) l->SetVisAttributes(new G4VisAttributes(false));
             const G4double zc = -cellHalf + fNozzleBotLen/2.0;
             new G4PVPlacement(nullptr, {0,0,zc}, l, "NozzleBotPhys", fFuelCellLog, false, 0, kCheckOverlaps);
         }
@@ -307,6 +312,7 @@ G4LogicalVolume* GeometryCASTOR440::BuildFuelAssemblyCell()
             auto* s = new G4Polyhedra("NozzleTop", fAssyPhiStart, 360.*deg, 6, 2, zN, r0, ro);
             auto* l = new G4LogicalVolume(s, steel, "NozzleTopLog");
             l->SetVisAttributes(new G4VisAttributes(G4Colour(0.60,0.60,0.66)));
+            if(minimalVis) l->SetVisAttributes(new G4VisAttributes(false));
             const G4double zc = +cellHalf - fNozzleTopLen/2.0;
             new G4PVPlacement(nullptr, {0,0,zc}, l, "NozzleTopPhys", fFuelCellLog, false, 1, kCheckOverlaps);
         }
@@ -318,6 +324,7 @@ G4LogicalVolume* GeometryCASTOR440::BuildFuelAssemblyCell()
                              fRodLength/2.0, 0, 360.*deg);
         auto* l = new G4LogicalVolume(s, clad, "CentralTubeLog");
         l->SetVisAttributes(new G4VisAttributes(G4Colour(0.50,0.50,0.60)));
+        if(minimalVis) l->SetVisAttributes(new G4VisAttributes(false));
         new G4PVPlacement(nullptr, {0,0,fRodCenterZ}, l, "CentralTubePhys",
                           fFuelCellLog, false, 0, kCheckOverlaps);
     }
@@ -326,11 +333,13 @@ G4LogicalVolume* GeometryCASTOR440::BuildFuelAssemblyCell()
     auto* cladSolid = new G4Tubs("Clad", fCladInnerR, fCladOuterR, fRodLength/2.0, 0, 360.*deg);
     auto* cladLog   = new G4LogicalVolume(cladSolid, clad, "CladLog");
     cladLog->SetVisAttributes(new G4VisAttributes(G4Colour(0.70,0.70,0.80)));
+    if(minimalVis) cladLog->SetVisAttributes(new G4VisAttributes(false));
 
     auto* pelletSolid = new G4Tubs("Pellet", fPelletHoleR, fPelletOuterR,
                                    fActiveFuelLength/2.0, 0, 360.*deg);
     auto* pelletLog   = new G4LogicalVolume(pelletSolid, fuel, "FuelLog");
     pelletLog->SetVisAttributes(new G4VisAttributes(G4Colour(1.0,0.0,0.0)));
+    if(minimalVis) pelletLog->SetVisAttributes(new G4VisAttributes(false));
 
     G4int rodNo = 0;
     for (const auto& p : fRodPositions) {
@@ -351,6 +360,7 @@ G4LogicalVolume* GeometryCASTOR440::BuildFuelAssemblyCell()
         auto* s = new G4Polyhedra("SpacerGrid", fAssyPhiStart, 360.*deg, 6, 2, zG, ri, ro);
         auto* l = new G4LogicalVolume(s, steel, "SpacerGridLog");
         l->SetVisAttributes(new G4VisAttributes(G4Colour(0.45,0.45,0.50)));
+        if(minimalVis) l->SetVisAttributes(new G4VisAttributes(false));
 
         const G4double activeBot = fActiveCenterZ - fActiveFuelLength/2.0;
         for (G4int k = 0; k < fNSpacerGrids; ++k) {
