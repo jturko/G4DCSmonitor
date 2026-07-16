@@ -410,11 +410,15 @@ void DetectorMessenger::BuildHemiShieldCommands()
     addLen("setFacePEThickness",  [d](G4double v){ d->SetHemiFacePEThickness(v); });
     addLen("setBoreRadius",       [d](G4double v){ d->SetHemiBoreRadius(v); });
     addLen("setBoreOffsetY",      [d](G4double v){ d->SetHemiBoreOffsetY(v); });
+    addLen("setGammaCollimatorThickness", [d](G4double v){ d->SetHemiGammaCollimatorThickness(v); });
+    addLen("setGammaCollimatorDiameter",  [d](G4double v){ d->SetHemiGammaCollimatorDiameter(v); });
+
 
     addNum("setBoronMassFraction",[d](G4double v){ d->SetHemiBoronMassFraction(v); }); // 0..1
 
     addStr("setGammaMaterial",    [d](const G4String& v){ d->SetHemiGammaMaterialName(v); });
     addStr("setLinerMaterial",    [d](const G4String& v){ d->SetHemiLinerMaterialName(v); });
     addStr("setFacePEMaterial",   [d](const G4String& v){ d->SetHemiFacePEMaterialName(v); });
+    addStr("setGammaCollimatorMaterial",  [d](const G4String& v){ d->SetHemiGammaCollimatorMaterialName(v); });
 }
 

@@ -45,6 +45,11 @@ class GeometryHemiShield
     void SetLinerMaterialName(G4String n) { fLinerMatName = n; } // e.g. "LiF", "G4_Cd"
     void SetFacePEMaterialName(G4String n){ fFacePEMatName = n; }
 
+    // gamma-shield collimator cap (closes the flat opening; drilled centre hole)
+    void SetGammaCollimatorThickness(G4double t)    { fGammaCollThickness = t; } // 0 => no cap
+    void SetGammaCollimatorDiameter(G4double d)     { fGammaCollDiameter  = d; } // opening Ø
+    void SetGammaCollimatorMaterialName(G4String n) { fGammaCollMatName   = n; }
+
     // accessors
     G4LogicalVolume* GetGammaLog() const { return fGammaLog; }
     G4double GetOuterRadius() const
@@ -68,6 +73,7 @@ class GeometryHemiShield
     G4LogicalVolume* fOuterLinerLog= nullptr;
     G4LogicalVolume* fFaceLinerLog = nullptr;
     G4LogicalVolume* fFacePELog    = nullptr;
+    G4LogicalVolume* fGammaCollLog = nullptr;
 
     // defaults reproduce the original hard-coded design
     G4double fCavityRadius   =  6.0  * CLHEP::cm;
@@ -77,16 +83,20 @@ class GeometryHemiShield
     G4double fFacePEThick    =  4.5  * CLHEP::cm;
     G4double fBoreRadius     =  3.0  * CLHEP::cm;
     G4double fBoreOffsetY    =  3.0  * CLHEP::cm;
+    G4double fGammaCollThickness =  0.0  * CLHEP::cm;   // cap thickness along +y (0 => none)
+    G4double fGammaCollDiameter  =  2.0  * CLHEP::cm;   // central collimator through-hole Ø
+    G4String fGammaCollMatName   = "G4_Pb";
 
     G4double fBoronFrac      =  0.05;               // 5% by mass (original)
     G4String fGammaMatName   = "G4_Pb";
     G4String fLinerMatName   = "LiF";
     G4String fFacePEMatName  = "PEHD";
 
-    G4Colour fGammaColour = G4Colour(1.00, 0.00, 0.00, 1.0);
-    G4Colour fLinerColour = G4Colour(1.00, 1.00, 0.00, 1.0);
-    G4Colour fPEColour    = G4Colour(0.95, 1.00, 0.95, 1.0);
-    G4Colour fFaceColour  = G4Colour(0.00, 0.00, 0.80, 1.0);
+    G4Colour fGammaColour = G4Colour(0.6, 0.4, 0.2, 1.);
+    G4Colour fLinerColour = G4Colour(0.6, 0.0, 0.6, 1.);
+    G4Colour fPEColour    = G4Colour(0.0, 1.0, 1.0, 1.);
+    G4Colour fFaceColour  = G4Colour(1.0, 1.0, 0.0, 1.);
+    G4Colour fGammaCollColour = G4Colour(0.6, 0.4, 0.2, 1.);
 };
 
 #endif

@@ -474,6 +474,9 @@ void DetectorConstruction::SetHemiBoronMassFraction(G4double v){ IFHS HS->SetBor
 void DetectorConstruction::SetHemiGammaMaterialName(G4String v){ IFHS HS->SetGammaMaterialName(v); }
 void DetectorConstruction::SetHemiLinerMaterialName(G4String v){ IFHS HS->SetLinerMaterialName(v); }
 void DetectorConstruction::SetHemiFacePEMaterialName(G4String v){ IFHS HS->SetFacePEMaterialName(v); }
+void DetectorConstruction::SetHemiGammaCollimatorThickness(G4double v)   { IFHS HS->SetGammaCollimatorThickness(v); }
+void DetectorConstruction::SetHemiGammaCollimatorDiameter(G4double v)    { IFHS HS->SetGammaCollimatorDiameter(v); }
+void DetectorConstruction::SetHemiGammaCollimatorMaterialName(G4String v){ IFHS HS->SetGammaCollimatorMaterialName(v); }
 #undef HS
 #undef IFHS
 

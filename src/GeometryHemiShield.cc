@@ -14,6 +14,7 @@
 #include "G4VisAttributes.hh"
 #include "G4Colour.hh"
 #include "G4SystemOfUnits.hh"
+#include "G4Transform3D.hh"
 
 #include <sstream>
 #include <iomanip>
@@ -172,6 +173,47 @@ G4int GeometryHemiShield::Build()
         auto* rot = new G4RotationMatrix(); rot->rotateX(90.*deg); 
         move = G4ThreeVector(0., -(fFacePEThick/2. + fLinerThickness), 0.);
         fHemiShieldAssembly->AddPlacedVolume(fFacePELog, move, rot);
+    }
+
+    // 7) gamma-shield collimator cap: closes the flat opening (cavity mouth) and
+    //    is drilled with a central hole to collimate on-axis (-y) gammas. It sits
+    //    flush against the forward PE slab and nests inside the gamma shell; the
+    //    dome-side rim is rounded by subtracting the gamma-layer inner sphere.
+    //    The SAME detector bore that pierces the shells is also drilled through
+    //    the cap, so the CLYC channel stays clear and every bore stays coaxial.
+    if (fGammaCollThickness > 0.) {
+        G4Material* mColl = man->FindOrBuildMaterial(fGammaCollMatName);
+
+        // annular plate: outer = cavity radius, bore = collimator opening
+        auto* disk = new G4Tubs("pGammaColl_disk", fGammaCollDiameter/2., rCav,
+                                fGammaCollThickness/2., 0.*deg, 360.*deg);
+
+        // gamma-layer inner sphere (material at y >= 0) used to round the rim
+        auto* domeCut = new G4Sphere("pGammaColl_cut", rCav, rTotal + 1.*cm,
+                                     0.*deg, 180.*deg,    // phi  -> y >= 0
+                                     0.*deg, 180.*deg);   // theta
+
+        auto* rot = new G4RotationMatrix(); rot->rotateX(90.*deg);
+        move = G4ThreeVector(0., -fLinerThickness + fGammaCollThickness/2., 0.);
+
+        // capTf maps local -> assembly; capTf.inverse() maps assembly -> local.
+        G4Transform3D capTf(rot->inverse(), move);
+
+        // (a) round the dome-side rim (sphere is centred at the assembly origin)
+        auto* nested = new G4SubtractionSolid("pGammaColl_nested", disk, domeCut,
+                                              capTf.inverse());
+
+        // (b) drill the SAME detector bore the shells use. In the assembly frame
+        //     the bore sits at 'boreShift'; re-express that placement in the cap
+        //     frame so the CLYC channel is cleared and stays coaxial.
+        G4Transform3D boreTf = capTf.inverse()
+                             * G4Transform3D(G4RotationMatrix(), boreShift);
+        auto* collSolid = new G4SubtractionSolid("pGammaColl", nested, bore, boreTf);
+
+        rot = new G4RotationMatrix(); rot->rotateX(-90.*deg);
+        fGammaCollLog = new G4LogicalVolume(collSolid, mColl, "lGammaColl");
+        fGammaCollLog->SetVisAttributes(new G4VisAttributes(true, fGammaCollColour));
+        fHemiShieldAssembly->AddPlacedVolume(fGammaCollLog, move, rot);
     }
 
     G4cout << " -> GeometryHemiShield: cavity r=" << rCav/cm << " cm, outer r=" << rTotal/cm

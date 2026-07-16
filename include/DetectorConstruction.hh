@@ -140,6 +140,9 @@ class DetectorConstruction : public G4VUserDetectorConstruction
         void SetHemiGammaMaterialName(G4String v);
         void SetHemiLinerMaterialName(G4String v);
         void SetHemiFacePEMaterialName(G4String v);
+        void SetHemiGammaCollimatorThickness(G4double v);
+        void SetHemiGammaCollimatorDiameter(G4double v);
+        void SetHemiGammaCollimatorMaterialName(G4String v);
 
         // CASTOR 440
         void AddCASTOR440();
