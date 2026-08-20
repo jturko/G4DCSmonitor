@@ -160,6 +160,10 @@ DetectorMessenger::DetectorMessenger(DetectorConstruction* Det) : fDetector(Det)
 
     // HemiShield
     BuildHemiShieldCommands();
+    
+    // Experimental hall
+    BuildHallCommands();
+
 
 }
 
@@ -223,6 +227,10 @@ DetectorMessenger::~DetectorMessenger()
 
     // HemiShield
     for (auto& kv : fHemiShieldActions) delete kv.first;
+    
+    // Experimental hall
+    for (auto& kv : fHallActions) delete kv.first;
+
 
 }
 
@@ -293,6 +301,12 @@ void DetectorMessenger::SetNewValue(G4UIcommand* command, G4String value)
     {
         auto it = fHemiShieldActions.find(command);
         if (it != fHemiShieldActions.end()) { it->second(value); return; }
+    }
+
+    // Experimental hall
+    {
+        auto it = fHallActions.find(command);
+        if (it != fHallActions.end()) { it->second(value); return; }
     }
 
 
@@ -420,5 +434,51 @@ void DetectorMessenger::BuildHemiShieldCommands()
     addStr("setLinerMaterial",    [d](const G4String& v){ d->SetHemiLinerMaterialName(v); });
     addStr("setFacePEMaterial",   [d](const G4String& v){ d->SetHemiFacePEMaterialName(v); });
     addStr("setGammaCollimatorMaterial",  [d](const G4String& v){ d->SetHemiGammaCollimatorMaterialName(v); });
+}
+
+void DetectorMessenger::BuildHallCommands()
+{
+    const G4String p = "/dcs-monitor/det/hall/";
+    DetectorConstruction* d = fDetector;
+
+    auto addVoid = [&](const G4String& nm, std::function<void()> fn){
+        auto* c = new G4UIcmdWithoutParameter((p+nm).c_str(), this);
+        c->AvailableForStates(G4State_PreInit);
+        fHallActions[c] = [fn](const G4String&){ fn(); };
+    };
+    auto addLen = [&](const G4String& nm, std::function<void(G4double)> fn){
+        auto* c = new G4UIcmdWithADoubleAndUnit((p+nm).c_str(), this);
+        c->SetDefaultUnit("mm");
+        c->AvailableForStates(G4State_PreInit);
+        fHallActions[c] = [c,fn](const G4String& v){ fn(c->GetNewDoubleValue(v)); };
+    };
+    auto addBool = [&](const G4String& nm, std::function<void(G4bool)> fn){
+        auto* c = new G4UIcmdWithABool((p+nm).c_str(), this);
+        c->AvailableForStates(G4State_PreInit);
+        fHallActions[c] = [c,fn](const G4String& v){ fn(c->GetNewBoolValue(v)); };
+    };
+    auto addStr = [&](const G4String& nm, std::function<void(const G4String&)> fn){
+        auto* c = new G4UIcmdWithAString((p+nm).c_str(), this);
+        c->AvailableForStates(G4State_PreInit);
+        fHallActions[c] = [fn](const G4String& v){ fn(v); };
+    };
+
+    addVoid("add", [d](){ d->AddHall(); });
+
+    addLen("setLength",           [d](G4double v){ d->SetHallLength(v); });
+    addLen("setFloorTopZ",        [d](G4double v){ d->SetHallFloorTopZ(v); });
+    addLen("setFloorThickness",   [d](G4double v){ d->SetHallFloorThickness(v); });
+    addLen("setWallInnerY",       [d](G4double v){ d->SetHallWallInnerY(v); });
+    addLen("setWallThickness",    [d](G4double v){ d->SetHallWallThickness(v); });
+    addLen("setWallHeight",       [d](G4double v){ d->SetHallWallHeight(v); });
+    addLen("setCeilingThickness", [d](G4double v){ d->SetHallCeilingThickness(v); });
+
+    addBool("setUseFloor",   [d](G4bool v){ d->SetHallUseFloor(v); });
+    addBool("setUseWalls",   [d](G4bool v){ d->SetHallUseWalls(v); });
+    addBool("setUseCeiling", [d](G4bool v){ d->SetHallUseCeiling(v); });
+
+    addStr("setFloorMaterial",   [d](const G4String& v){ d->SetHallFloorMaterialName(v); });
+    addStr("setWallMaterial",    [d](const G4String& v){ d->SetHallWallMaterialName(v); });
+    addStr("setCeilingMaterial", [d](const G4String& v){ d->SetHallCeilingMaterialName(v); });
 }
 

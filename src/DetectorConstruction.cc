@@ -40,6 +40,7 @@
 #include "GeometryHemiShield.hh"
 #include "GeometryPlastic.hh"
 #include "GeometryCASTOR440.hh"
+#include "GeometryHall.hh"
 
 #include "G4Box.hh"
 #include "G4Tubs.hh"
@@ -69,7 +70,7 @@ DetectorConstruction::DetectorConstruction(G4String biasParticle)
     fPosition = G4ThreeVector(0., 0., 0.);
     fRotation = G4ThreeVector(0., 0., 0.);
 
-    fWorldXYZ = 20. * m; // could need tweaking, as CASTOR 440's are pretty large (d2660 x 4080 mm3)
+    fWorldXYZ = 22. * m; // could need tweaking, as CASTOR 440's are pretty large (d2660 x 4080 mm3)
 
     DefineMaterials();
     fDetectorMessenger = new DetectorMessenger(this);
@@ -117,6 +118,10 @@ DetectorConstruction::~DetectorConstruction()
 
     for(auto h : fHemiShieldDetectors) delete h;
     for(auto h : fHemiShieldRotations) delete h;
+
+    for (auto h : fHallDetectors) delete h;
+    for (auto r : fHallRotations) delete r;
+
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -241,6 +246,12 @@ G4VPhysicalVolume* DetectorConstruction::ConstructVolumes()
                                                fHemiShieldRotations[i], i);
     }
     
+    // experimental hall 
+    for (size_t i = 0; i < fHallDetectors.size(); ++i) {
+        fHallDetectors[i]->Build();
+        fHallDetectors[i]->PlaceDetector(fLWorld, fHallPositions[i],
+                                         fHallRotations[i], i);
+    }
 
 
 
@@ -527,4 +538,34 @@ G4ThreeVector DetectorConstruction::SampleUniformGlobalPositionInFuel(G4int cask
     globalPos += fCASTOR440Positions[caskIndex];
     return globalPos;
 }
+
+void DetectorConstruction::AddHall()
+{
+    fHallDetectors.push_back(new GeometryHall());
+    fHallPositions.push_back(fPosition);
+
+    G4RotationMatrix* rot = new G4RotationMatrix();
+    rot->rotateX(fRotation.x()*M_PI/180.);
+    rot->rotateY(fRotation.y()*M_PI/180.);
+    rot->rotateZ(fRotation.z()*M_PI/180.);
+    fHallRotations.push_back(rot);
+}
+
+#define HALL   fHallDetectors.back()
+#define IFHALL if (!fHallDetectors.empty())
+void DetectorConstruction::SetHallLength(G4double v)          { IFHALL HALL->SetHallLength(v); }
+void DetectorConstruction::SetHallFloorTopZ(G4double v)       { IFHALL HALL->SetFloorTopZ(v); }
+void DetectorConstruction::SetHallFloorThickness(G4double v)  { IFHALL HALL->SetFloorThickness(v); }
+void DetectorConstruction::SetHallWallInnerY(G4double v)      { IFHALL HALL->SetWallInnerY(v); }
+void DetectorConstruction::SetHallWallThickness(G4double v)   { IFHALL HALL->SetWallThickness(v); }
+void DetectorConstruction::SetHallWallHeight(G4double v)      { IFHALL HALL->SetWallHeight(v); }
+void DetectorConstruction::SetHallCeilingThickness(G4double v){ IFHALL HALL->SetCeilingThickness(v); }
+void DetectorConstruction::SetHallUseFloor(G4bool v)         { IFHALL HALL->SetUseFloor(v); }
+void DetectorConstruction::SetHallUseWalls(G4bool v)         { IFHALL HALL->SetUseWalls(v); }
+void DetectorConstruction::SetHallUseCeiling(G4bool v)       { IFHALL HALL->SetUseCeiling(v); }
+void DetectorConstruction::SetHallFloorMaterialName(G4String v)   { IFHALL HALL->SetFloorMaterialName(v); }
+void DetectorConstruction::SetHallWallMaterialName(G4String v)    { IFHALL HALL->SetWallMaterialName(v); }
+void DetectorConstruction::SetHallCeilingMaterialName(G4String v) { IFHALL HALL->SetCeilingMaterialName(v); }
+#undef HALL
+#undef IFHALL
 

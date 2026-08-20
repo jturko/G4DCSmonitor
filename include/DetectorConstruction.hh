@@ -14,6 +14,7 @@ class GeometryCLYC;
 class GeometryHemiShield;
 class GeometryPlastic;
 class GeometryCASTOR440;
+class GeometryHall;
 
 class DetectorConstruction : public G4VUserDetectorConstruction
 {
@@ -148,6 +149,23 @@ class DetectorConstruction : public G4VUserDetectorConstruction
         void AddCASTOR440();
         const std::vector<G4LogicalVolume*> GetLCASTOR440s() { return fLCASTOR440s; }
 
+        // Experimental hall
+        void AddHall();
+        void SetHallLength(G4double v);
+        void SetHallFloorTopZ(G4double v);
+        void SetHallFloorThickness(G4double v);
+        void SetHallWallInnerY(G4double v);
+        void SetHallWallThickness(G4double v);
+        void SetHallWallHeight(G4double v);
+        void SetHallCeilingThickness(G4double v);
+        void SetHallUseFloor(G4bool v);
+        void SetHallUseWalls(G4bool v);
+        void SetHallUseCeiling(G4bool v);
+        void SetHallFloorMaterialName(G4String v);
+        void SetHallWallMaterialName(G4String v);
+        void SetHallCeilingMaterialName(G4String v);
+
+
         G4int GetNumCASTOR440s() const { return fCASTOR440Detectors.size(); }
         G4ThreeVector     GetCASTOR440Position(G4int index) const { return fCASTOR440Positions[index]; }
         G4RotationMatrix* GetCASTOR440Rotation(G4int index) const { return fCASTOR440Rotations[index]; }
@@ -210,6 +228,11 @@ class DetectorConstruction : public G4VUserDetectorConstruction
         std::vector<GeometryHemiShield*>  fHemiShieldDetectors;
         std::vector<G4ThreeVector>        fHemiShieldPositions;
         std::vector<G4RotationMatrix*>    fHemiShieldRotations;
+
+        std::vector<GeometryHall*>        fHallDetectors;
+        std::vector<G4ThreeVector>        fHallPositions;
+        std::vector<G4RotationMatrix*>    fHallRotations;
+
 
     private:
         void DefineMaterials();

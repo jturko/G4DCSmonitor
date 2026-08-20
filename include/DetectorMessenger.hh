@@ -123,6 +123,10 @@ class DetectorMessenger : public G4UImessenger
     std::map<G4UIcommand*, std::function<void(const G4String&)>> fHemiShieldActions;
     void BuildHemiShieldCommands();
 
+    // hall
+    std::map<G4UIcommand*, std::function<void(const G4String&)>> fHallActions;
+    void BuildHallCommands();
+
 
 };
 
