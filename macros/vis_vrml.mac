@@ -24,8 +24,8 @@
 
 # Set viewer rendering style
 # "wireframe" means  "half-transparent" in VRML2FILE driver 
-#/vis/viewer/set/style surface
-/vis/viewer/set/style wireframe
+/vis/viewer/set/style surface
+#/vis/viewer/set/style wireframe
 
 # Compund command: creates scene, adds volume, attaches scene handler
 # and refreshes viewer
