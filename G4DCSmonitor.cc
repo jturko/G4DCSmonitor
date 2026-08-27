@@ -47,13 +47,15 @@
 #include "SurfaceFluxSamplerMessenger.hh"
 
 #include <csignal>
+#include <random>
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 int main(int argc, char** argv)
 {
     // set seed
-    G4Random::setTheSeed(time(NULL));
+    //G4Random::setTheSeed(time(NULL));
+    G4Random::setTheSeed(std::random_device{}());
     G4Random::showEngineStatus();
     
     // -----------------------------------------------------------------
