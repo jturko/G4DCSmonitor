@@ -58,6 +58,8 @@ class RunMessenger : public G4UImessenger
     G4UIcmdWithABool* fWritePrimaryCmd = nullptr;
     G4UIcmdWithABool* fWritePrimaryOnlyOnHitCmd = nullptr;
     G4UIcmdWithABool* fWriteCASTOR440SurfaceFluxCmd = nullptr;
+    G4UIcmdWithABool* fWriteFluxMapCmd = nullptr;
+
 };
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

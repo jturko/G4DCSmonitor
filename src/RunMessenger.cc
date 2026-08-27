@@ -61,7 +61,14 @@ RunMessenger::RunMessenger(RunAction* run) : fRun(run)
     fWriteCASTOR440SurfaceFluxCmd->SetParameterName("write", true);
     fWriteCASTOR440SurfaceFluxCmd->SetDefaultValue(true);
     fWriteCASTOR440SurfaceFluxCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
-    
+ 
+    fWriteFluxMapCmd = new G4UIcmdWithABool("/dcs-monitor/run/writeFluxMap", this);
+    fWriteFluxMapCmd->SetGuidance("Toggle the top-down x-y gamma/neutron flux maps (default OFF)");
+    fWriteFluxMapCmd->SetParameterName("write", true);
+    fWriteFluxMapCmd->SetDefaultValue(false);
+    fWriteFluxMapCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+
+
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -71,6 +78,8 @@ RunMessenger::~RunMessenger()
     delete fRunDir;
     delete fWritePrimaryCmd;
     delete fWriteCASTOR440SurfaceFluxCmd;
+    delete fWriteFluxMapCmd;
+
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -88,6 +97,12 @@ void RunMessenger::SetNewValue(G4UIcommand* command, G4String newValue)
     if (command == fWriteCASTOR440SurfaceFluxCmd) {
         RunAction::WriteCASTOR440SurfaceFluxTree = fWriteCASTOR440SurfaceFluxCmd->GetNewBoolValue(newValue);
     }
+ 
+    if (command == fWriteFluxMapCmd) {
+        RunAction::WriteFluxMap = fWriteFluxMapCmd->GetNewBoolValue(newValue);
+    }
+
+
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

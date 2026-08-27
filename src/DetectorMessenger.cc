@@ -164,6 +164,24 @@ DetectorMessenger::DetectorMessenger(DetectorConstruction* Det) : fDetector(Det)
     // Experimental hall
     BuildHallCommands();
 
+    // meta labels
+    fMetaDir = new G4UIdirectory("/dcs-monitor/det/meta/");
+    fMetaDir->SetGuidance("optional self-describing detector metadata labels");
+
+    fMetaSetScanPhiCmd = new G4UIcmdWithADouble("/dcs-monitor/det/meta/setScanPhi", this);
+    fMetaSetScanPhiCmd->SetGuidance("Label subsequently added CLYC/plastic detectors with scan_phi_deg [deg].");
+    fMetaSetScanPhiCmd->SetParameterName("phi", false);
+    fMetaSetScanPhiCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+
+    fMetaSetScanZCmd = new G4UIcmdWithADoubleAndUnit("/dcs-monitor/det/meta/setScanZ", this);
+    fMetaSetScanZCmd->SetGuidance("Label subsequently added CLYC/plastic detectors with scan_z_mm.");
+    fMetaSetScanZCmd->SetDefaultUnit("mm");
+    fMetaSetScanZCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+
+    fMetaClearCmd = new G4UIcmdWithoutParameter("/dcs-monitor/det/meta/clear", this);
+    fMetaClearCmd->SetGuidance("Reset the current scan labels to unset (-9999).");
+    fMetaClearCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+
 
 }
 
@@ -230,6 +248,11 @@ DetectorMessenger::~DetectorMessenger()
     
     // Experimental hall
     for (auto& kv : fHallActions) delete kv.first;
+
+    delete fMetaSetScanPhiCmd;
+    delete fMetaSetScanZCmd;
+    delete fMetaClearCmd;
+    delete fMetaDir;
 
 
 }
@@ -309,6 +332,12 @@ void DetectorMessenger::SetNewValue(G4UIcommand* command, G4String value)
         if (it != fHallActions.end()) { it->second(value); return; }
     }
 
+    if (command == fMetaSetScanPhiCmd)
+        fDetector->SetMetaScanPhi(fMetaSetScanPhiCmd->GetNewDoubleValue(value));
+    if (command == fMetaSetScanZCmd)
+        fDetector->SetMetaScanZ(fMetaSetScanZCmd->GetNewDoubleValue(value));
+    if (command == fMetaClearCmd)
+        fDetector->ClearMetaScan();
 
 }
 

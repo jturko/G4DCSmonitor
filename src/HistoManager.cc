@@ -31,12 +31,14 @@
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 #include "HistoManager.hh"
-
 #include "G4UnitsTable.hh"
+#include <cmath>
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-HistoManager::HistoManager()
+HistoManager::HistoManager(G4double worldXY, G4double cellSize)
+    : fWorldXY(worldXY),
+      fNBinsXY(std::max(1, (G4int)std::lround(worldXY / cellSize)))
 {
     Book();
 }
@@ -59,6 +61,14 @@ void HistoManager::Book()
     
     // force one histogram so empty files are still created
     idx = analysisManager->CreateH1("_dummy", "_dummy", 1, 0, 1);
+    
+    const G4double half = fWorldXY / 2.;
+    idx = analysisManager->CreateH2("h2_flux_xy_gamma",
+        "top-down gamma track-length flux map;x [mm];y [mm]",
+        fNBinsXY, -half, half, fNBinsXY, -half, half);
+    idx = analysisManager->CreateH2("h2_flux_xy_neutron",
+        "top-down neutron track-length flux map;x [mm];y [mm]",
+        fNBinsXY, -half, half, fNBinsXY, -half, half);
 
     // ntuple for primary particles
     idx = analysisManager->CreateNtuple("primary", "tree of primary particles");
@@ -87,6 +97,7 @@ void HistoManager::Book()
     analysisManager->CreateNtupleIColumn("det");    // 6
     analysisManager->CreateNtupleDColumn("weight"); // 7
     analysisManager->CreateNtupleDColumn("evtNb");  // 8
+    analysisManager->FinishNtuple();
     
     // ntuple for CASTOR 440 surface tracker
     idx = analysisManager->CreateNtuple("surfaceFlux", "tree of CASTOR 440 surface flux (particles leaving the cask)");
@@ -107,3 +118,13 @@ void HistoManager::Book()
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+void HistoManager::BookFluxMaps()
+{
+    // Optional top-down x-y flux/fluence maps (track-length estimator).
+    // A TH2 over x-y inherently integrates over the full world z extent (one z
+    // bin). H2 id 0 = gamma, id 1 = neutron. Axes are in internal length units
+    // (= mm), matching the positions filled in SteppingAction.
+    auto* analysisManager = G4AnalysisManager::Instance();
+}
+

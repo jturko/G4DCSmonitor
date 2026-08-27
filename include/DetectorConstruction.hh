@@ -192,6 +192,30 @@ class DetectorConstruction : public G4VUserDetectorConstruction
         G4ThreeVector SampleUniformGlobalPositionInFuel(G4int caskIndex,
                                                         G4int fuelIndex) const;
 
+        G4double GetWorldSize() const { return fWorldXYZ; }
+
+        // meta scan-labels, applied to SUBSEQUENTLY added detectors
+        void SetMetaScanPhi(G4double v) { fMetaScanPhiDeg = v; }   // deg
+        void SetMetaScanZ  (G4double v) { fMetaScanZmm    = v; }   // internal (mm)
+        void ClearMetaScan();
+
+        // global crystal centre of a plastic detector (post-normalisation)
+        G4ThreeVector GetPlasticCrystalPosition(G4int index) const;
+
+        struct DetMeta {
+            G4int         id;
+            G4String      type;            // "CLYC" | "plastic"
+            G4int         typeIndex;
+            G4String      placementMode;   // "frontFace" | "crystalCenter"
+            G4ThreeVector anchorPos;       // macro-set position
+            G4ThreeVector rotDeg;          // macro-set rotation (raw degrees)
+            G4ThreeVector crystalCenter;   // actual global crystal centre
+            G4double      scanPhiDeg;      // -9999 if unset
+            G4double      scanZmm;         // -9999 if unset
+        };
+        std::vector<DetMeta> BuildDetectorMeta() const;
+
+
     private:
         DetectorMessenger* fDetectorMessenger = nullptr;
 
@@ -237,6 +261,22 @@ class DetectorConstruction : public G4VUserDetectorConstruction
     private:
         void DefineMaterials();
         G4VPhysicalVolume* ConstructVolumes();
+
+        // meta bookkeeping (captured at add time, never mutated)
+        G4double fMetaScanPhiDeg = -9999.;
+        G4double fMetaScanZmm    = -9999.;
+
+        std::vector<G4ThreeVector> fCLYCAnchorPos;
+        std::vector<G4ThreeVector> fCLYCRotDeg;
+        std::vector<G4double>      fCLYCScanPhiDeg;
+        std::vector<G4double>      fCLYCScanZmm;
+
+        std::vector<G4ThreeVector> fPlasticAnchorPos;
+        std::vector<G4ThreeVector> fPlasticRotDeg;
+        std::vector<G4double>      fPlasticScanPhiDeg;
+        std::vector<G4double>      fPlasticScanZmm;
+
+
 };
 
 #endif

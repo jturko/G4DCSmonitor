@@ -49,6 +49,7 @@ class G4UIcmdWith3Vector;
 class G4UIcmdWith3VectorAndUnit;
 class G4UIcmdWithABool;
 class G4UIcmdWithAnInteger;
+class G4UIcmdWithADouble;
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
@@ -126,6 +127,12 @@ class DetectorMessenger : public G4UImessenger
     // hall
     std::map<G4UIcommand*, std::function<void(const G4String&)>> fHallActions;
     void BuildHallCommands();
+
+    // meta labels
+    G4UIdirectory*             fMetaDir           = nullptr;
+    G4UIcmdWithADouble*        fMetaSetScanPhiCmd = nullptr;
+    G4UIcmdWithADoubleAndUnit* fMetaSetScanZCmd   = nullptr;
+    G4UIcmdWithoutParameter*   fMetaClearCmd      = nullptr;
 
 
 };

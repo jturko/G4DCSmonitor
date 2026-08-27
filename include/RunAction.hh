@@ -76,6 +76,8 @@ class RunAction : public G4UserRunAction
     static std::atomic<G4bool> WritePrimaryTree;
     static std::atomic<G4bool> WritePrimaryTreeOnlyOnHit;
     static std::atomic<G4bool> WriteCASTOR440SurfaceFluxTree;
+    static std::atomic<G4bool> WriteFluxMap;
+
 
   private:
     DetectorConstruction* fDetector = nullptr;
@@ -89,6 +91,9 @@ class RunAction : public G4UserRunAction
 
     static std::once_flag fSurfaceSamplerOnce;
     
+    G4bool fFluxMapsBooked = true;   // per-instance guard for lazy flux-map booking
+
+
 };
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
