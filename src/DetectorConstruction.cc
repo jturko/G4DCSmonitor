@@ -335,6 +335,14 @@ void DetectorConstruction::AddCLYC()
     fCLYCRotations.push_back(rot);
     
     fCLYCPlaceByCrystalCenter.push_back(false); // Flag for default placement
+
+    // meta: preserve the macro-set anchor/rotation/scan labels
+    fCLYCAnchorPos.push_back(fPosition);
+    fCLYCRotDeg.push_back(fRotation);
+    fCLYCScanPhiDeg.push_back(fMetaScanPhiDeg);
+    fCLYCScanZmm.push_back(fMetaScanZmm);
+
+
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -385,6 +393,21 @@ void DetectorConstruction::SetCLYCPEPlugMaterialName(G4String val)  { if (!fCLYC
 
 //....oooOO0OOooo  Plastic (shadowed) detector  oooOO0OOooo....
 
+G4ThreeVector DetectorConstruction::GetPlasticCrystalPosition(G4int index) const
+{
+    if (index < 0 || index >= (G4int)fPlasticDetectors.size())
+        return G4ThreeVector();
+
+    // After ConstructVolumes(), fPlasticPositions[index] is the assembly origin;
+    // add the (rotated) local crystal-centre offset to recover the global
+    // crystal centre -- mirrors GetCLYCCrystalPosition().
+    G4ThreeVector globalOffset = fPlasticDetectors[index]->GetCrystalCenterLocal();
+    if (fPlasticRotations[index]) globalOffset.transform(*fPlasticRotations[index]);
+    return fPlasticPositions[index] + globalOffset;
+}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
 void DetectorConstruction::AddPlastic()
 {
     fPlasticDetectors.push_back(new GeometryPlastic());
@@ -395,6 +418,14 @@ void DetectorConstruction::AddPlastic()
     rot->rotateZ(fRotation.z()*M_PI/180.);
     fPlasticRotations.push_back(rot);
     fPlasticPlaceByCrystalCenter.push_back(false);
+
+    // meta: preserve the macro-set anchor/rotation/scan labels
+    fPlasticAnchorPos.push_back(fPosition);
+    fPlasticRotDeg.push_back(fRotation);
+    fPlasticScanPhiDeg.push_back(fMetaScanPhiDeg);
+    fPlasticScanZmm.push_back(fMetaScanZmm);
+    
+
 }
 
 void DetectorConstruction::AddPlasticByCrystalCenter()
@@ -402,6 +433,55 @@ void DetectorConstruction::AddPlasticByCrystalCenter()
     AddPlastic();
     fPlasticPlaceByCrystalCenter.back() = true;
 }
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+void DetectorConstruction::ClearMetaScan()
+{
+    fMetaScanPhiDeg = -9999.;
+    fMetaScanZmm    = -9999.;
+}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+std::vector<DetectorConstruction::DetMeta>
+DetectorConstruction::BuildDetectorMeta() const
+{
+    std::vector<DetMeta> rows;
+    G4int id = 0;
+
+    // CLYC first, then plastic -- exactly the ID order assigned in
+    // ConstructSDandField(), so meta.det_id matches hits.det.
+    for (size_t i = 0; i < fCLYCDetectors.size(); ++i) {
+        DetMeta m;
+        m.id            = id++;
+        m.type          = "CLYC";
+        m.typeIndex     = (G4int)i;
+        m.placementMode = fCLYCPlaceByCrystalCenter[i] ? "crystalCenter" : "frontFace";
+        m.anchorPos     = fCLYCAnchorPos[i];
+        m.rotDeg        = fCLYCRotDeg[i];
+        m.crystalCenter = GetCLYCCrystalPosition((G4int)i);
+        m.scanPhiDeg    = fCLYCScanPhiDeg[i];
+        m.scanZmm       = fCLYCScanZmm[i];
+        rows.push_back(m);
+    }
+    for (size_t i = 0; i < fPlasticDetectors.size(); ++i) {
+        DetMeta m;
+        m.id            = id++;
+        m.type          = "plastic";
+        m.typeIndex     = (G4int)i;
+        m.placementMode = fPlasticPlaceByCrystalCenter[i] ? "crystalCenter" : "frontFace";
+        m.anchorPos     = fPlasticAnchorPos[i];
+        m.rotDeg        = fPlasticRotDeg[i];
+        m.crystalCenter = GetPlasticCrystalPosition((G4int)i);
+        m.scanPhiDeg    = fPlasticScanPhiDeg[i];
+        m.scanZmm       = fPlasticScanZmm[i];
+        rows.push_back(m);
+    }
+    return rows;
+}
+
+
 
 #define PL fPlasticDetectors.back()
 #define IFPL if (!fPlasticDetectors.empty())

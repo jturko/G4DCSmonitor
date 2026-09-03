@@ -24,7 +24,7 @@
 #include "TROOT.h"                   // EnableImplicitMT / DisableImplicitMT / IsImplicitMTEnabled
 #include "TStopwatch.h"
 #include <thread>
-
+#include <limits>
 
 SurfaceFluxSampler& SurfaceFluxSampler::Instance()
 {
@@ -484,12 +484,36 @@ void SurfaceFluxSampler::StartRun(G4double measurement_time)
                     "Computed numPrimaries < 1; not starting a run.");
         return;
     }
-    if (numPrimaries >= 1e9) {
-        G4Exception("SurfaceFluxSampler::StartRun", "TooMany", FatalException,
-                    "More than 1e9 primaries requested; check inputs.");
-        return;
+
+
+    //if (numPrimaries >= 1e9) {
+    //    G4Exception("SurfaceFluxSampler::StartRun", "TooMany", FatalException,
+    //                "More than 1e9 primaries requested; check inputs.");
+    //    return;
+    //}
+    //const long long Nrun = static_cast<long long>(numPrimaries);
+    //G4UImanager::GetUIpointer()->ApplyCommand("/run/beamOn " + std::to_string(Nrun));
+    // /run/beamOn takes a G4int (32-bit signed), so the true ceiling on the
+    // number of events in ONE run is INT_MAX. If the physics-derived count
+    // exceeds that, clamp to INT_MAX and warn -- do NOT abort. A
+    // FatalException here would kill the whole process and lose every
+    // remaining run in the 72-run macro.
+    constexpr long long kMaxBeamOn =
+        static_cast<long long>(std::numeric_limits<G4int>::max());   // 2147483647
+
+    long long Nrun = static_cast<long long>(numPrimaries);
+    if (Nrun > kMaxBeamOn) {
+        G4ExceptionDescription ed;
+        ed << "Computed numPrimaries = " << numPrimaries
+           << " exceeds the /run/beamOn ceiling of " << kMaxBeamOn
+           << "; clamping to " << kMaxBeamOn << " for this run.";
+        G4Exception("SurfaceFluxSampler::StartRun", "ClampBeamOn",
+                    JustWarning, ed);
+        Nrun = kMaxBeamOn;
     }
-    const long long Nrun = static_cast<long long>(numPrimaries);
+
     G4UImanager::GetUIpointer()->ApplyCommand("/run/beamOn " + std::to_string(Nrun));
+
+
 }
 

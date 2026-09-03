@@ -41,12 +41,16 @@
 class HistoManager
 {
   public:
-    HistoManager();
+    HistoManager(G4double worldXY = 22000., G4double cellSize = 100.);
     ~HistoManager() = default;
+
+    void BookFluxMaps();
 
   private:
     void Book();
     G4String fFileName = "G4DCSmonitor";
+    G4double fWorldXY;
+    G4int    fNBinsXY;
 };
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

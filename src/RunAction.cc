@@ -61,6 +61,9 @@
 #include "TFile.h"
 #include "TROOT.h"
 
+#include "TTree.h"
+#include <cstring>
+
 #include <filesystem>   // C++17
 namespace fs = std::filesystem;
 
@@ -69,6 +72,7 @@ namespace fs = std::filesystem;
 std::atomic<G4bool> RunAction::WritePrimaryTree{false};
 std::atomic<G4bool> RunAction::WritePrimaryTreeOnlyOnHit{false};
 std::atomic<G4bool> RunAction::WriteCASTOR440SurfaceFluxTree{false};
+std::atomic<G4bool> RunAction::WriteFluxMap{true};
 
 std::once_flag RunAction::fSurfaceSamplerOnce;
 
@@ -77,7 +81,7 @@ std::once_flag RunAction::fSurfaceSamplerOnce;
 RunAction::RunAction(DetectorConstruction* det, PrimaryGeneratorAction* prim)
     : fDetector(det), fPrimary(prim), fProgBar(NULL)
 {
-    fHistoManager = new HistoManager();
+    fHistoManager = new HistoManager(fDetector->GetWorldSize());
     fRunMessenger = new RunMessenger(this);
 
 }
@@ -189,6 +193,76 @@ void RunAction::EndOfRunAction(const G4Run* run)
     G4AnalysisManager* analysisManager = G4AnalysisManager::Instance();
     analysisManager->Write();
     analysisManager->CloseFile();
+
+    // ------------------------------------------------------------------
+    // Self-describing detector metadata tree. Written ONCE per output file,
+    // on the MASTER only, AFTER the merged file has been closed. Reopening
+    // "UPDATE" and writing a plain TTree is deterministic and avoids all MT
+    // ntuple-merge ambiguity, giving exactly one meta row per det ID.
+    // ------------------------------------------------------------------
+    if (isMaster) {
+        G4String path = analysisManager->GetFileName();
+        if (path.size() < 5 || path.substr(path.size() - 5) != ".root")
+            path += ".root";
+
+        TFile fmeta(path.c_str(), "UPDATE");
+        if (!fmeta.IsZombie() && fmeta.Get("meta") == nullptr) {
+            const auto rows = fDetector->BuildDetectorMeta();
+
+            Int_t    det_id, det_index;
+            char     det_type[16], placement_mode[16];
+            Double_t anchor_x, anchor_y, anchor_z;
+            Double_t rot_x_deg, rot_y_deg, rot_z_deg;
+            Double_t crystal_x, crystal_y, crystal_z;
+            Double_t scan_phi_deg, scan_z_mm;
+
+            TTree meta("meta", "self-describing sensitive-detector metadata");
+            meta.Branch("det_id",         &det_id,         "det_id/I");
+            meta.Branch("det_type",        det_type,       "det_type/C");
+            meta.Branch("det_index",      &det_index,      "det_index/I");
+            meta.Branch("placement_mode",  placement_mode, "placement_mode/C");
+            meta.Branch("anchor_x_mm",    &anchor_x,       "anchor_x_mm/D");
+            meta.Branch("anchor_y_mm",    &anchor_y,       "anchor_y_mm/D");
+            meta.Branch("anchor_z_mm",    &anchor_z,       "anchor_z_mm/D");
+            meta.Branch("rot_x_deg",      &rot_x_deg,      "rot_x_deg/D");
+            meta.Branch("rot_y_deg",      &rot_y_deg,      "rot_y_deg/D");
+            meta.Branch("rot_z_deg",      &rot_z_deg,      "rot_z_deg/D");
+            meta.Branch("crystal_x_mm",   &crystal_x,      "crystal_x_mm/D");
+            meta.Branch("crystal_y_mm",   &crystal_y,      "crystal_y_mm/D");
+            meta.Branch("crystal_z_mm",   &crystal_z,      "crystal_z_mm/D");
+            meta.Branch("scan_phi_deg",   &scan_phi_deg,   "scan_phi_deg/D");
+            meta.Branch("scan_z_mm",      &scan_z_mm,      "scan_z_mm/D");
+
+            for (const auto& r : rows) {
+                det_id    = r.id;
+                det_index = r.typeIndex;
+                std::strncpy(det_type,       r.type.c_str(),          sizeof(det_type) - 1);
+                det_type[sizeof(det_type) - 1] = '\0';
+                std::strncpy(placement_mode, r.placementMode.c_str(), sizeof(placement_mode) - 1);
+                placement_mode[sizeof(placement_mode) - 1] = '\0';
+
+                anchor_x = r.anchorPos.x() / mm;
+                anchor_y = r.anchorPos.y() / mm;
+                anchor_z = r.anchorPos.z() / mm;
+                rot_x_deg = r.rotDeg.x();     // raw macro degrees
+                rot_y_deg = r.rotDeg.y();
+                rot_z_deg = r.rotDeg.z();
+                crystal_x = r.crystalCenter.x() / mm;
+                crystal_y = r.crystalCenter.y() / mm;
+                crystal_z = r.crystalCenter.z() / mm;
+                scan_phi_deg = r.scanPhiDeg;          // -9999 if unset
+                scan_z_mm    = r.scanZmm;             // already mm; -9999 if unset
+
+                meta.Fill();
+            }
+
+            fmeta.cd();
+            meta.Write("", TObject::kOverwrite);
+        }
+        fmeta.Close();
+    }
+
+
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

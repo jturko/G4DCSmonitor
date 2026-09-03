@@ -138,6 +138,31 @@ void SteppingAction::UserSteppingAction(const G4Step* aStep)
     //    aStep->GetTrack()->SetTrackStatus(fStopAndKill);
     //}
 
+    // Optional top-down x-y flux/fluence map (track-length estimator).
+    // Gated by the atomic flag -> when OFF the cost is one atomic load + one
+    // pid check per step. Weight is the pre-step biasing weight (== 1.0 in the
+    // surface-replay detector-response workflow, since biasing is off there,
+    // but kept for correctness if importance biasing is ever enabled).
+    if (RunAction::WriteFluxMap) {
+        const G4int pdg = particle->GetPDGEncoding();
+        if (pdg == 22 || pdg == 2112) {               // gammas and neutrons only
+            const G4double stepLen = aStep->GetStepLength();
+            if (stepLen > 0.) {
+                const G4ThreeVector p0 = aStep->GetPreStepPoint()->GetPosition();
+                const G4ThreeVector p1 = aStep->GetPostStepPoint()->GetPosition();
+                const G4double xm = 0.5 * (p0.x() + p1.x());   // step midpoint
+                const G4double ym = 0.5 * (p0.y() + p1.y());
+                const G4double w  = aStep->GetPreStepPoint()->GetWeight();
+                const G4int    h2id = (pdg == 22) ? 0 : 1;     // gamma=0, neutron=1
+                analysis->FillH2(h2id, xm, ym, stepLen * w);   // track-length x weight
+            }
+        }
+    }
+
+
+
+
+
     // CASTOR 440 surface flux tracker
     if(RunAction::WriteCASTOR440SurfaceFluxTree) {
         for(G4int c=0; c<fDetector->GetNumCASTOR440s(); c++) {
