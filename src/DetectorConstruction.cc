@@ -359,6 +359,12 @@ void DetectorConstruction::AddCLYCByCrystalCenter()
     fCLYCRotations.push_back(rot);
     
     fCLYCPlaceByCrystalCenter.push_back(true); // Flag for COM placement
+    
+    // meta: preserve the macro-set anchor/rotation/scan labels
+    fCLYCAnchorPos.push_back(fPosition);
+    fCLYCRotDeg.push_back(fRotation);
+    fCLYCScanPhiDeg.push_back(fMetaScanPhiDeg);
+    fCLYCScanZmm.push_back(fMetaScanZmm);
 }
 
 void DetectorConstruction::SetCLYCCrystalRadius(G4double val) { if (!fCLYCDetectors.empty()) fCLYCDetectors.back()->SetCrystalRadius(val); }
@@ -424,8 +430,6 @@ void DetectorConstruction::AddPlastic()
     fPlasticRotDeg.push_back(fRotation);
     fPlasticScanPhiDeg.push_back(fMetaScanPhiDeg);
     fPlasticScanZmm.push_back(fMetaScanZmm);
-    
-
 }
 
 void DetectorConstruction::AddPlasticByCrystalCenter()
@@ -452,32 +456,63 @@ DetectorConstruction::BuildDetectorMeta() const
 
     // CLYC first, then plastic -- exactly the ID order assigned in
     // ConstructSDandField(), so meta.det_id matches hits.det.
+    //for (size_t i = 0; i < fCLYCDetectors.size(); ++i) {
+    //    DetMeta m;
+    //    m.id            = id++;
+    //    m.type          = "CLYC";
+    //    m.typeIndex     = (G4int)i;
+    //    m.placementMode = fCLYCPlaceByCrystalCenter[i] ? "crystalCenter" : "frontFace";
+    //    m.anchorPos     = fCLYCAnchorPos[i];
+    //    m.rotDeg        = fCLYCRotDeg[i];
+    //    m.crystalCenter = GetCLYCCrystalPosition((G4int)i);
+    //    m.scanPhiDeg    = fCLYCScanPhiDeg[i];
+    //    m.scanZmm       = fCLYCScanZmm[i];
+    //    rows.push_back(m);
+    //}
+    //for (size_t i = 0; i < fPlasticDetectors.size(); ++i) {
+    //    DetMeta m;
+    //    m.id            = id++;
+    //    m.type          = "plastic";
+    //    m.typeIndex     = (G4int)i;
+    //    m.placementMode = fPlasticPlaceByCrystalCenter[i] ? "crystalCenter" : "frontFace";
+    //    m.anchorPos     = fPlasticAnchorPos[i];
+    //    m.rotDeg        = fPlasticRotDeg[i];
+    //    m.crystalCenter = GetPlasticCrystalPosition((G4int)i);
+    //    m.scanPhiDeg    = fPlasticScanPhiDeg[i];
+    //    m.scanZmm       = fPlasticScanZmm[i];
+    //    rows.push_back(m);
+    //}
+
     for (size_t i = 0; i < fCLYCDetectors.size(); ++i) {
         DetMeta m;
         m.id            = id++;
         m.type          = "CLYC";
         m.typeIndex     = (G4int)i;
-        m.placementMode = fCLYCPlaceByCrystalCenter[i] ? "crystalCenter" : "frontFace";
-        m.anchorPos     = fCLYCAnchorPos[i];
-        m.rotDeg        = fCLYCRotDeg[i];
+        m.placementMode = (i < fCLYCPlaceByCrystalCenter.size() && fCLYCPlaceByCrystalCenter[i])
+                          ? "crystalCenter" : "frontFace";
+        m.anchorPos     = (i < fCLYCAnchorPos.size())  ? fCLYCAnchorPos[i]  : G4ThreeVector();
+        m.rotDeg        = (i < fCLYCRotDeg.size())     ? fCLYCRotDeg[i]     : G4ThreeVector();
         m.crystalCenter = GetCLYCCrystalPosition((G4int)i);
-        m.scanPhiDeg    = fCLYCScanPhiDeg[i];
-        m.scanZmm       = fCLYCScanZmm[i];
+        m.scanPhiDeg    = (i < fCLYCScanPhiDeg.size()) ? fCLYCScanPhiDeg[i] : -9999.;
+        m.scanZmm       = (i < fCLYCScanZmm.size())    ? fCLYCScanZmm[i]    : -9999.;
         rows.push_back(m);
     }
     for (size_t i = 0; i < fPlasticDetectors.size(); ++i) {
         DetMeta m;
         m.id            = id++;
-        m.type          = "plastic";
+        m.type          = "Plastic";
         m.typeIndex     = (G4int)i;
-        m.placementMode = fPlasticPlaceByCrystalCenter[i] ? "crystalCenter" : "frontFace";
-        m.anchorPos     = fPlasticAnchorPos[i];
-        m.rotDeg        = fPlasticRotDeg[i];
+        m.placementMode = (i < fPlasticPlaceByCrystalCenter.size() && fPlasticPlaceByCrystalCenter[i])
+                          ? "crystalCenter" : "frontFace";
+        m.anchorPos     = (i < fPlasticAnchorPos.size())  ? fPlasticAnchorPos[i]  : G4ThreeVector();
+        m.rotDeg        = (i < fPlasticRotDeg.size())     ? fPlasticRotDeg[i]     : G4ThreeVector();
         m.crystalCenter = GetPlasticCrystalPosition((G4int)i);
-        m.scanPhiDeg    = fPlasticScanPhiDeg[i];
-        m.scanZmm       = fPlasticScanZmm[i];
+        m.scanPhiDeg    = (i < fPlasticScanPhiDeg.size()) ? fPlasticScanPhiDeg[i] : -9999.;
+        m.scanZmm       = (i < fPlasticScanZmm.size())    ? fPlasticScanZmm[i]    : -9999.;
         rows.push_back(m);
     }
+
+
     return rows;
 }
 
