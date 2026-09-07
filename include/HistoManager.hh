@@ -41,7 +41,7 @@
 class HistoManager
 {
   public:
-    HistoManager(G4double worldXY = 22000., G4double cellSize = 100.);
+    HistoManager(G4double worldXY = 22000., G4double cellSize = 25.);
     ~HistoManager() = default;
 
     void BookFluxMaps();

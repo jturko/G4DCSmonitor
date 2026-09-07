@@ -38,6 +38,7 @@
 
 #include "GeometryCLYC.hh"
 #include "GeometryHemiShield.hh"
+#include "GeometryHemiPanel.hh"
 #include "GeometryPlastic.hh"
 #include "GeometryCASTOR440.hh"
 #include "GeometryHall.hh"
@@ -121,6 +122,10 @@ DetectorConstruction::~DetectorConstruction()
 
     for (auto h : fHallDetectors) delete h;
     for (auto r : fHallRotations) delete r;
+
+    for(auto h : fHemiPanelDetectors) delete h;
+    for(auto h : fHemiPanelRotations) delete h;
+
 
 }
 
@@ -251,6 +256,18 @@ G4VPhysicalVolume* DetectorConstruction::ConstructVolumes()
         fHallDetectors[i]->Build();
         fHallDetectors[i]->PlaceDetector(fLWorld, fHallPositions[i],
                                          fHallRotations[i], i);
+    }
+
+    for (size_t i = 0; i < fHemiPanelDetectors.size(); ++i) {
+        fHemiPanelDetectors[i]->Build();
+
+        G4ThreeVector localAnchor  = fHemiPanelDetectors[i]->GetCrystalAnchorLocal();
+        G4ThreeVector globalOffset = localAnchor;
+        if (fHemiPanelRotations[i]) globalOffset.transform(*fHemiPanelRotations[i]);
+        fHemiPanelPositions[i] -= globalOffset;
+
+        fHemiPanelDetectors[i]->PlaceDetector(fLWorld, fHemiPanelPositions[i],
+                                              fHemiPanelRotations[i], i);
     }
 
 
@@ -648,4 +665,36 @@ void DetectorConstruction::SetHallWallMaterialName(G4String v)    { IFHALL HALL-
 void DetectorConstruction::SetHallCeilingMaterialName(G4String v) { IFHALL HALL->SetCeilingMaterialName(v); }
 #undef HALL
 #undef IFHALL
+
+void DetectorConstruction::AddHemiPanel()
+{
+    fHemiPanelDetectors.push_back(new GeometryHemiPanel());
+    fHemiPanelPositions.push_back(fPosition);
+
+    G4RotationMatrix* rot = new G4RotationMatrix();
+    rot->rotateX(fRotation.x()*M_PI/180.);
+    rot->rotateY(fRotation.y()*M_PI/180.);
+    rot->rotateZ(fRotation.z()*M_PI/180.);
+    fHemiPanelRotations.push_back(rot);
+}
+
+#define HP   fHemiPanelDetectors.back()
+#define IFHP if (!fHemiPanelDetectors.empty())
+void DetectorConstruction::SetHemiPanelSphereRadius(G4double v)   { IFHP HP->SetSphereRadius(v); }
+void DetectorConstruction::SetHemiPanelNumPanels(G4int v)         { IFHP HP->SetNumPanels(v); }
+void DetectorConstruction::SetHemiPanelPanelThickness(G4double v) { IFHP HP->SetPanelThickness(v); }
+void DetectorConstruction::SetHemiPanelPanelGap(G4double v)       { IFHP HP->SetPanelGap(v); }
+void DetectorConstruction::SetHemiPanelPanelMinWall(G4double v)   { IFHP HP->SetPanelMinWall(v); }
+void DetectorConstruction::SetHemiPanelCavityRadius(G4double v)    { IFHP HP->SetCavityRadius(v); }
+void DetectorConstruction::SetHemiPanelGamma1Thickness(G4double v) { IFHP HP->SetGamma1Thickness(v); }
+void DetectorConstruction::SetHemiPanelGamma2Thickness(G4double v) { IFHP HP->SetGamma2Thickness(v); }
+void DetectorConstruction::SetHemiPanelMetalClearance(G4double v)  { IFHP HP->SetMetalClearance(v); }
+void DetectorConstruction::SetHemiPanelBoreRadius(G4double v)      { IFHP HP->SetBoreRadius(v); }
+void DetectorConstruction::SetHemiPanelBoreOffsetY(G4double v)     { IFHP HP->SetBoreOffsetY(v); }
+void DetectorConstruction::SetHemiPanelBoronMassFraction(G4double v){ IFHP HP->SetBoronMassFraction(v); }
+void DetectorConstruction::SetHemiPanelGamma1MaterialName(G4String v){ IFHP HP->SetGamma1MaterialName(v); }
+void DetectorConstruction::SetHemiPanelGamma2MaterialName(G4String v){ IFHP HP->SetGamma2MaterialName(v); }
+void DetectorConstruction::SetHemiPanelPEMaterialName(G4String v)  { IFHP HP->SetPEMaterialName(v); }
+#undef HP
+#undef IFHP
 
