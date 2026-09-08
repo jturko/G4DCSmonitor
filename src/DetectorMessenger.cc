@@ -160,9 +160,14 @@ DetectorMessenger::DetectorMessenger(DetectorConstruction* Det) : fDetector(Det)
 
     // HemiShield
     BuildHemiShieldCommands();
-    
+ 
+    BuildHemiPanelCommands();     
+
     // Experimental hall
     BuildHallCommands();
+
+    BuildCADCommands();
+
 
     // meta labels
     fMetaDir = new G4UIdirectory("/dcs-monitor/det/meta/");
@@ -245,9 +250,13 @@ DetectorMessenger::~DetectorMessenger()
 
     // HemiShield
     for (auto& kv : fHemiShieldActions) delete kv.first;
-    
+
+    for (auto& kv : fHemiPanelActions) delete kv.first;     
+
     // Experimental hall
     for (auto& kv : fHallActions) delete kv.first;
+
+    for (auto& kv : fCADActions) delete kv.first;
 
     delete fMetaSetScanPhiCmd;
     delete fMetaSetScanZCmd;
@@ -326,11 +335,23 @@ void DetectorMessenger::SetNewValue(G4UIcommand* command, G4String value)
         if (it != fHemiShieldActions.end()) { it->second(value); return; }
     }
 
+    // HemiPanel
+    {
+        auto it = fHemiPanelActions.find(command);
+        if (it != fHemiPanelActions.end()) { it->second(value); return; }
+    }
+
     // Experimental hall
     {
         auto it = fHallActions.find(command);
         if (it != fHallActions.end()) { it->second(value); return; }
     }
+
+    {
+        auto it = fCADActions.find(command);
+        if (it != fCADActions.end()) { it->second(value); return; }
+    }
+
 
     if (command == fMetaSetScanPhiCmd)
         fDetector->SetMetaScanPhi(fMetaSetScanPhiCmd->GetNewDoubleValue(value));
@@ -509,5 +530,84 @@ void DetectorMessenger::BuildHallCommands()
     addStr("setFloorMaterial",   [d](const G4String& v){ d->SetHallFloorMaterialName(v); });
     addStr("setWallMaterial",    [d](const G4String& v){ d->SetHallWallMaterialName(v); });
     addStr("setCeilingMaterial", [d](const G4String& v){ d->SetHallCeilingMaterialName(v); });
+}
+
+void DetectorMessenger::BuildHemiPanelCommands()
+{
+    const G4String p = "/dcs-monitor/det/hemipanel/";
+    DetectorConstruction* d = fDetector;
+
+    auto addVoid = [&](const G4String& nm, std::function<void()> fn){
+        auto* c = new G4UIcmdWithoutParameter((p+nm).c_str(), this);
+        c->AvailableForStates(G4State_PreInit);
+        fHemiPanelActions[c] = [fn](const G4String&){ fn(); };
+    };
+    auto addLen = [&](const G4String& nm, std::function<void(G4double)> fn){
+        auto* c = new G4UIcmdWithADoubleAndUnit((p+nm).c_str(), this);
+        c->SetDefaultUnit("cm");
+        c->AvailableForStates(G4State_PreInit);
+        fHemiPanelActions[c] = [c,fn](const G4String& v){ fn(c->GetNewDoubleValue(v)); };
+    };
+    auto addInt = [&](const G4String& nm, std::function<void(G4int)> fn){
+        auto* c = new G4UIcmdWithAnInteger((p+nm).c_str(), this);
+        c->AvailableForStates(G4State_PreInit);
+        fHemiPanelActions[c] = [c,fn](const G4String& v){ fn(c->GetNewIntValue(v)); };
+    };
+    auto addNum = [&](const G4String& nm, std::function<void(G4double)> fn){
+        auto* c = new G4UIcmdWithADouble((p+nm).c_str(), this);   // unitless
+        c->AvailableForStates(G4State_PreInit);
+        fHemiPanelActions[c] = [c,fn](const G4String& v){ fn(c->GetNewDoubleValue(v)); };
+    };
+    auto addStr = [&](const G4String& nm, std::function<void(const G4String&)> fn){
+        auto* c = new G4UIcmdWithAString((p+nm).c_str(), this);
+        c->AvailableForStates(G4State_PreInit);
+        fHemiPanelActions[c] = [fn](const G4String& v){ fn(v); };
+    };
+
+    addVoid("add",                  [d](){ d->AddHemiPanel(); });
+
+    // PE octagonal-panel dome
+    addLen ("setSphereRadius",      [d](G4double v){ d->SetHemiPanelSphereRadius(v); });
+    addInt ("setNumPanels",         [d](G4int v){    d->SetHemiPanelNumPanels(v); });
+    addLen ("setPanelThickness",    [d](G4double v){ d->SetHemiPanelPanelThickness(v); });
+    addLen ("setPanelGap",          [d](G4double v){ d->SetHemiPanelPanelGap(v); });      // glue allowance
+    addLen ("setPanelMinWall",      [d](G4double v){ d->SetHemiPanelPanelMinWall(v); });
+
+    // two-layer metal gamma shield
+    addLen ("setCavityRadius",      [d](G4double v){ d->SetHemiPanelCavityRadius(v); });
+    addLen ("setGamma1Thickness",   [d](G4double v){ d->SetHemiPanelGamma1Thickness(v); });
+    addLen ("setGamma2Thickness",   [d](G4double v){ d->SetHemiPanelGamma2Thickness(v); });
+    addLen ("setMetalClearance",    [d](G4double v){ d->SetHemiPanelMetalClearance(v); }); // glue allowance
+
+    // detector bore
+    addLen ("setBoreRadius",        [d](G4double v){ d->SetHemiPanelBoreRadius(v); });
+    addLen ("setBoreOffsetY",       [d](G4double v){ d->SetHemiPanelBoreOffsetY(v); });
+
+    // composition / materials
+    addNum ("setBoronMassFraction", [d](G4double v){ d->SetHemiPanelBoronMassFraction(v); }); // 0..1
+    addStr ("setGamma1Material",    [d](const G4String& v){ d->SetHemiPanelGamma1MaterialName(v); });
+    addStr ("setGamma2Material",    [d](const G4String& v){ d->SetHemiPanelGamma2MaterialName(v); });
+    addStr ("setPEMaterial",        [d](const G4String& v){ d->SetHemiPanelPEMaterialName(v); });
+}
+
+void DetectorMessenger::BuildCADCommands()
+{
+    const G4String p = "/dcs-monitor/det/cad/";
+    DetectorConstruction* d = fDetector;
+
+    auto addVoid = [&](const G4String& nm, std::function<void()> fn){
+        auto* c = new G4UIcmdWithoutParameter((p+nm).c_str(), this);
+        c->AvailableForStates(G4State_PreInit);
+        fCADActions[c] = [fn](const G4String&){ fn(); };
+    };
+    auto addStr = [&](const G4String& nm, std::function<void(const G4String&)> fn){
+        auto* c = new G4UIcmdWithAString((p+nm).c_str(), this);
+        c->AvailableForStates(G4State_PreInit);
+        fCADActions[c] = [fn](const G4String& v){ fn(v); };
+    };
+
+    addStr ("setFile",       [d](const G4String& v){ d->SetCADFileName(v); });
+    addStr ("setVolumeName", [d](const G4String& v){ d->SetCADVolumeName(v); });
+    addVoid("add",           [d](){ d->AddCAD(); });
 }
 

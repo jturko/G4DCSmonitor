@@ -12,9 +12,11 @@ class G4Material;
 class DetectorMessenger;
 class GeometryCLYC;
 class GeometryHemiShield;
+class GeometryHemiPanel;     
 class GeometryPlastic;
 class GeometryCASTOR440;
 class GeometryHall;
+class GeometryCAD;     
 
 class DetectorConstruction : public G4VUserDetectorConstruction
 {
@@ -165,6 +167,29 @@ class DetectorConstruction : public G4VUserDetectorConstruction
         void SetHallWallMaterialName(G4String v);
         void SetHallCeilingMaterialName(G4String v);
 
+        // panel hemishield
+        void AddHemiPanel();
+        void SetHemiPanelSphereRadius(G4double v);
+        void SetHemiPanelNumPanels(G4int v);
+        void SetHemiPanelPanelThickness(G4double v);
+        void SetHemiPanelPanelGap(G4double v);
+        void SetHemiPanelPanelMinWall(G4double v);
+        void SetHemiPanelCavityRadius(G4double v);
+        void SetHemiPanelGamma1Thickness(G4double v);
+        void SetHemiPanelGamma2Thickness(G4double v);
+        void SetHemiPanelMetalClearance(G4double v);
+        void SetHemiPanelBoreRadius(G4double v);
+        void SetHemiPanelBoreOffsetY(G4double v);
+        void SetHemiPanelBoronMassFraction(G4double v);
+        void SetHemiPanelGamma1MaterialName(G4String v);
+        void SetHemiPanelGamma2MaterialName(G4String v);
+        void SetHemiPanelPEMaterialName(G4String v);
+
+        // CAD import
+        void AddCAD();
+        void SetCADFileName(G4String v)   { fCADFileName   = v; }
+        void SetCADVolumeName(G4String v) { fCADVolumeName = v; }
+    
 
         G4int GetNumCASTOR440s() const { return fCASTOR440Detectors.size(); }
         G4ThreeVector     GetCASTOR440Position(G4int index) const { return fCASTOR440Positions[index]; }
@@ -275,6 +300,17 @@ class DetectorConstruction : public G4VUserDetectorConstruction
         std::vector<G4ThreeVector> fPlasticRotDeg;
         std::vector<G4double>      fPlasticScanPhiDeg;
         std::vector<G4double>      fPlasticScanZmm;
+    
+
+        std::vector<GeometryHemiPanel*>   fHemiPanelDetectors;
+        std::vector<G4ThreeVector>        fHemiPanelPositions;
+        std::vector<G4RotationMatrix*>    fHemiPanelRotations;
+
+        std::vector<GeometryCAD*>       fCADDetectors;
+        std::vector<G4ThreeVector>      fCADPositions;
+        std::vector<G4RotationMatrix*>  fCADRotations;
+        G4String                        fCADFileName   = "/home/turko46/gdml/test_gdml_file.gdml";
+        G4String                        fCADVolumeName = "test_part";
 
 
 };
