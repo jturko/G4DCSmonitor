@@ -132,6 +132,9 @@ class DetectorMessenger : public G4UImessenger
     std::map<G4UIcommand*, std::function<void(const G4String&)>> fHemiPanelActions;
     void BuildHemiPanelCommands();
 
+    // CAD
+    std::map<G4UIcommand*, std::function<void(const G4String&)>> fCADActions;
+    void BuildCADCommands();
 
     // meta labels
     G4UIdirectory*             fMetaDir           = nullptr;

@@ -16,6 +16,7 @@ class GeometryHemiPanel;
 class GeometryPlastic;
 class GeometryCASTOR440;
 class GeometryHall;
+class GeometryCAD;     
 
 class DetectorConstruction : public G4VUserDetectorConstruction
 {
@@ -184,6 +185,10 @@ class DetectorConstruction : public G4VUserDetectorConstruction
         void SetHemiPanelGamma2MaterialName(G4String v);
         void SetHemiPanelPEMaterialName(G4String v);
 
+        // CAD import
+        void AddCAD();
+        void SetCADFileName(G4String v)   { fCADFileName   = v; }
+        void SetCADVolumeName(G4String v) { fCADVolumeName = v; }
     
 
         G4int GetNumCASTOR440s() const { return fCASTOR440Detectors.size(); }
@@ -301,6 +306,11 @@ class DetectorConstruction : public G4VUserDetectorConstruction
         std::vector<G4ThreeVector>        fHemiPanelPositions;
         std::vector<G4RotationMatrix*>    fHemiPanelRotations;
 
+        std::vector<GeometryCAD*>       fCADDetectors;
+        std::vector<G4ThreeVector>      fCADPositions;
+        std::vector<G4RotationMatrix*>  fCADRotations;
+        G4String                        fCADFileName   = "/home/turko46/gdml/test_gdml_file.gdml";
+        G4String                        fCADVolumeName = "test_part";
 
 
 };

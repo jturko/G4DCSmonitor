@@ -166,6 +166,9 @@ DetectorMessenger::DetectorMessenger(DetectorConstruction* Det) : fDetector(Det)
     // Experimental hall
     BuildHallCommands();
 
+    BuildCADCommands();
+
+
     // meta labels
     fMetaDir = new G4UIdirectory("/dcs-monitor/det/meta/");
     fMetaDir->SetGuidance("optional self-describing detector metadata labels");
@@ -252,6 +255,8 @@ DetectorMessenger::~DetectorMessenger()
 
     // Experimental hall
     for (auto& kv : fHallActions) delete kv.first;
+
+    for (auto& kv : fCADActions) delete kv.first;
 
     delete fMetaSetScanPhiCmd;
     delete fMetaSetScanZCmd;
@@ -341,6 +346,12 @@ void DetectorMessenger::SetNewValue(G4UIcommand* command, G4String value)
         auto it = fHallActions.find(command);
         if (it != fHallActions.end()) { it->second(value); return; }
     }
+
+    {
+        auto it = fCADActions.find(command);
+        if (it != fCADActions.end()) { it->second(value); return; }
+    }
+
 
     if (command == fMetaSetScanPhiCmd)
         fDetector->SetMetaScanPhi(fMetaSetScanPhiCmd->GetNewDoubleValue(value));
@@ -577,5 +588,26 @@ void DetectorMessenger::BuildHemiPanelCommands()
     addStr ("setGamma1Material",    [d](const G4String& v){ d->SetHemiPanelGamma1MaterialName(v); });
     addStr ("setGamma2Material",    [d](const G4String& v){ d->SetHemiPanelGamma2MaterialName(v); });
     addStr ("setPEMaterial",        [d](const G4String& v){ d->SetHemiPanelPEMaterialName(v); });
+}
+
+void DetectorMessenger::BuildCADCommands()
+{
+    const G4String p = "/dcs-monitor/det/cad/";
+    DetectorConstruction* d = fDetector;
+
+    auto addVoid = [&](const G4String& nm, std::function<void()> fn){
+        auto* c = new G4UIcmdWithoutParameter((p+nm).c_str(), this);
+        c->AvailableForStates(G4State_PreInit);
+        fCADActions[c] = [fn](const G4String&){ fn(); };
+    };
+    auto addStr = [&](const G4String& nm, std::function<void(const G4String&)> fn){
+        auto* c = new G4UIcmdWithAString((p+nm).c_str(), this);
+        c->AvailableForStates(G4State_PreInit);
+        fCADActions[c] = [fn](const G4String& v){ fn(v); };
+    };
+
+    addStr ("setFile",       [d](const G4String& v){ d->SetCADFileName(v); });
+    addStr ("setVolumeName", [d](const G4String& v){ d->SetCADVolumeName(v); });
+    addVoid("add",           [d](){ d->AddCAD(); });
 }
 

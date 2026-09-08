@@ -42,6 +42,8 @@
 #include "GeometryPlastic.hh"
 #include "GeometryCASTOR440.hh"
 #include "GeometryHall.hh"
+#include "GeometryCAD.hh"
+
 
 #include "G4Box.hh"
 #include "G4Tubs.hh"
@@ -63,6 +65,8 @@
 #include "G4SDManager.hh"
 
 #include "GeometryParallelBiasing.hh"
+
+#include "G4GDMLParser.hh"
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
@@ -126,6 +130,8 @@ DetectorConstruction::~DetectorConstruction()
     for(auto h : fHemiPanelDetectors) delete h;
     for(auto h : fHemiPanelRotations) delete h;
 
+    for (auto c : fCADDetectors) delete c;
+    for (auto r : fCADRotations) delete r;
 
 }
 
@@ -269,6 +275,33 @@ G4VPhysicalVolume* DetectorConstruction::ConstructVolumes()
         fHemiPanelDetectors[i]->PlaceDetector(fLWorld, fHemiPanelPositions[i],
                                               fHemiPanelRotations[i], i);
     }
+
+
+    // // CAD imports (GDML)
+    // for (size_t i = 0; i < fCADDetectors.size(); ++i) {
+    //     fCADDetectors[i]->Build();
+    //     fCADDetectors[i]->PlaceDetector(fLWorld, fCADPositions[i],
+    //                                     fCADRotations[i], i);
+    // }
+    // CAD imports (GDML): read each unique file ONCE, then place all volumes
+    {
+        std::set<G4String> readFiles;
+        for (size_t i = 0; i < fCADDetectors.size(); ++i) {
+            const G4String f = fCADDetectors[i]->GetFileName();
+            if (readFiles.insert(f).second) {
+                G4GDMLParser parser;
+                parser.Read(f, /*validate=*/false);   // offline-safe (CERN xsd)
+            }
+            fCADDetectors[i]->Build();                 // now just GetVolume + vis
+            fCADDetectors[i]->PlaceDetector(fLWorld, fCADPositions[i],
+                                            fCADRotations[i], i);
+        }
+    }
+
+
+
+
+
 
 
 
@@ -697,4 +730,21 @@ void DetectorConstruction::SetHemiPanelGamma2MaterialName(G4String v){ IFHP HP->
 void DetectorConstruction::SetHemiPanelPEMaterialName(G4String v)  { IFHP HP->SetPEMaterialName(v); }
 #undef HP
 #undef IFHP
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+void DetectorConstruction::AddCAD()
+{
+    auto* cad = new GeometryCAD();
+    cad->SetFileName(fCADFileName);
+    cad->SetVolumeName(fCADVolumeName);
+    fCADDetectors.push_back(cad);
+    fCADPositions.push_back(fPosition);
+
+    G4RotationMatrix* rot = new G4RotationMatrix();
+    rot->rotateX(fRotation.x()*M_PI/180.);
+    rot->rotateY(fRotation.y()*M_PI/180.);
+    rot->rotateZ(fRotation.z()*M_PI/180.);
+    fCADRotations.push_back(rot);
+}
 
