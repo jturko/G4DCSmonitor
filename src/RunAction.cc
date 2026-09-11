@@ -113,9 +113,9 @@ void RunAction::BeginOfRunAction(const G4Run* run)
     // print mass table
     //
     //if (IsMaster() && (run->GetRunID() == 0)) {
-        MakeMassTable();
+        //MakeMassTable();
         //G4Random::showEngineStatus();
-        G4cout << *(G4Material::GetMaterialTable()) << G4endl;
+        //G4cout << *(G4Material::GetMaterialTable()) << G4endl;
     //}
 
     // show Rndm status

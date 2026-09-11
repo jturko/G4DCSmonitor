@@ -27,6 +27,8 @@ class GeometryCAD
 
     G4LogicalVolume* GetCADLog() const { return fCADLog; }
 
+    static void DumpGDMLNames(const G4String& file);
+
   private:
     G4String         fFileName   = "test_part.gdml";
     G4String         fVolumeName = "test_part";

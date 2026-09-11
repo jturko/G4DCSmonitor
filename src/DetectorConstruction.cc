@@ -284,21 +284,47 @@ G4VPhysicalVolume* DetectorConstruction::ConstructVolumes()
     //                                     fCADRotations[i], i);
     // }
     // CAD imports (GDML): read each unique file ONCE, then place all volumes
+    // {
+    //     std::set<G4String> readFiles;
+    //     for (size_t i = 0; i < fCADDetectors.size(); ++i) {
+    //         const G4String f = fCADDetectors[i]->GetFileName();
+    //         if (readFiles.insert(f).second) {
+    //             G4GDMLParser parser;
+    //             parser.Read(f, /*validate=*/false);   // offline-safe (CERN xsd)
+    //         }
+    //         fCADDetectors[i]->Build();                 // now just GetVolume + vis
+    //         fCADDetectors[i]->PlaceDetector(fLWorld, fCADPositions[i],
+    //                                         fCADRotations[i], i);
+    //     }
+    // }
+    // CAD imports (GDML): read each unique file ONCE, then place all volumes
     {
         std::set<G4String> readFiles;
         for (size_t i = 0; i < fCADDetectors.size(); ++i) {
             const G4String f = fCADDetectors[i]->GetFileName();
             if (readFiles.insert(f).second) {
+                GeometryCAD::DumpGDMLNames(f); 
+
                 G4GDMLParser parser;
                 parser.Read(f, /*validate=*/false);   // offline-safe (CERN xsd)
+
+                // ---- list everything this file registered ----
+                auto* lvStore = G4LogicalVolumeStore::GetInstance();
+                auto* solStore = G4SolidStore::GetInstance();
+                G4cout << "\n===== GDML contents of '" << f << "' =====" << G4endl;
+                G4cout << "  Logical volumes (" << lvStore->size() << "):" << G4endl;
+                for (auto* lv : *lvStore)
+                    if (lv) G4cout << "     LV    : " << lv->GetName() << G4endl;
+                G4cout << "  Solids (" << solStore->size() << "):" << G4endl;
+                for (auto* s : *solStore)
+                    if (s)  G4cout << "     solid : " << s->GetName() << G4endl;
+                G4cout << "=============================================\n" << G4endl;
             }
             fCADDetectors[i]->Build();                 // now just GetVolume + vis
             fCADDetectors[i]->PlaceDetector(fLWorld, fCADPositions[i],
                                             fCADRotations[i], i);
         }
     }
-
-
 
 
 
