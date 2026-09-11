@@ -298,34 +298,79 @@ G4VPhysicalVolume* DetectorConstruction::ConstructVolumes()
     //     }
     // }
     // CAD imports (GDML): read each unique file ONCE, then place all volumes
+    //{
+    //    std::set<G4String> readFiles;
+    //    for (size_t i = 0; i < fCADDetectors.size(); ++i) {
+    //        const G4String f = fCADDetectors[i]->GetFileName();
+    //        if (readFiles.insert(f).second) {
+    //            GeometryCAD::DumpGDMLNames(f); 
+
+    //            G4GDMLParser parser;
+    //            parser.Read(f, /*validate=*/false);   // offline-safe (CERN xsd)
+
+    //            // ---- list everything this file registered ----
+    //            auto* lvStore = G4LogicalVolumeStore::GetInstance();
+    //            auto* solStore = G4SolidStore::GetInstance();
+    //            G4cout << "\n===== GDML contents of '" << f << "' =====" << G4endl;
+    //            G4cout << "  Logical volumes (" << lvStore->size() << "):" << G4endl;
+    //            for (auto* lv : *lvStore)
+    //                if (lv) G4cout << "     LV    : " << lv->GetName() << G4endl;
+    //            G4cout << "  Solids (" << solStore->size() << "):" << G4endl;
+    //            for (auto* s : *solStore)
+    //                if (s)  G4cout << "     solid : " << s->GetName() << G4endl;
+    //            G4cout << "=============================================\n" << G4endl;
+    //        }
+    //        fCADDetectors[i]->Build();                 // now just GetVolume + vis
+    //        fCADDetectors[i]->PlaceDetector(fLWorld, fCADPositions[i],
+    //                                        fCADRotations[i], i);
+    //    }
+    //}
+
+    // CAD imports (GDML): read each unique file ONCE, then place the DAUGHTERS of
+    // the GDML 'World' directly into fLWorld -- discarding the GDML's own vacuum
+    // world box. Each GUIMesh part carries center/identity, so placing it with the
+    // macro position/rotation lands it at its correct absolute location.
     {
         std::set<G4String> readFiles;
         for (size_t i = 0; i < fCADDetectors.size(); ++i) {
             const G4String f = fCADDetectors[i]->GetFileName();
-            if (readFiles.insert(f).second) {
-                GeometryCAD::DumpGDMLNames(f); 
-
-                G4GDMLParser parser;
-                parser.Read(f, /*validate=*/false);   // offline-safe (CERN xsd)
-
-                // ---- list everything this file registered ----
-                auto* lvStore = G4LogicalVolumeStore::GetInstance();
-                auto* solStore = G4SolidStore::GetInstance();
-                G4cout << "\n===== GDML contents of '" << f << "' =====" << G4endl;
-                G4cout << "  Logical volumes (" << lvStore->size() << "):" << G4endl;
-                for (auto* lv : *lvStore)
-                    if (lv) G4cout << "     LV    : " << lv->GetName() << G4endl;
-                G4cout << "  Solids (" << solStore->size() << "):" << G4endl;
-                for (auto* s : *solStore)
-                    if (s)  G4cout << "     solid : " << s->GetName() << G4endl;
-                G4cout << "=============================================\n" << G4endl;
+            if (!readFiles.insert(f).second) continue;   // handle each unique file once
+    
+            GeometryCAD::DumpGDMLNames(f);
+    
+            G4GDMLParser parser;
+            parser.Read(f, /*validate=*/false);   // offline-safe (CERN xsd)
+    
+            // The wrapper volume to unpack (fCADVolumeName == "World" for GUIMesh output).
+            auto* gdmlMother =
+                G4LogicalVolumeStore::GetInstance()->GetVolume(fCADVolumeName, false);
+            if (!gdmlMother) {
+                G4ExceptionDescription ed;
+                ed << "GDML wrapper volume \"" << fCADVolumeName
+                   << "\" not found in " << f << ".";
+                G4Exception("DetectorConstruction::ConstructVolumes",
+                            "NoCADWorld", FatalException, ed);
             }
-            fCADDetectors[i]->Build();                 // now just GetVolume + vis
-            fCADDetectors[i]->PlaceDetector(fLWorld, fCADPositions[i],
-                                            fCADRotations[i], i);
+    
+            const G4int nD = gdmlMother->GetNoDaughters();
+            G4cout << " -> CAD: unpacking " << nD << " daughters of '"
+                   << fCADVolumeName << "' from " << f << " into fLWorld." << G4endl;
+    
+            for (G4int j = 0; j < nD; ++j) {
+                G4VPhysicalVolume* dpv = gdmlMother->GetDaughter(j);
+                G4LogicalVolume*   dlv = dpv->GetLogicalVolume();
+    
+                dlv->SetVisAttributes(
+                    new G4VisAttributes(true, G4Colour(0., 0.7, 0.9, 0.6)));
+    
+                // Daughters are center/identity in the GDML, so the macro
+                // position/rotation IS the final placement.
+                new G4PVPlacement(fCADRotations[i], fCADPositions[i], dlv,
+                                  "CADPhys_" + dlv->GetName(),
+                                  fLWorld, false, j, /*checkOverlaps=*/true);
+            }
         }
     }
-
 
 
 
