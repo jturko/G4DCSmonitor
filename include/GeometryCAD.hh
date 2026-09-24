@@ -6,6 +6,8 @@
 #include "globals.hh"
 
 class G4LogicalVolume;
+class G4VisAttributes;
+class G4Material;
 
 // Imports ONE tessellated logical volume from a FreeCAD-exported GDML file and
 // places it into a mother volume. The GDML contains its own worldVOL wrapper;
@@ -28,6 +30,8 @@ class GeometryCAD
     G4LogicalVolume* GetCADLog() const { return fCADLog; }
 
     static void DumpGDMLNames(const G4String& file);
+
+    static G4VisAttributes* VisAttributesForMaterial(const G4Material* mat);
 
   private:
     G4String         fFileName   = "test_part.gdml";
