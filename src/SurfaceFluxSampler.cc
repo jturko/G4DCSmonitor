@@ -18,6 +18,8 @@
 #include <queue>
 #include <memory>
 #include <string>
+#include <fstream>
+#include <sstream>
 
 #include "ROOT/RDataFrame.hxx"
 #include "ROOT/RDF/RInterface.hxx"   // ROOT::RDF::RNode
@@ -315,6 +317,171 @@ void SurfaceFluxSampler::Load(const std::string& filename,
 //       t->PrintCacheStats();
 //   }
 
+//....oooOO0OOooo  CSV loader for MCNP surface-crossing data  oooOO0OOooo....
+//
+// Expected CSV columns (tab or comma separated, optional header line):
+//   pid  x  y  z  u  v  w  erg  wgt
+// Units: cm, MeV, unitless weight.
+// MCNP pid mapping: 1 -> neutron (PDG 2112), 2 -> gamma (PDG 22).
+// Positions are converted cm -> mm; direction (u,v,w) is normalised.
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+void SurfaceFluxSampler::LoadCSV(const std::string& filename,
+                                 G4double R_mm,
+                                 G4double H_mm,
+                                 G4double /*tol_mm*/)
+{
+    if (fLoaded) return;
+
+    const G4double Hhalf = 0.5 * H_mm;
+    const G4double cm2mm = 10.0;
+
+    std::ifstream ifs(filename);
+    if (!ifs.is_open()) {
+        G4Exception("SurfaceFluxSampler::LoadCSV", "OpenFail", FatalException,
+                    ("Cannot open CSV file: " + filename).c_str());
+        return;
+    }
+
+    TStopwatch sw; sw.Start();
+
+    std::string line;
+    long long nLines = 0, nNeutron = 0, nGamma = 0, nSkipped = 0;
+    long long nSide = 0, nTop = 0, nBot = 0;
+    G4double wSide = 0, wTop = 0, wBot = 0;
+
+    fAll.data.clear();
+
+    // Helper: strip trailing comma/tab from a token
+    auto stripSep = [](std::string& tok) {
+        while (!tok.empty() && (tok.back() == ',' || tok.back() == '\t'))
+            tok.pop_back();
+    };
+
+    // Helper: parse one line into a Crossing, return true on success
+    auto parseLine = [&](const std::string& ln, Crossing& out) -> bool {
+        std::istringstream iss(ln);
+        std::string pidStr;
+        if (!(iss >> pidStr)) return false;
+        stripSep(pidStr);
+
+        double pid_raw;
+        try { pid_raw = std::stod(pidStr); }
+        catch (...) { return false; }
+
+        double fields[8];
+        for (int i = 0; i < 8; ++i) {
+            std::string tok;
+            if (!(iss >> tok)) return false;
+            stripSep(tok);
+            try { fields[i] = std::stod(tok); }
+            catch (...) { return false; }
+        }
+
+        const double x = fields[0], y = fields[1], z = fields[2];
+        const double u = fields[3], v = fields[4], w = fields[5];
+        const double erg = fields[6], wgt = fields[7];
+
+        // MCNP pid -> PDG code
+        G4int pdgPid;
+        if (pid_raw == 1.0)      pdgPid = 2112;   // neutron
+        else if (pid_raw == 2.0) pdgPid = 22;     // gamma
+        else return false;
+
+        // Direction normalisation
+        const G4double pMag = std::sqrt(u*u + v*v + w*w);
+        if (pMag <= 0.) return false;
+
+        // Convert cm -> mm.
+        // The MCNP CSV places the cask on the floor: its axis runs from
+        // z=0 (bottom) to z=H (top). The cask-local frame used everywhere else
+        // (TTree loader, Sample(), the G4Tubs body) is centered at the origin,
+        // spanning z in [-H/2, +H/2]. Shift z down by H/2 to map the floor-
+        // based data into that centered frame.
+        const G4double x_mm = x * cm2mm;
+        const G4double y_mm = y * cm2mm;
+        const G4double z_mm = z * cm2mm - Hhalf;
+
+        // Surface classification (same logic as TTree loader)
+        const G4double rLoc     = std::hypot(x_mm, y_mm);
+        const G4double distSide = std::fabs(rLoc - R_mm);
+        const G4double distCap  = std::fabs(Hhalf - std::fabs(z_mm));
+        G4int surf = (distSide <= distCap) ? 0 : ((z_mm >= 0.) ? 1 : 2);
+
+        out.pid    = pdgPid;
+        out.ekin   = (G4float)erg;
+        out.x      = (G4float)x_mm;
+        out.y      = (G4float)y_mm;
+        out.z      = (G4float)z_mm;
+        out.px     = (G4float)(u / pMag);
+        out.py     = (G4float)(v / pMag);
+        out.pz     = (G4float)(w / pMag);
+        out.weight = (G4float)wgt;
+        out.surf   = surf;
+        return true;
+    };
+
+    bool headerChecked = false;
+    while (std::getline(ifs, line)) {
+        // Skip empty lines and comments
+        if (line.empty() || line[0] == '#') continue;
+
+        // Detect header line on first data attempt
+        if (!headerChecked) {
+            headerChecked = true;
+            std::istringstream test(line);
+            std::string firstTok;
+            test >> firstTok;
+            stripSep(firstTok);
+            try {
+                std::size_t pos;
+                std::stod(firstTok, &pos);
+                if (pos != firstTok.size()) throw std::invalid_argument("trailing");
+            } catch (...) {
+                continue;   // header line, skip
+            }
+        }
+
+        Crossing c;
+        if (!parseLine(line, c)) { ++nSkipped; continue; }
+
+        fAll.data.push_back(c);
+        ++nLines;
+
+        if (c.surf == 0)      { ++nSide; wSide += c.weight; }
+        else if (c.surf == 1) { ++nTop;  wTop  += c.weight; }
+        else                  { ++nBot;  wBot  += c.weight; }
+        if (c.pid == 2112)    ++nNeutron;
+        else                  ++nGamma;
+    }
+
+    ifs.close();
+
+    if (fAll.data.empty()) {
+        G4Exception("SurfaceFluxSampler::LoadCSV", "NoData", FatalException,
+                    ("No valid entries found in CSV file: " + filename).c_str());
+        return;
+    }
+
+    BuildAlias(fAll);
+
+    fKeptSide        = nSide;
+    fKeptSideWeight  = wSide;
+    fKeptWeightTotal = wSide + wTop + wBot;
+    fLoaded = true;
+
+    sw.Stop();
+    G4cout << "[SurfaceFluxSampler::LoadCSV] Loaded " << fAll.data.size()
+           << " crossings from '" << filename << "' in " << sw.RealTime()
+           << " s (n=" << nNeutron << ", gamma=" << nGamma
+           << (nSkipped ? (", skipped=" + std::to_string(nSkipped)) : std::string())
+           << ")\n"
+           << "   surfaces: side=" << nSide << " (w=" << wSide << "), "
+           << "top=" << nTop << " (w=" << wTop << "), "
+           << "bottom=" << nBot << " (w=" << wBot << ")\n"
+           << "   total kept weight = " << fKeptWeightTotal << G4endl;
+}
+
 const SurfaceFluxSampler::Bucket*
 SurfaceFluxSampler::GetBucket(G4int /*pid*/) const { return &fAll; }
 
@@ -424,21 +591,33 @@ void SurfaceFluxSampler::EnsureLoaded() const
 
 void SurfaceFluxSampler::DoLoad()
 {
-    if (fPendingFile.empty()) {
-        G4Exception("SurfaceFluxSampler::DoLoad", "NoFile", FatalException,
-                    "No source file set. Use /dcs-monitor/surf/sourceFile <path>.");
-        return;
-    }
     if (fPendingR_mm <= 0. || fPendingH_mm <= 0.) {
         G4Exception("SurfaceFluxSampler::DoLoad", "NoGeom", FatalException,
                     "Geometry parameters not configured (SetGeometryParameters).");
         return;
     }
 
-    G4cout << "[SurfaceFluxSampler] Lazy load on thread "
-           << G4Threading::G4GetThreadId() << " : " << fPendingFile << G4endl;
-
-    Load(fPendingFile, fPendingTree, fPendingR_mm, fPendingH_mm, fPendingTol_mm);
+    if (fInputFormat == 1) {
+        // ---- CSV input ----
+        if (fPendingCSVFile.empty()) {
+            G4Exception("SurfaceFluxSampler::DoLoad", "NoFile", FatalException,
+                        "No CSV file set. Use /dcs-monitor/surf/csvFile <path>.");
+            return;
+        }
+        G4cout << "[SurfaceFluxSampler] Lazy load (CSV) on thread "
+               << G4Threading::G4GetThreadId() << " : " << fPendingCSVFile << G4endl;
+        LoadCSV(fPendingCSVFile, fPendingR_mm, fPendingH_mm, fPendingTol_mm);
+    } else {
+        // ---- TTree input (original path) ----
+        if (fPendingFile.empty()) {
+            G4Exception("SurfaceFluxSampler::DoLoad", "NoFile", FatalException,
+                        "No source file set. Use /dcs-monitor/surf/sourceFile <path>.");
+            return;
+        }
+        G4cout << "[SurfaceFluxSampler] Lazy load on thread "
+               << G4Threading::G4GetThreadId() << " : " << fPendingFile << G4endl;
+        Load(fPendingFile, fPendingTree, fPendingR_mm, fPendingH_mm, fPendingTol_mm);
+    }
 
     fLoaded = true;
     G4cout << "[SurfaceFluxSampler] Done loading; run can start." << G4endl;

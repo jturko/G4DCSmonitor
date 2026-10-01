@@ -88,7 +88,7 @@ add_executable(G4DCSmonitor G4DCSmonitor.cc ${sources} ${headers})
 # relies on these scripts being in the current working directory.
 #
 set(G4DCSmonitor_SCRIPTS
-    vis.mac vis_ogl.mac vis_vrml.mac run.mac
+    vis.mac vis_ogl.mac vis_vrml.mac run.mac run_csv_surface.mac
   )
 
 foreach(_script ${G4DCSmonitor_SCRIPTS})

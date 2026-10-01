@@ -22,6 +22,10 @@ SurfaceFluxSamplerMessenger::SurfaceFluxSamplerMessenger()
     fFileCmd->SetGuidance("Path to step-1 ROOT file containing the 'surfaceFlux' tree.");
     fFileCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
 
+    fCSVFileCmd = new G4UIcmdWithAString("/dcs-monitor/surf/csvFile", this);
+    fCSVFileCmd->SetGuidance("Path to MCNP surface-crossing CSV file (pid x y z u v w erg wgt; cm, MeV).");
+    fCSVFileCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+
     fMaxEntriesLoadedFromTreeCmd = new G4UIcmdWithAnInteger("/dcs-monitor/surf/maxEntriesLoadedFromTree", this);
     fMaxEntriesLoadedFromTreeCmd->SetGuidance(
         "Cap on the number of entries read from the input ROOT tree at load time.\n"
@@ -92,6 +96,7 @@ SurfaceFluxSamplerMessenger::~SurfaceFluxSamplerMessenger()
     delete fSmearPhiCmd;
     delete fPidCmd;
     delete fFileCmd;
+    delete fCSVFileCmd;
     delete fDir;
     delete fMaxEntriesLoadedFromTreeCmd;
 }
@@ -108,6 +113,7 @@ void SurfaceFluxSamplerMessenger::SetNewValue(G4UIcommand* cmd, G4String val)
 
     // ---- sampler configuration (single source of truth: master) ----
     if (cmd == fFileCmd)        { s.SetSourceFile(val); return; }
+    if (cmd == fCSVFileCmd)     { s.SetCSVFile(val); return; }
     if (cmd == fPidCmd)         { /* PID filter is consumed by Sample(); store on sampler */ 
                                   // We piggy-back on fCaskNum-style state: keep it on the
                                   // sampler so workers read it too.

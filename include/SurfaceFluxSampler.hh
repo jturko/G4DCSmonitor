@@ -32,6 +32,14 @@ class SurfaceFluxSampler
               G4double caskHeight_mm,
               G4double surfaceTolerance_mm = 2.0);
 
+    // CSV loader for MCNP surface-crossing data (external institute format).
+    // Columns: pid x y z u v w erg wgt  (cm, MeV, unitless weight).
+    // MCNP pid 1 -> neutron (PDG 2112), pid 2 -> gamma (PDG 22).
+    void LoadCSV(const std::string& filename,
+                 G4double caskOuterRadius_mm,
+                 G4double caskHeight_mm,
+                 G4double surfaceTolerance_mm = 2.0);
+
     bool Sample(G4ThreeVector& posLocal,
                 G4ThreeVector& dirLocal,
                 G4double&      ekin,
@@ -44,6 +52,11 @@ class SurfaceFluxSampler
     void SetSourceFile(const std::string& f) { fPendingFile = f; }
     const std::string& GetSourceFile() const { return fPendingFile; }
     void SetTreeName  (const std::string& t) { fPendingTree = t; }
+
+    // CSV input support
+    void SetCSVFile(const std::string& f) { fPendingCSVFile = f; fInputFormat = 1; }
+    const std::string& GetCSVFile() const { return fPendingCSVFile; }
+    G4int  GetInputFormat() const { return fInputFormat; }   // 0=TTree, 1=CSV
     void SetGeometryParameters(G4double R_mm, G4double H_mm,
                                G4double tol_mm = 2.0) {
         fPendingR_mm   = R_mm;
@@ -97,6 +110,8 @@ class SurfaceFluxSampler
     mutable std::once_flag fLoadOnce;
     std::string fPendingFile;
     std::string fPendingTree = "surfaceFlux";
+    std::string fPendingCSVFile;
+    G4int       fInputFormat = 0;   // 0=TTree, 1=CSV
     G4double    fPendingR_mm   = -1.;
     G4double    fPendingH_mm   = -1.;
     G4double    fPendingTol_mm =  2.;
