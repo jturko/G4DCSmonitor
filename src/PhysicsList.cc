@@ -122,7 +122,7 @@ PhysicsList::PhysicsList(const G4String& biasParticle) : fBiasingParticle(biasPa
         fGeomSampler = new G4GeometrySampler("BiasingWorld", fBiasingParticle);
         fGeomSampler->SetParallel(true);
         
-        RegisterPhysics(new G4ImportanceBiasing(fGeomSampler, "ImportanceBiasing"));
+        RegisterPhysics(new G4ImportanceBiasing(fGeomSampler, "BiasingWorld"));
         
         G4cout << "[PhysicsList] Built biasing world for " << fBiasingParticle << G4endl;
     }
