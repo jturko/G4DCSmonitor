@@ -217,6 +217,7 @@ void DetectorConstruction::ConstructSDandField()
     if (!fMuonScints.empty()) {
         G4String muonSDname = "MuonScintSiPMSD";
         auto muonSiPMSD = new MuonScintSiPMSD(muonSDname, "MuonScintSiPMHits");
+        muonSiPMSD->SetDetector(this);
         G4SDManager::GetSDMpointer()->AddNewDetector(muonSiPMSD);
 
         for (auto* mscint : fMuonScints) {

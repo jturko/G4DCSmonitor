@@ -72,6 +72,7 @@ class RunAction : public G4UserRunAction
     //static G4bool WritePrimaryTree;
     static std::atomic<G4bool> WritePrimaryTree;
     static std::atomic<G4bool> WriteCASTOR440SurfaceFluxTree;
+    static std::atomic<G4bool> WriteOpticalFluxMap;
 
   private:
     DetectorConstruction* fDetector = nullptr;

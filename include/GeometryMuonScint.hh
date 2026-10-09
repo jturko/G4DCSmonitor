@@ -60,13 +60,21 @@ class GeometryMuonScint
     // Accessors
     G4LogicalVolume*   GetScintLV()  const { return fScintLV; }
     G4VPhysicalVolume* GetScintPV()  const { return fScintPV; }
+    G4ThreeVector      GetHalfSize() const { return fHalfSize; }
     G4LogicalVolume*   GetSiPMLV()   const { return fSiPMLV; }
     G4LogicalVolume*   GetGreaseLV() const { return fGreaseLV; }
+    G4LogicalVolume*   GetHolderLV() const { return fHolderLV; }
     G4int              GetNumSiPMs() const { return (G4int)fSiPMs.size(); }
+
+    // true when the bare (kNoReflector) configuration is enclosed by the
+    // black 3D-printed holder that absorbs light at the non-instrumented faces.
+    G4bool UsesBlackHolder() const
+    { return fReflectorType == kNoReflector; }
 
   private:
     void BuildOpticalProperties(G4Material* scintMat);
     void BuildOpticalSurfaces();
+    void BuildHolder();
     void PlaceSiPMs(G4LogicalVolume* worldLV,
                     const G4ThreeVector& slabPos,
                     G4RotationMatrix* slabRot,
@@ -92,15 +100,23 @@ class GeometryMuonScint
     ReflectorType fReflectorType     = kPaintTiO2;
     G4bool        fWrapWithReflector = true;
 
+    // Black holder dimensions. The cavity must enclose the plate AND the
+    // grease/SiPM stack (protruding ~0.7 mm past the faces), so fHolderGap is
+    // the clearance from the plate face to the holder wall.
+    G4double fHolderGap      = 1.2 * CLHEP::mm;  // plate face -> holder wall
+    G4double fHolderWall     = 2.0 * CLHEP::mm;  // holder wall thickness
+
     // Built objects
     G4LogicalVolume*   fScintLV   = nullptr;
     G4VPhysicalVolume* fScintPV   = nullptr;
     G4LogicalVolume*   fGreaseLV  = nullptr;
     G4LogicalVolume*   fSiPMLV    = nullptr;
+    G4LogicalVolume*   fHolderLV  = nullptr;
 
     G4OpticalSurface*  fReflSurface     = nullptr;  // wrapping (skin)
     G4OpticalSurface*  fCouplingSurface = nullptr;  // slab<->grease override (just transparent)
     G4OpticalSurface*  fSiPMSurface     = nullptr;  // grease<->SiPM detector boundary
+    G4OpticalSurface*  fHolderSurface   = nullptr;  // slab<->black holder (absorber)
 };
 
 #endif

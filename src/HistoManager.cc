@@ -33,12 +33,20 @@
 #include "HistoManager.hh"
 
 #include "RootManager.hh"
+#include "DetectorConstruction.hh"
+#include "GeometryMuonScint.hh"
 
 #include "G4UnitsTable.hh"
 
+#include <algorithm>
+#include <cmath>
+#include <sstream>
+
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-HistoManager::HistoManager()
+HistoManager::HistoManager(DetectorConstruction* detector, G4double cellSize)
+    : fDetector(detector),
+      fCellSize(cellSize > 0. ? cellSize : 1.)
 {
     Book();
 }
@@ -113,22 +121,85 @@ void HistoManager::Book()
     analysisManager->FinishNtuple();
     //G4cout << " Created ntuple \"castor_surf\" (id " << idx << ")" << G4endl;
  
-    // ntuple for MuonScint SiPM hits (one row per (event, SiPM) with detected photons)
+    // ntuple for MuonScint SiPM hits (one row per (event, SiPM), including
+    // zero-detection SiPMs, so collection efficiency can be reconstructed).
+    // muonX/muonY are the primary muon's first-entry position in the slab
+    // (slab-local, mm) and nProduced is the event's total optical photons
+    // produced in that slab -- the denominator for the collection efficiency
+    // (nDetected / nProduced), binned by interaction x-y offline.
     idx = analysisManager->CreateNtuple("sipmHits", "tree of detected optical photon counts in MuonScint SiPMs");
     analysisManager->SetNtupleActivation(idx, true);
     analysisManager->CreateNtupleIColumn("evtNb");
     analysisManager->CreateNtupleIColumn("det");
     analysisManager->CreateNtupleIColumn("sipm");
     analysisManager->CreateNtupleIColumn("nDetected");
-    analysisManager->CreateNtupleIColumn("nIncident");
     analysisManager->CreateNtupleDColumn("tFirst");
     analysisManager->CreateNtupleDColumn("meanWavelength_nm");
     analysisManager->CreateNtupleDColumn("rmsWavelength_nm");
     analysisManager->CreateNtupleDColumn("weight");
+    analysisManager->CreateNtupleDColumn("muonX");
+    analysisManager->CreateNtupleDColumn("muonY");
+    analysisManager->CreateNtupleIColumn("nProduced");
     analysisManager->FinishNtuple();
     //G4cout << " Created ntuple \"sipmHits\" (id " << idx << ")" << G4endl;
 
+    // ntuple for optical-photon accounting diagnostics (one row per event)
+    idx = analysisManager->CreateNtuple("opticalStats", "per-event optical photon accounting in the MuonScint slab");
+    analysisManager->SetNtupleActivation(idx, true);
+    analysisManager->CreateNtupleIColumn("evtNb");
+    analysisManager->CreateNtupleIColumn("nScint");     // scintillation photons generated in slab
+    analysisManager->CreateNtupleIColumn("nCerenkov");  // Cherenkov photons generated in slab
+    analysisManager->CreateNtupleIColumn("nKilled");    // optical photons that reached fStopAndKill
+    analysisManager->CreateNtupleIColumn("nDetected");  // detected photoelectrons (all SiPMs)
+    analysisManager->CreateNtupleIColumn("nEscaped");   // killed while outside the detector
+    analysisManager->CreateNtupleIColumn("nAlive");     // generated - killed (should be ~0)
+    analysisManager->FinishNtuple();
 
+}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+void HistoManager::BookOpticalFluxMaps()
+{
+    // Per-slab optical-photon x-y flux/fluence map (track-length estimator),
+    // slab-local frame. Booked ONLY when a scintillator slab is part of the
+    // built geometry, so geometries without a slab create no such histogram.
+    //
+    // The collection-efficiency maps are no longer booked here: the produced /
+    // detected information lives in the sipmHits tree (muonX/muonY/nProduced/
+    // nDetected), so the efficiency can be binned offline at any cell size and
+    // for any SiPM subset.
+    //
+    // Must be called after the geometry exists (RunAction::BeginOfRunAction).
+    // Called on master and worker threads; CreateH2 is idempotent per name in
+    // the analysis manager, so no cross-thread duplication occurs.
+    if (fOpticalFluxBooked) return;
+    fOpticalFluxH2Ids.clear();
+    if (fDetector && fDetector->GetNumMuonScints() > 0) {
+        auto* analysisManager = G4AnalysisManager::Instance();
+        for (G4int i = 0; i < fDetector->GetNumMuonScints(); ++i) {
+            GeometryMuonScint* slab = fDetector->GetMuonScint(i);
+            if (!slab) {
+                fOpticalFluxH2Ids.push_back(-1);
+                continue;
+            }
+
+            const G4ThreeVector h = slab->GetHalfSize();
+            const G4int nbX = std::max(1, (G4int)std::lround(2. * h.x() / fCellSize));
+            const G4int nbY = std::max(1, (G4int)std::lround(2. * h.y() / fCellSize));
+
+            std::ostringstream name, title;
+            name  << "h2_optflux_xy_slab" << i;
+            title << "slab " << i
+                  << " optical-photon track-length flux map (slab-local);"
+                  << "x [mm];y [mm]";
+            const G4int id = analysisManager->CreateH2(
+                name.str(), title.str(),
+                nbX, -h.x(), h.x(), nbY, -h.y(), h.y());
+            fOpticalFluxH2Ids.push_back(id);
+        }
+    }
+    fOpticalFluxBooked = true;
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

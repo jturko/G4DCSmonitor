@@ -19,6 +19,9 @@
 #include "Randomize.hh"
 
 #include "G4AnalysisManager.hh"
+#include "OpticalDiagnostics.hh"
+#include "DetectorConstruction.hh"
+#include "GeometryMuonScint.hh"
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
@@ -116,15 +119,32 @@ G4bool MuonScintSiPMSD::ProcessHits(G4Step* step, G4TouchableHistory*)
     if (track->GetDefinition() != G4OpticalPhoton::OpticalPhoton())
         return false;
 
-    G4StepPoint* pre = step->GetPreStepPoint();
+    // Detection is signalled by G4OpBoundaryProcess (status == Detection) for
+    // the grease<->SiPM `dielectric_metal` surface with EFFICIENCY = PDE(lambda);
+    // the photon is flagged fStopAndKill and the SD is invoked with the
+    // detection energy deposit attached. This method is therefore only called
+    // for photoelectrons -- no manual Bernoulli draw is needed.
+    const G4double edep = step->GetTotalEnergyDeposit();
+    if (edep <= 0.) return false;
 
-    // First step after entering the SiPM volume
-    if (pre->GetStepStatus() != fGeomBoundary)
-        return false;
-
-    const auto* touch = pre->GetTouchable();
+    // Identify the SiPM from the post-step touchable (the photon is entering /
+    // being absorbed at the SiPM volume right now). The SiPMs are siblings of
+    // the slab in the world, so map the post-step SiPM logical volume back to
+    // its parent slab index; that index is also the "det" id used below.
+    G4StepPoint* post = step->GetPostStepPoint();
+    const auto* touch  = post->GetTouchable();
     const G4int sipmCopy = touch->GetCopyNumber(0);
-    const G4int detCopy  = 0;
+
+    G4int detCopy = 0;
+    if (fDetector) {
+        const G4LogicalVolume* postLV =
+            post->GetPhysicalVolume() ? post->GetPhysicalVolume()->GetLogicalVolume()
+                                      : nullptr;
+        for (G4int i = 0; i < fDetector->GetNumMuonScints(); ++i) {
+            GeometryMuonScint* ms = fDetector->GetMuonScint(i);
+            if (ms && postLV == ms->GetSiPMLV()) { detCopy = i; break; }
+        }
+    }
     const G4int key = (detCopy << 16) | (sipmCopy & 0xFFFF);
 
     G4int hitIdx = -1;
@@ -135,24 +155,26 @@ G4bool MuonScintSiPMSD::ProcessHits(G4Step* step, G4TouchableHistory*)
         auto* h = new MuonScintHit();
         h->SetDetNum(detCopy);
         h->SetSiPMNum(sipmCopy);
-        h->SetWeight(pre->GetWeight());
+        h->SetWeight(post->GetWeight());
         hitIdx = fHitsCollection->insert(h) - 1;
         fSiPMHitIndexMap[key] = hitIdx;
     }
 
     auto* hit = (*fHitsCollection)[hitIdx];
-    hit->AddIncident();
 
-    const G4double E = track->GetKineticEnergy();
+    ++gOpticalDiag.nDetected;
+    if (fDetector) {
+        gOpticalDiag.EnsureSlabs(fDetector->GetNumMuonScints());
+        ++gOpticalDiag.nDetectedPerSlab[detCopy];
+    }
+
+    const G4double E = edep;
     const G4double lam_nm =
         (E > 0.) ? (CLHEP::h_Planck * CLHEP::c_light / E) / CLHEP::nanometer : 0.;
 
-    // Manual PDE
-    if (G4UniformRand() < fPDE) {
-        hit->AddDetected(pre->GetGlobalTime(), lam_nm, pre->GetPosition());
-    }
+    hit->AddDetected(post->GetGlobalTime(), lam_nm, post->GetPosition());
 
-    // SiPM is opaque
+    // SiPM is opaque: kill the photon regardless.
     track->SetTrackStatus(fStopAndKill);
     return true;
 }
@@ -172,30 +194,81 @@ void MuonScintSiPMSD::EndOfEvent(G4HCofThisEvent*)
         for (std::size_t i = 0; i < nofHits; ++i) (*fHitsCollection)[i]->Print();
     }
 
-    if (nofHits == 0) return;
-
     G4AnalysisManager* analysis = G4AnalysisManager::Instance();
     const G4int idx = fNtupleId;
     const G4int eventNb = G4EventManager::GetEventManager()
                           ->GetConstCurrentEvent()->GetEventID();
 
+    // Collect the hit (if any) for each (det, sipm) key. Hits are only created
+    // when a photoelectron is detected, so a missing key means zero detected.
+    std::map<G4int, const MuonScintHit*> hitByKey;
     for (std::size_t i = 0; i < nofHits; ++i) {
         const auto* h = (*fHitsCollection)[i];
+        hitByKey[(h->GetDetNum() << 16) | (h->GetSiPMNum() & 0xFFFF)] = h;
+    }
 
-        // Skip SiPMs that had photons enter but none detected -- typically
-        // not interesting and would otherwise inflate the ntuple.
-        if (h->GetNDetected() == 0) continue;
+    // Without a detector we cannot enumerate SiPMs, so fall back to the
+    // legacy behaviour: one row per SiPM with a non-zero detected count.
+    if (!fDetector) {
+        for (std::size_t i = 0; i < nofHits; ++i) {
+            const auto* h = (*fHitsCollection)[i];
+            if (h->GetNDetected() == 0) continue;
+            analysis->FillNtupleIColumn(idx, 0, eventNb);
+            analysis->FillNtupleIColumn(idx, 1, h->GetDetNum());
+            analysis->FillNtupleIColumn(idx, 2, h->GetSiPMNum());
+            analysis->FillNtupleIColumn(idx, 3, h->GetNDetected());
+            analysis->FillNtupleDColumn(idx, 4, h->GetTFirst());
+            analysis->FillNtupleDColumn(idx, 5, h->GetMeanWavelength());
+            analysis->FillNtupleDColumn(idx, 6, h->GetRMSWavelength());
+            analysis->FillNtupleDColumn(idx, 7, h->GetWeight());
+            analysis->FillNtupleDColumn(idx, 8,  -9999.);
+            analysis->FillNtupleDColumn(idx, 9,  -9999.);
+            analysis->FillNtupleIColumn(idx, 10, 0);
+            analysis->AddNtupleRow(idx);
+        }
+        return;
+    }
 
-        analysis->FillNtupleIColumn(idx, 0, eventNb);
-        analysis->FillNtupleIColumn(idx, 1, h->GetDetNum());
-        analysis->FillNtupleIColumn(idx, 2, h->GetSiPMNum());
-        analysis->FillNtupleIColumn(idx, 3, h->GetNDetected());
-        analysis->FillNtupleIColumn(idx, 4, h->GetNIncident());
-        analysis->FillNtupleDColumn(idx, 5, h->GetTFirst());
-        analysis->FillNtupleDColumn(idx, 6, h->GetMeanWavelength());
-        analysis->FillNtupleDColumn(idx, 7, h->GetRMSWavelength());
-        analysis->FillNtupleDColumn(idx, 8, h->GetWeight());
-        analysis->AddNtupleRow(idx);
+    const G4int nSlabs = fDetector->GetNumMuonScints();
+    gOpticalDiag.EnsureSlabs(nSlabs);
+
+    for (G4int det = 0; det < nSlabs; ++det) {
+        // Only emit rows for slabs the muon actually entered; slabs the track
+        // missed have no meaningful interaction x-y and no produced light.
+        if (det >= (G4int)gOpticalDiag.muonEntrySet.size() ||
+            !gOpticalDiag.muonEntrySet[det]) {
+            continue;
+        }
+
+        GeometryMuonScint* ms = fDetector->GetMuonScint(det);
+        if (!ms) continue;
+
+        const G4double muonX = gOpticalDiag.muonEntryX[det];
+        const G4double muonY = gOpticalDiag.muonEntryY[det];
+        const G4int nProduced = (det < (G4int)gOpticalDiag.nProducedPerSlab.size())
+                                    ? gOpticalDiag.nProducedPerSlab[det] : 0;
+
+        // One row per SiPM, including zero-detection SiPMs so per-SiPM and
+        // all-SiPM-combined collection efficiencies can be reconstructed.
+        const G4int nSiPMs = ms->GetNumSiPMs();
+        for (G4int sipm = 0; sipm < nSiPMs; ++sipm) {
+            const G4int key = (det << 16) | (sipm & 0xFFFF);
+            auto it = hitByKey.find(key);
+            const MuonScintHit* h = (it != hitByKey.end()) ? it->second : nullptr;
+
+            analysis->FillNtupleIColumn(idx, 0, eventNb);
+            analysis->FillNtupleIColumn(idx, 1, det);
+            analysis->FillNtupleIColumn(idx, 2, sipm);
+            analysis->FillNtupleIColumn(idx, 3, h ? h->GetNDetected() : 0);
+            analysis->FillNtupleDColumn(idx, 4, h ? h->GetTFirst() : 0.);
+            analysis->FillNtupleDColumn(idx, 5, h ? h->GetMeanWavelength() : 0.);
+            analysis->FillNtupleDColumn(idx, 6, h ? h->GetRMSWavelength() : 0.);
+            analysis->FillNtupleDColumn(idx, 7, h ? h->GetWeight() : 1.);
+            analysis->FillNtupleDColumn(idx, 8, muonX);
+            analysis->FillNtupleDColumn(idx, 9, muonY);
+            analysis->FillNtupleIColumn(idx, 10, nProduced);
+            analysis->AddNtupleRow(idx);
+        }
     }
 }
 

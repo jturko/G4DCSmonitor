@@ -1,0 +1,42 @@
+# =============================================================================
+# Test macro: optical-photon slab-local x-y flux map.
+#
+# Builds one 250 x 250 x 10 mm scintillator slab and fires a 4 GeV vertical
+# muon beam through it. The per-slab optical-photon track-length flux map
+# (h2_optflux_xy_slab0) is enabled and must end up non-empty in the output.
+# The collection efficiency is carried by the sipmHits tree
+# (muonX/muonY/nProduced/nDetected) -- see macros/plot_collection_efficiency.C.
+# =============================================================================
+
+/run/numberOfThreads 4
+
+# ---- geometry: a single slab ------------------------------------------------
+/dcs-monitor/det/setPosition 0 0 0 mm
+/dcs-monitor/det/setRotation 0 0 0
+/dcs-monitor/det/muonScint/add
+/dcs-monitor/det/muonScint/setSize 250 250 10 mm
+/dcs-monitor/det/muonScint/preset 1
+/dcs-monitor/det/muonScint/setReflector 1
+/dcs-monitor/det/muonScint/setWrap true
+
+/run/initialize
+
+# ---- enable the optical flux map --------------------------------------------
+/dcs-monitor/run/writeOpticalFluxMap true
+
+# ---- primary: vertical 4 GeV muon, 50 x 50 mm^2 beam ------------------------
+/dcs-monitor/gun/sourceMode GPS
+/gps/particle mu-
+/gps/ene/type Mono
+/gps/ene/mono 4 GeV
+/gps/pos/type Plane
+/gps/pos/shape Square
+/gps/pos/centre 0 0 100 mm
+/gps/pos/halfx 25 mm
+/gps/pos/halfy 25 mm
+/gps/ang/type planar
+
+# ---- output -----------------------------------------------------------------
+/analysis/setFileName /home/turko46/geant4-sims/G4DCSmonitor/data_output/test_optical_flux.root
+
+/run/beamOn 200

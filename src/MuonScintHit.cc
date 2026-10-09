@@ -41,7 +41,6 @@ void MuonScintHit::Print()
     G4cout << "  det "  << fDetNum
            << "  sipm " << fSiPMNum
            << "  nDet " << std::setw(5) << fNDetected
-           << "  nInc " << std::setw(5) << fNIncident
            << "  tFirst " << std::setw(7) << G4BestUnit(fTFirst, "Time")
            << "  <lam> "  << std::setw(6) << GetMeanWavelength() << " nm"
            << "  posFirst " << std::setw(7) << G4BestUnit(fPosFirst, "Length")

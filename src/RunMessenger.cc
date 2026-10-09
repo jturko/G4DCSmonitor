@@ -55,6 +55,12 @@ RunMessenger::RunMessenger(RunAction* run) : fRun(run)
     fWriteCASTOR440SurfaceFluxCmd->SetDefaultValue(true);
     fWriteCASTOR440SurfaceFluxCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
 
+    fWriteOpticalFluxMapCmd = new G4UIcmdWithABool("/dcs-monitor/run/writeOpticalFluxMap", this);
+    fWriteOpticalFluxMapCmd->SetGuidance("Toggle filling of the per-slab slab-local optical-photon x-y flux maps (only booked when a scintillator slab is built; default OFF)");
+    fWriteOpticalFluxMapCmd->SetParameterName("write", true);
+    fWriteOpticalFluxMapCmd->SetDefaultValue(false);
+    fWriteOpticalFluxMapCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -64,6 +70,7 @@ RunMessenger::~RunMessenger()
     delete fRunDir;
     delete fWritePrimaryCmd;
     delete fWriteCASTOR440SurfaceFluxCmd;
+    delete fWriteOpticalFluxMapCmd;
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -75,6 +82,9 @@ void RunMessenger::SetNewValue(G4UIcommand* command, G4String newValue)
     }
     if (command == fWriteCASTOR440SurfaceFluxCmd) {
         RunAction::WriteCASTOR440SurfaceFluxTree = fWriteCASTOR440SurfaceFluxCmd->GetNewBoolValue(newValue);
+    }
+    if (command == fWriteOpticalFluxMapCmd) {
+        RunAction::WriteOpticalFluxMap = fWriteOpticalFluxMapCmd->GetNewBoolValue(newValue);
     }
 }
 

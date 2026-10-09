@@ -152,6 +152,10 @@ PhysicsList::PhysicsList(G4bool useImportanceBiasing, G4bool useOpticalPhysics) 
     
         // WLS timing profile - look into later for config 4 from Rao et al
         optParams->SetWLSTimeProfile("delta");
+
+        // Let G4OpBoundaryProcess invoke the sensitive detector on Detection
+        // (used by the grease<->SiPM dielectric_metal surface with EFFICIENCY=PDE).
+        optParams->SetBoundaryInvokeSD(true);
     
         // process activation
         optParams->SetProcessActivation("Cerenkov",      true);

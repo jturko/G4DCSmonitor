@@ -1,0 +1,64 @@
+# =============================================================================
+# MuonScint scenario template  (Rao et al., J. Appl. Phys. 138, 114504)
+#
+# Vertical 4 GeV muon pencil beam (50 x 50 mm^2, MCD-sized) striking the
+# 250 x 250 x 10 mm^3 plastic plate.
+#
+# One process covers ONE (config, reflector) pair and runs all THREE beam
+# positions back-to-back after a single /run/initialize (geometry is built
+# once; only the GPS beam centre and the output file name change between
+# runs).  This is ~3x faster than one process per position.
+#
+#   CONFIG    : 1 = 8 SiPMs (2/side), 2 = 4 SiPMs (1/side), 3 = 2 SiPMs (1 side)
+#   REFLECTOR : 0 = none (held in black holder), 1 = TiO2 paint,
+#               2 = aluminium foil, 3 = high-gloss paper
+#   POSITION  : centre, edge (middle of +Y side), corner (+X/+Y)
+#
+# This file is generated from macros/muon_scint_template.mac by
+# macros/generate_muon_matrix.sh -- edit the template, not this file.
+# =============================================================================
+
+/run/numberOfThreads 8
+
+# ---- geometry: plate + SiPM layout + reflector ------------------------------
+/dcs-monitor/det/setPosition 0 0 0 mm
+/dcs-monitor/det/setRotation 0 0 0
+/dcs-monitor/det/muonScint/add
+/dcs-monitor/det/muonScint/setSize 250 250 10 mm
+/dcs-monitor/det/muonScint/preset 2
+/dcs-monitor/det/muonScint/setReflector 3
+/dcs-monitor/det/muonScint/setWrap true
+
+/run/initialize
+
+# ---- per-slab optical-photon x-y track-length flux map ----------------------
+/dcs-monitor/run/writeOpticalFluxMap true
+
+# ---- primary: vertical 4 GeV muon, 50 x 50 mm^2 beam ------------------------
+# GPS "planar" flux fires the default momentum direction (0,0,-1): a vertical
+# pencil beam of 50 x 50 mm^2, matching the 50 x 50 mm^2 MCD footprint.
+# Only the beam centre is moved between the three runs below.
+/dcs-monitor/gun/sourceMode GPS
+/gps/particle mu-
+/gps/ene/type Mono
+/gps/ene/mono 4 GeV
+/gps/pos/type Plane
+/gps/pos/shape Square
+/gps/pos/halfx 25 mm
+/gps/pos/halfy 25 mm
+/gps/ang/type planar
+
+# ---- position 1/3: centre ---------------------------------------------------
+/analysis/setFileName /home/turko46/geant4-sims/G4DCSmonitor/data_output/muon_out_c2_r3_centre.root
+/gps/pos/centre 0 0 100 mm
+/run/beamOn 200
+
+# ---- position 2/3: edge (middle of +Y side) ---------------------------------
+/analysis/setFileName /home/turko46/geant4-sims/G4DCSmonitor/data_output/muon_out_c2_r3_edge.root
+/gps/pos/centre 125 0 100 mm
+/run/beamOn 200
+
+# ---- position 3/3: corner (+X/+Y) -------------------------------------------
+/analysis/setFileName /home/turko46/geant4-sims/G4DCSmonitor/data_output/muon_out_c2_r3_corner.root
+/gps/pos/centre 125 125 100 mm
+/run/beamOn 200

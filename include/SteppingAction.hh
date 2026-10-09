@@ -39,6 +39,7 @@
 #include <map>
 
 class G4ParticleDefinition;
+class G4VPhysicalVolume;
 class DetectorConstruction;
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -53,6 +54,9 @@ class SteppingAction : public G4UserSteppingAction
     void UserSteppingAction(const G4Step*) override;
 
   private:
+    // True if the physical volume belongs to any MuonScint slab/grease/SiPM/holder.
+    G4bool IsInMuonScint(const G4VPhysicalVolume* pv) const;
+
     std::map<G4ParticleDefinition*, G4int> fParticleFlag;
     DetectorConstruction* fDetector = nullptr; 
 };

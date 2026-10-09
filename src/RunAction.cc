@@ -59,13 +59,14 @@
 //G4bool RunAction::WritePrimaryTree = false;
 std::atomic<G4bool> RunAction::WritePrimaryTree{false};
 std::atomic<G4bool> RunAction::WriteCASTOR440SurfaceFluxTree{false};
+std::atomic<G4bool> RunAction::WriteOpticalFluxMap{false};
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 RunAction::RunAction(DetectorConstruction* det, PrimaryGeneratorAction* prim)
     : fDetector(det), fPrimary(prim), fProgBar(NULL)
 {
-    fHistoManager = new HistoManager();
+    fHistoManager = new HistoManager(fDetector);
     fRunMessenger = new RunMessenger(this);
 
 }
@@ -95,13 +96,20 @@ G4Run* RunAction::GenerateRun()
 void RunAction::BeginOfRunAction(const G4Run* run)
 {
     // show Rndm status
-    if (isMaster) {
+    //if (isMaster) {
         G4Random::showEngineStatus();
         G4cout << *(G4Material::GetMaterialTable()) << G4endl;
-    }
+    //}
 
     // histograms
     G4AnalysisManager* analysisManager = G4AnalysisManager::Instance();
+
+    // Geometry-dependent booking (must happen here, not in the HistoManager
+    // constructor: in MT the master RunAction is built before the macro's
+    // geometry commands run, so it would otherwise see zero slabs). Only when
+    // the map is enabled, so runs that do not request it stay unchanged.
+    if (WriteOpticalFluxMap) fHistoManager->BookOpticalFluxMaps();
+
     analysisManager->OpenFile();
 
     //auto* opBdry = G4ProcessTable::GetProcessTable()->FindProcess("OpBoundary", "opticalphoton");

@@ -36,17 +36,44 @@
 #include "G4AnalysisManager.hh"
 #include "globals.hh"
 
+#include <vector>
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+class DetectorConstruction;
+
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 class HistoManager
 {
   public:
-    HistoManager();
+    HistoManager(DetectorConstruction* detector = nullptr,
+                 G4double cellSize = 1.);
     ~HistoManager() = default;
+
+    // Book the per-slab optical-photon x-y flux maps. Geometry-dependent, so
+    // this MUST be called after the geometry has been built (i.e. from
+    // RunAction::BeginOfRunAction), not from the constructor: in MT the master
+    // RunAction is created before the macro's geometry commands execute.
+    // Idempotent; safe to call on master and worker threads alike.
+    void BookOpticalFluxMaps();
+
+    // Analysis-manager H2 id of the optical-photon slab-local x-y flux map,
+    // or -1 if that slab has no map booked (no slab / detector not supplied).
+    G4int GetOpticalFluxH2Id(G4int slabIndex) const
+    {
+        return (slabIndex >= 0 && slabIndex < (G4int)fOpticalFluxH2Ids.size())
+                   ? fOpticalFluxH2Ids[slabIndex] : -1;
+    }
 
   private:
     void Book();
     G4String fFileName = "G4DCSmonitor";
+    DetectorConstruction* fDetector = nullptr;
+    G4double fCellSize;
+
+    G4bool fOpticalFluxBooked = false;
+    std::vector<G4int> fOpticalFluxH2Ids;   // one per built scintillator slab
 };
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

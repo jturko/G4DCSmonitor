@@ -9,6 +9,7 @@
 #include "G4OpticalSurface.hh"
 #include "G4LogicalSkinSurface.hh"
 #include "G4LogicalBorderSurface.hh"
+#include "G4SubtractionSolid.hh"
 #include "G4SystemOfUnits.hh"
 #include "G4PhysicalConstants.hh"
 #include "G4VisAttributes.hh"
@@ -162,34 +163,53 @@ void GeometryMuonScint::BuildOpticalProperties(G4Material* scintMat)
 void GeometryMuonScint::BuildOpticalSurfaces()
 {
     // -----------------------------------------------------------------
+    // Common photon-energy grid for all reflector spectra.
+    // ~650 nm (red) ... ~360 nm (UV), ascending in eV as required.
+    // -----------------------------------------------------------------
+    const G4int N = 10;
+    G4double e[N] = {
+        1.907*eV,  // 650 nm
+        2.066*eV,  // 600 nm
+        2.254*eV,  // 550 nm
+        2.480*eV,  // 500 nm
+        2.638*eV,  // 470 nm
+        2.818*eV,  // 440 nm
+        2.952*eV,  // 420 nm  <-- SiPM/scint peak
+        3.100*eV,  // 400 nm
+        3.263*eV,  // 380 nm
+        3.444*eV   // 360 nm
+    };
+
+    // -----------------------------------------------------------------
     // 1) Wrapping reflector (skin surface on the scintillator LV).
     // -----------------------------------------------------------------
     fReflSurface = new G4OpticalSurface("MuonScintReflector");
     fReflSurface->SetModel(unified);
 
-    const G4int N = 2;
-    G4double e[N] = { 1.5*eV, 6.0*eV };
-
     switch (fReflectorType) {
 
       // ============================================================
-      // 0) BARE: pure Fresnel/TIR off the slab/air boundary.
-      //    No paint, no roughness. Refractive indices come from the
-      //    slab and world materials' RINDEX tables.
+      // 0) BARE: no reflector layer. This G4OpticalSurface is NOT applied
+      //    as a wrapping skin. Instead the plate is treated as in effective
+      //    optical contact with the black holder, so non-instrumented faces
+      //    absorb via the absorber skin (see PlaceDetector / BuildHolder).
+      //    Free-standing polished TIR is deliberately not used: measured
+      //    bare yield is the lowest of all configurations, which a lossless
+      //    TIR guide cannot reproduce.
       // ============================================================
       case kNoReflector: {
         fReflSurface->SetType(dielectric_dielectric);
         fReflSurface->SetFinish(polished);
-        // Deliberately attach NO MPT here -- Fresnel from RINDEX is automatic.
+        // Deliberately attach NO MPT here -- this surface is unused.
         break;
       }
 
       // ============================================================
       // 1) TiO2 PAINT (EJ-510 or similar epoxy paint applied directly).
-      //    Photon hits paint immediately (no air gap). Lambertian
-      //    reflection is physically correct for TiO2 paint -- the
-      //    emission is from sub-surface scattering off TiO2 grains.
-      //    R(425 nm) ~ 0.95-0.97 for EJ-510.
+      //    groundfrontpainted: the paint is the outermost medium, so the
+      //    REFLECTIVITY/TRANSMITTANCE path is used directly. Lambertian
+      //    emission is physically correct for TiO2 sub-surface scattering.
+      //    EJ-510 effective reflectance is ~0.98 over the emission band.
       // ============================================================
       case kPaintTiO2: {
         fReflSurface->SetType(dielectric_dielectric);
@@ -197,11 +217,11 @@ void GeometryMuonScint::BuildOpticalSurfaces()
         fReflSurface->SetSigmaAlpha(0.1);  // ~5.7 deg, paint texture
 
         auto* mpt = new G4MaterialPropertiesTable();
-        G4double R[N]      = { 0.97, 0.97 };
-        G4double specSp[N] = { 0.00, 0.00 };  // not specular
-        G4double specLo[N] = { 0.00, 0.00 };
-        G4double backSc[N] = { 0.00, 0.00 };
-        // Lambertian fraction = 1 - (specSp + specLo + backSc) = 1.00
+        G4double R[N]      = { 0.975, 0.980, 0.982, 0.983, 0.983,
+                               0.982, 0.980, 0.977, 0.970, 0.955 };
+        G4double specSp[N] = { 0.,0.,0.,0.,0., 0.,0.,0.,0.,0. };
+        G4double specLo[N] = { 0.,0.,0.,0.,0., 0.,0.,0.,0.,0. };
+        G4double backSc[N] = { 0.,0.,0.,0.,0., 0.,0.,0.,0.,0. };
         mpt->AddProperty("REFLECTIVITY",          e, R,      N);
         mpt->AddProperty("SPECULARSPIKECONSTANT", e, specSp, N);
         mpt->AddProperty("SPECULARLOBECONSTANT",  e, specLo, N);
@@ -214,10 +234,8 @@ void GeometryMuonScint::BuildOpticalSurfaces()
       // 2) ALUMINUM FOIL with air gap (loose-wrap like Mylar/Al).
       //    "polishedbackpainted" preserves TIR at the slab/air
       //    interface; sub-TIR photons enter the gap, hit the Al
-      //    "paint", and reflect SPECULARLY (specular spike = 1.0)
-      //    because Al is a smooth metal mirror.
-      //    R(425 nm) for crinkled household Al ~ 0.85; for Mylar
-      //    aluminized film ~ 0.90; for evaporated-Al on glass ~ 0.92.
+      //    "paint", and reflect SPECULARLY (spike = 1.0) because Al
+      //    is a smooth metal mirror.
       // ============================================================
       case kAluminumFoil: {
         fReflSurface->SetType(dielectric_dielectric);
@@ -225,11 +243,13 @@ void GeometryMuonScint::BuildOpticalSurfaces()
         fReflSurface->SetSigmaAlpha(0.0);
 
         auto* mpt = new G4MaterialPropertiesTable();
-        G4double R[N]      = { 0.90, 0.90 };
-        G4double nGap[N]   = { 1.0003, 1.0003 };
-        G4double specSp[N] = { 1.00, 1.00 };  // pure mirror
-        G4double specLo[N] = { 0.00, 0.00 };
-        G4double backSc[N] = { 0.00, 0.00 };
+        G4double R[N]      = { 0.880, 0.900, 0.910, 0.910, 0.910,
+                               0.900, 0.890, 0.880, 0.860, 0.840 };
+        G4double nGap[N]   = { 1.0003,1.0003,1.0003,1.0003,1.0003,
+                               1.0003,1.0003,1.0003,1.0003,1.0003 };
+        G4double specSp[N] = { 1.,1.,1.,1.,1., 1.,1.,1.,1.,1. };  // pure mirror
+        G4double specLo[N] = { 0.,0.,0.,0.,0., 0.,0.,0.,0.,0. };
+        G4double backSc[N] = { 0.,0.,0.,0.,0., 0.,0.,0.,0.,0. };
         mpt->AddProperty("REFLECTIVITY",          e, R,      N);
         mpt->AddProperty("RINDEX",                e, nGap,   N);
         mpt->AddProperty("SPECULARSPIKECONSTANT", e, specSp, N);
@@ -240,26 +260,24 @@ void GeometryMuonScint::BuildOpticalSurfaces()
       }
 
       // ============================================================
-      // 3) GLOSSY WHITE PAPER with air gap.
-      //    Ground/back-painted with sigma_alpha ~ 0.1 rad to model
-      //    the slight surface texture of the paper. Most photons
-      //    that transmit and hit the paper backing are diffusely
-      //    re-emitted (Lambertian), with a small specular-lobe
-      //    component from the glossy finish.
-      //    R(425 nm) ~ 0.93-0.95 typical for glossy photo paper.
+      // 3) HIGH-GLOSS PAPER (specular mirror finish, air gap).
+      //    The paper reports Al foil and glossy paper give nearly
+      //    identical, highest signal-to-noise; glossy is therefore
+      //    modelled like a slightly lossier mirror (specular spike).
       // ============================================================
       case kGlossyPaper: {
         fReflSurface->SetType(dielectric_dielectric);
-        fReflSurface->SetFinish(groundbackpainted);
-        fReflSurface->SetSigmaAlpha(0.0000001);  // mild texture
+        fReflSurface->SetFinish(polishedbackpainted);
+        fReflSurface->SetSigmaAlpha(0.0);
 
         auto* mpt = new G4MaterialPropertiesTable();
-        G4double R[N]      = { 0.95, 0.95 };
-        G4double nGap[N]   = { 1.0003, 1.0003 };
-        G4double specSp[N] = { 0.00, 0.00 };
-        G4double specLo[N] = { 0.20, 0.20 };  // small glossy lobe
-        G4double backSc[N] = { 0.00, 0.00 };
-        // Lambertian fraction = 0.80
+        G4double R[N]      = { 0.940, 0.950, 0.955, 0.955, 0.955,
+                               0.950, 0.945, 0.940, 0.925, 0.900 };
+        G4double nGap[N]   = { 1.0003,1.0003,1.0003,1.0003,1.0003,
+                               1.0003,1.0003,1.0003,1.0003,1.0003 };
+        G4double specSp[N] = { 1.,1.,1.,1.,1., 1.,1.,1.,1.,1. };
+        G4double specLo[N] = { 0.,0.,0.,0.,0., 0.,0.,0.,0.,0. };
+        G4double backSc[N] = { 0.,0.,0.,0.,0., 0.,0.,0.,0.,0. };
         mpt->AddProperty("REFLECTIVITY",          e, R,      N);
         mpt->AddProperty("RINDEX",                e, nGap,   N);
         mpt->AddProperty("SPECULARSPIKECONSTANT", e, specSp, N);
@@ -270,10 +288,8 @@ void GeometryMuonScint::BuildOpticalSurfaces()
       }
 
       // ============================================================
-      // 4) PTFE / TEFLON tape with air gap.
-      //    Near-perfectly Lambertian volumetric scatterer.
-      //    R(425 nm) >= 0.99 for >= 4 layers of plumber's tape;
-      //    use 0.985 to be conservative for typical 2-3 layers.
+      // 4) PTFE / TEFLON tape with air gap (NOT part of Rao 2025;
+      //    kept for completeness). Near-perfect Lambertian scatterer.
       // ============================================================
       case kTeflon: {
         fReflSurface->SetType(dielectric_dielectric);
@@ -281,12 +297,13 @@ void GeometryMuonScint::BuildOpticalSurfaces()
         fReflSurface->SetSigmaAlpha(0.1);
 
         auto* mpt = new G4MaterialPropertiesTable();
-        G4double R[N]      = { 0.99, 0.99 };
-        G4double nGap[N]   = { 1.0003, 1.0003 };
-        G4double specSp[N] = { 0.00, 0.00 };
-        G4double specLo[N] = { 0.00, 0.00 };
-        G4double backSc[N] = { 0.00, 0.00 };
-        // Lambertian fraction = 1.00
+        G4double R[N]      = { 0.990, 0.990, 0.990, 0.990, 0.990,
+                               0.985, 0.980, 0.970, 0.950, 0.920 };
+        G4double nGap[N]   = { 1.0003,1.0003,1.0003,1.0003,1.0003,
+                               1.0003,1.0003,1.0003,1.0003,1.0003 };
+        G4double specSp[N] = { 0.,0.,0.,0.,0., 0.,0.,0.,0.,0. };
+        G4double specLo[N] = { 0.,0.,0.,0.,0., 0.,0.,0.,0.,0. };
+        G4double backSc[N] = { 0.,0.,0.,0.,0., 0.,0.,0.,0.,0. };
         mpt->AddProperty("REFLECTIVITY",          e, R,      N);
         mpt->AddProperty("RINDEX",                e, nGap,   N);
         mpt->AddProperty("SPECULARSPIKECONSTANT", e, specSp, N);
@@ -310,15 +327,49 @@ void GeometryMuonScint::BuildOpticalSurfaces()
 
     // -----------------------------------------------------------------
     // 3) Grease <-> SiPM photocathode boundary.
-    //    Pure Fresnel transmission; SD applies PDE manually.
-    //    The SiPM bulk material is "opaque" via the SD's StopAndKill.
+    //    dielectric_metal + EFFICIENCY = PDE(lambda), REFLECTIVITY = 0.
+    //    G4OpBoundaryProcess performs the PDE Bernoulli draw and, on
+    //    success, marks the status Detection and invokes the SD. Photons
+    //    are killed either way (the SiPM is opaque).
     // -----------------------------------------------------------------
     fSiPMSurface = new G4OpticalSurface("MuonScintSiPMPhotocathode");
     fSiPMSurface->SetModel(unified);
-    fSiPMSurface->SetType(dielectric_dielectric);
+    fSiPMSurface->SetType(dielectric_metal);
     fSiPMSurface->SetFinish(polished);
-    // No MPT -- Fresnel from material RINDEX is automatic.
+
+    const G4int Np = 11;
+    G4double ep[Np]    = { 2.067*eV, 2.156*eV, 2.250*eV, 2.339*eV, 2.450*eV,
+                           2.594*eV, 2.755*eV, 2.917*eV, 3.100*eV, 3.300*eV, 3.543*eV };
+    // ASD-NUV4S-P-40: PDE peaks ~43% near 420 nm (blue/UV-enhanced).
+    G4double pde[Np]   = { 0.20, 0.23, 0.27, 0.31, 0.35,
+                           0.40, 0.43, 0.43, 0.40, 0.30, 0.18 };
+    G4double rZero[Np] = { 0.,0.,0.,0.,0., 0.,0.,0.,0.,0.,0. };
+    auto* sipmMPT = new G4MaterialPropertiesTable();
+    sipmMPT->AddProperty("EFFICIENCY",   ep, pde,   Np);
+    sipmMPT->AddProperty("REFLECTIVITY", ep, rZero, Np);
+    fSiPMSurface->SetMaterialPropertiesTable(sipmMPT);
+
+    // -----------------------------------------------------------------
+    // 4) Black holder inner surface (absorber).
+    //    dielectric_dielectric with REFLECTIVITY = TRANSMITTANCE = 0 and
+    //    EFFICIENCY = 0 -> every photon is absorbed (killed).
+    // -----------------------------------------------------------------
+    fHolderSurface = new G4OpticalSurface("MuonScintHolderAbsorber");
+    fHolderSurface->SetModel(unified);
+    fHolderSurface->SetType(dielectric_dielectric);
+    fHolderSurface->SetFinish(polished);
+    {
+        const G4int Nh = 2;
+        G4double eh[Nh] = { 1.5*eV, 6.0*eV };
+        G4double r0[Nh] = { 0.0, 0.0 };
+        G4double t0[Nh] = { 0.0, 0.0 };
+        auto* holdMPT = new G4MaterialPropertiesTable();
+        holdMPT->AddProperty("REFLECTIVITY",   eh, r0, Nh);
+        holdMPT->AddProperty("TRANSMITTANCE",  eh, t0, Nh);
+        fHolderSurface->SetMaterialPropertiesTable(holdMPT);
+    }
 }
+
 
 
 
@@ -518,8 +569,59 @@ G4int GeometryMuonScint::Build()
     // ---------- Optical surfaces ----------
     BuildOpticalSurfaces();
 
+    // ---------- Black holder for the bare configuration ----------
+    if (UsesBlackHolder()) BuildHolder();
+
     G4cout << " -> Finished constructing GeometryMuonScint." << G4endl;
     return 1;
+}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+// Black 3D-printed holder that encloses the bare plate, reproducing the real
+// "bare plate in a black ABS holder" setup (Rao et al. 2025, Sec. III A).
+// The holder is a shell (outer box minus an inner cavity box). The cavity is
+// drawn slightly larger than the plate for visualization; the optical loss
+// from the tight plate/holder contact (frustrated TIR) is modelled by the
+// absorber skin on the slab in PlaceDetector, while this shell's own
+// absorbing skin catches any photon that does cross the drawn gap.
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+void GeometryMuonScint::BuildHolder()
+{
+    G4NistManager* nist = G4NistManager::Instance();
+
+    // Matte-black absorber (near-zero reflectivity at optical wavelengths).
+    G4Material* holderMat = G4Material::GetMaterial("MuonScintHolderBlack", false);
+    if (!holderMat) {
+        holderMat = new G4Material("MuonScintHolderBlack", 1.05*g/cm3, 2);
+        holderMat->AddElement(nist->FindOrBuildElement("C"), 1);
+        holderMat->AddElement(nist->FindOrBuildElement("H"), 1);
+
+        const G4int Nb = 2;
+        G4double eb[Nb]   = { 1.5*eV, 6.0*eV };
+        G4double nb[Nb]   = { 1.55, 1.55 };
+        G4double absb[Nb] = { 1.0*um, 1.0*um };   // strongly absorbing
+        auto* mptB = new G4MaterialPropertiesTable();
+        mptB->AddProperty("RINDEX",    eb, nb,   Nb);
+        mptB->AddProperty("ABSLENGTH", eb, absb, Nb);
+        holderMat->SetMaterialPropertiesTable(mptB);
+    }
+
+    // Outer dimensions of the cavity = slab + air gap on all six faces.
+    const G4double cavX = fHalfSize.x() + fHolderGap;
+    const G4double cavY = fHalfSize.y() + fHolderGap;
+    const G4double cavZ = fHalfSize.z() + fHolderGap;
+
+    auto* outerSolid = new G4Box("HolderOuter",
+                                 cavX + fHolderWall,
+                                 cavY + fHolderWall,
+                                 cavZ + fHolderWall);
+    auto* cavitySolid = new G4Box("HolderCavity", cavX, cavY, cavZ);
+    auto* shellSolid = new G4SubtractionSolid("HolderShell",
+                                              outerSolid, cavitySolid);
+
+    fHolderLV = new G4LogicalVolume(shellSolid, holderMat, "MuonScintHolderLV");
+    fHolderLV->SetVisAttributes(new G4VisAttributes(true, G4Colour(0.15, 0.15, 0.15, 0.5)));
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -545,6 +647,37 @@ void GeometryMuonScint::PlaceDetector(G4LogicalVolume* worldLV,
     // surface exists. The grease patches will override at their footprints.
     if (fWrapWithReflector && fReflectorType != kNoReflector) {
         new G4LogicalSkinSurface("MuonScintSkin", fScintLV, fReflSurface);
+    }
+
+    // Bare configuration: the polished plate is clamped into the black ABS
+    // holder. The holder index (~1.55) is close to the scintillator (1.58)
+    // and the fit is tight, so the plate faces are in effective optical
+    // contact: total internal reflection is frustrated and trapped light
+    // leaks into the black wall, where it is absorbed. This is why the bare
+    // plate is the weakest light collector even though it is "all-sides
+    // polished" (a free-standing polished plate would instead be a near
+    // lossless TIR guide). The absorbing skin on the slab models that
+    // contact / frustrated-TIR loss. SiPM coupling border surfaces override
+    // it at their footprints.
+    if (UsesBlackHolder() && fHolderSurface) {
+        new G4LogicalSkinSurface("MuonScintBareAbsorber", fScintLV, fHolderSurface);
+    }
+
+    // Black holder: bare configuration only. The shell is the structural
+    // 3D-printed enclosure; its cavity is drawn slightly larger than the slab
+    // for visualization. The optical loss at the plate faces is already
+    // handled by the absorber skin above (effective contact), so the drawn
+    // gap is not optically traversed by this model. The holder's own
+    // absorbing skin is kept as a safety net for any photon that does cross
+    // the gap.
+    if (fHolderLV) {
+        new G4PVPlacement(rot, pos, fHolderLV,
+                          "MuonScintHolderPhys",
+                          worldLV, false, copyNo, true);
+        if (fHolderSurface) {
+            new G4LogicalSkinSurface("MuonScintHolderSkin",
+                                     fHolderLV, fHolderSurface);
+        }
     }
 
     // Place grease pads + SiPMs as siblings of the slab in the world.
@@ -736,28 +869,25 @@ void GeometryMuonScint::PlaceSiPMs(G4LogicalVolume* worldLV,
 
 void GeometryMuonScint::PresetConfig_8SiPM_AllSides() {
     ClearSiPMs();
-    //for (G4int e = 0; e < 4; ++e) {
-    //    AddSiPM({e, -0.5, 0.0});
-    //    AddSiPM({e, +0.5, 0.0});
-    //}
+    // Config 1: two SiPMs per side, equidistantly mounted along the 250 mm
+    // side (i.e. 62.5 mm and 187.5 mm -> u = -0.5, +0.5).
     for (G4int e = 0; e < 4; ++e) {
-        AddSiPM({e, -0.8, 0.0});
-        AddSiPM({e, +0.8, 0.0});
+        AddSiPM({e, -0.5, 0.0});
+        AddSiPM({e, +0.5, 0.0});
     }
 }
 
 void GeometryMuonScint::PresetConfig_4SiPM_OnePerSide() {
     ClearSiPMs();
-    //for (G4int e = 0; e < 4; ++e) AddSiPM({e, 0.0, 0.0});
-    for (G4int e = 0; e < 4; ++e) AddSiPM({e, 0.8, 0.0});
+    // Config 2: one SiPM centred on each of the four side faces.
+    for (G4int e = 0; e < 4; ++e) AddSiPM({e, 0.0, 0.0});
 }
 
 void GeometryMuonScint::PresetConfig_2SiPM_OneSide() {
     ClearSiPMs();
-    //AddSiPM({0, -0.5, 0.0});
-    //AddSiPM({0, +0.5, 0.0});
-    AddSiPM({0, -0.8, 0.0});
-    AddSiPM({0, +0.8, 0.0});
+    // Config 3: two SiPMs, both on the +X side, equidistant (u = -0.5, +0.5).
+    AddSiPM({0, -0.5, 0.0});
+    AddSiPM({0, +0.5, 0.0});
 }
 
 void GeometryMuonScint::PresetConfig_4SiPM_Corners() {

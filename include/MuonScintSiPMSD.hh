@@ -13,21 +13,30 @@
 
 class G4Step;
 class G4HCofThisEvent;
+class DetectorConstruction;
 
 /// Sensitive detector for the SiPM volumes attached to a MuonScint slab.
 ///
 /// Behaviour (per step):
 ///   * Filters to optical photons only (charged-particle steps are ignored).
-///   * Triggers on geometry-boundary entry into the SiPM volume.
-///   * Increments the per-SiPM "incident" counter, then applies a Bernoulli
-///     draw against fPDE (default 43% from Rao et al. [[12]]).
-///   * On detection: increments "detected" counter, accumulates running
-///     sums of wavelength & wavelength^2, captures earliest time + position.
+///   * The grease<->SiPM boundary is a `dielectric_metal` optical surface with
+///     EFFICIENCY = PDE(lambda) and REFLECTIVITY = 0. G4OpBoundaryProcess
+///     performs the PDE Bernoulli draw internally and, on success, invokes
+///     this SD with status Detection (non-zero energy deposit). ProcessHits is
+///     therefore only called for detected photoelectrons.
+///   * On detection: increments the per-SiPM photoelectron count and
+///     accumulates running sums of wavelength & wavelength^2, capturing the
+///     earliest time + position.
 ///   * KILLS the photon unconditionally (the SiPM is opaque).
 ///
-/// Output (EndOfEvent): writes one row per (event, SiPM) with non-zero
-/// detected counts to the analysis-manager NTuple at index `fNtupleId`
-/// (default 3 -- assumes "sipmHits" is the 4th NTuple in HistoManager).
+/// Output (EndOfEvent): writes one row per (event, SiPM) of every slab the
+/// primary muon entered -- including zero-detection SiPMs -- to the
+/// analysis-manager NTuple at index `fNtupleId` (default 3 -- assumes
+/// "sipmHits" is the 4th NTuple in HistoManager). Besides the per-SiPM
+/// photoelectron count it writes the primary muon's first-entry slab-local
+/// x-y (muonX/muonY) and the event's total optical photons produced in the
+/// slab (nProduced), so the collection efficiency nDetected/nProduced can be
+/// binned offline at any cell size and for any SiPM subset.
 ///
 /// One hit per SiPM per event => bounded I/O even at very high light yield.
 
@@ -42,13 +51,13 @@ class MuonScintSiPMSD : public G4VSensitiveDetector
     G4bool ProcessHits(G4Step* step, G4TouchableHistory* history) override;
     void EndOfEvent  (G4HCofThisEvent* hce) override;
 
-    // Configuration
-    void     SetPDE(G4double pde)     { fPDE = pde; }
-    G4double GetPDE() const           { return fPDE; }
-
     // NTuple slot. Must match the index assigned in HistoManager::Book().
     void  SetNtupleId(G4int id)       { fNtupleId = id; }
     G4int GetNtupleId() const         { return fNtupleId; }
+
+    // Detector construction, used to map each hit SiPM LV back to its slab
+    // index so the per-slab collected-photon counters can be incremented.
+    void SetDetector(DetectorConstruction* det) { fDetector = det; }
 
   private:
     MuonScintHitsCollection* fHitsCollection = nullptr;
@@ -57,8 +66,9 @@ class MuonScintSiPMSD : public G4VSensitiveDetector
     // Lets ProcessHits find the existing aggregate hit in O(log N).
     std::map<G4int, G4int> fSiPMHitIndexMap;
 
-    G4double fPDE      = 0.43;     // Rao 2025 Table II [[12]]
-    G4int    fNtupleId = 3;        // 4th NTuple (after primary/hits/surfaceFlux)
+    G4int fNtupleId = 3;        // 4th NTuple (after primary/hits/surfaceFlux)
+
+    DetectorConstruction* fDetector = nullptr;
 };
 
 #endif

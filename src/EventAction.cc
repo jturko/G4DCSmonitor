@@ -3,6 +3,7 @@
 
 #include "EventAction.hh"
 #include "RunAction.hh"
+#include "OpticalDiagnostics.hh"
 
 #include "G4SDManager.hh"
 #include "G4HCofThisEvent.hh"
@@ -13,11 +14,9 @@
 
 #include "G4RunManager.hh"
 #include "G4Run.hh"
-
-//#include "G4RootAnalysisManager.hh"
-//#include "g4root.hh"
-
 #include "G4AnalysisManager.hh"
+
+#include <algorithm>
 
 #include "ProgressBar.hh"
 #include "G4Threading.hh"
@@ -54,8 +53,25 @@ void EventAction::BeginOfEventAction(const G4Event* evt)
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-void EventAction::EndOfEventAction(const G4Event *)
+void EventAction::EndOfEventAction(const G4Event* evt)
 {
+    // Optical-photon accounting row (ntuple id 4: primary/hits/surfaceFlux/sipmHits/opticalStats)
+    if (evt) {
+        G4AnalysisManager* analysis = G4AnalysisManager::Instance();
+        const G4int idx = 4;
+        const G4int nAlive = std::max(0, gOpticalDiag.NGenerated() - gOpticalDiag.nKilled);
+        analysis->FillNtupleIColumn(idx, 0, evt->GetEventID());
+        analysis->FillNtupleIColumn(idx, 1, gOpticalDiag.nScint);
+        analysis->FillNtupleIColumn(idx, 2, gOpticalDiag.nCerenkov);
+        analysis->FillNtupleIColumn(idx, 3, gOpticalDiag.nKilled);
+        analysis->FillNtupleIColumn(idx, 4, gOpticalDiag.nDetected);
+        analysis->FillNtupleIColumn(idx, 5, gOpticalDiag.nEscaped);
+        analysis->FillNtupleIColumn(idx, 6, nAlive);
+        analysis->AddNtupleRow(idx);
+    }
+
+    gOpticalDiag.Reset();
+
     //if (g_sigint_received != 0 && G4Threading::G4GetThreadId() == 0) {
     //    G4cout << "\n>>> Ctrl-C detected. Soft-aborting run after current event..." << G4endl;
     //    

@@ -38,12 +38,11 @@ class MuonScintHit : public G4VHit
     void SetSiPMNum  (G4int n)              { fSiPMNum = n; }
     void SetWeight   (G4double w)           { fWeight  = w; }
 
-    // Add an incident photon (one that entered the SiPM volume but may or
-    // may not have been detected).
-    void AddIncident()                      { ++fNIncident; }
-
-    // Add a detected photon. Updates running sums, first-arrival time, and
-    // first-arrival position. Wavelength `lam` is in nm.
+    // Record one detected photoelectron. Called once per photon that passes
+    // the SiPM surface PDE (the surface is `dielectric_metal` with
+    // EFFICIENCY=PDE, so G4OpBoundaryProcess only invokes the SD on detection).
+    // Updates running sums, first-arrival time and first-arrival position.
+    // Wavelength `lam` is in nm.
     void AddDetected(G4double t,
                      G4double lam_nm,
                      const G4ThreeVector& pos)
@@ -61,7 +60,6 @@ class MuonScintHit : public G4VHit
     G4int    GetDetNum()    const { return fDetNum; }
     G4int    GetSiPMNum()   const { return fSiPMNum; }
     G4int    GetNDetected() const { return fNDetected; }
-    G4int    GetNIncident() const { return fNIncident; }
     G4double GetTFirst()    const { return fTFirst; }
     G4ThreeVector GetPosFirst() const { return fPosFirst; }
     G4double GetWeight()    const { return fWeight; }
@@ -79,8 +77,7 @@ class MuonScintHit : public G4VHit
   private:
     G4int         fDetNum    = -1;     // parent slab assembly copyNo
     G4int         fSiPMNum   = -1;     // SiPM copyNo within the parent slab
-    G4int         fNDetected =  0;     // photons that PASSED the PDE Bernoulli
-    G4int         fNIncident =  0;     // photons that entered the SiPM volume
+    G4int         fNDetected =  0;     // detected photoelectrons at this SiPM
     G4double      fTFirst    =  0.;    // time of first detected photon
     G4ThreeVector fPosFirst;           // global position of first detected photon
     G4double      fSumLam    =  0.;    // running sum of wavelengths [nm]
