@@ -1,0 +1,92 @@
+#
+# Test macro: MCNP CSV surface flux source -> primary tree scoring
+#
+# Usage:
+#   ./G4DCSmonitor run_csv_surface.mac
+#
+# Before running, set the CSV file path below to your MCNP data file.
+#
+
+#
+# output verbosity
+# ------------------------------------------
+#/control/verbose 1
+#/run/verbose 1
+#/tracking/verbose 1
+
+# MT settings
+# ------------------------------------------
+/run/numberOfThreads 1
+
+# CLYC detector
+# ------------------------------------------
+/dcs-monitor/det/setPosition 0 0 -1400 mm
+/dcs-monitor/det/setRotation 0 0 0
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/clyc/setCrystalMaterial CLYC
+/dcs-monitor/det/clyc/setCrystalRadius 12.5 mm
+/dcs-monitor/det/clyc/setCrystalLength 25.0 mm
+/dcs-monitor/det/clyc/setCasingMaterial G4_Al
+/dcs-monitor/det/clyc/setCasingThickness 0.5 mm
+/dcs-monitor/det/clyc/setLiFColMaterial LiF
+/dcs-monitor/det/clyc/setLiFColLength 0.0 mm
+/dcs-monitor/det/clyc/setPbColMaterial G4_Pb
+/dcs-monitor/det/clyc/setPbColLength 50.0 mm
+/dcs-monitor/det/clyc/setPEColMaterial G4_POLYETHYLENE
+/dcs-monitor/det/clyc/setPEColLength 50.0 mm
+/dcs-monitor/det/clyc/setPEPlugLipLength 10.0 mm
+/dcs-monitor/det/clyc/setPEPlugInnerLength 35.0 mm
+
+# CASTOR 440/84 pos 1
+# ------------------------------------------
+/dcs-monitor/det/setPosition 0 0 0 m
+/dcs-monitor/det/setRotation -90 0 0
+/dcs-monitor/det/castor440/add
+
+# initialize the run
+# ------------------------------------------
+/run/initialize
+
+# setup long threshold for radioactive decay
+# ------------------------------------------
+/process/had/rdm/thresholdForVeryLongDecayTime 1e60 year
+
+#
+# MCNP CSV surface source
+# ------------------------------------------
+# Set the path to your MCNP surface-crossing CSV file here.
+# Format: pid x y z u v w erg wgt  (cm, MeV, unitless weight)
+# pid: 1=neutron, 2=gamma
+#
+/dcs-monitor/surf/csvFile /Users/joey/Downloads/castor44084_n_beh1.csv
+
+# Optional: PID filter (0=any, 2112=neutron, 22=gamma)
+/dcs-monitor/surf/sourcePid 0
+
+# Optional: smearing (all off by default)
+#/dcs-monitor/surf/smearPhi 0.01
+#/dcs-monitor/surf/smearZ 1.0 mm
+#/dcs-monitor/surf/smearAngle 0.01
+#/dcs-monitor/surf/smearEfrac 0.01
+
+# Cask index for placement
+/dcs-monitor/surf/caskNum 0
+
+# Select the CSV surface source mode
+/dcs-monitor/gun/sourceMode CASTOR440_surface_from_CSV
+
+#
+# Scoring: write the primary vertex tree
+# ------------------------------------------
+/dcs-monitor/run/writePrimary true
+/dcs-monitor/run/writePrimaryOnlyOnHit false
+
+# root output
+# ------------------------------------------
+/analysis/setFileName csv_surface_test
+
+#
+# start the run
+# ------------------------------------------
+# Generate a small number of primaries to verify the pipeline
+/run/beamOn 1000

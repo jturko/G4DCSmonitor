@@ -27,6 +27,7 @@ class SurfaceFluxSamplerMessenger : public G4UImessenger
 
     // sampler configuration
     G4UIcmdWithAString*        fFileCmd          = nullptr;
+    G4UIcmdWithAString*        fCSVFileCmd       = nullptr;
     G4UIcmdWithAnInteger*      fMaxEntriesLoadedFromTreeCmd = nullptr;
     G4UIcmdWithAnInteger*      fPidCmd           = nullptr;
     G4UIcmdWithADouble*        fSmearPhiCmd      = nullptr;

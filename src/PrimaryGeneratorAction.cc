@@ -57,6 +57,10 @@ PrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
             GenerateVertexCASTOR440SurfaceFromTree(anEvent);
             break;
 
+        case kCASTOR440_surface_from_CSV:
+            GenerateVertexCASTOR440SurfaceFromCSV(anEvent);
+            break;
+
         case kCASTOR440_fuel:
             GenerateVertexCASTOR440FuelFlux(anEvent);
             break;
@@ -389,6 +393,63 @@ void PrimaryGeneratorAction::GenerateVertexCASTOR440SurfaceFromTree(G4Event* eve
     G4ThreeVector globalDir = dirLocal;
     if (auto* rot = fDetector->GetCASTOR440Rotation(caskNum)) {
         globalPos.transform(*rot);   
+        globalDir.transform(*rot);
+    }
+    globalPos += fDetector->GetCASTOR440Position(caskNum);
+
+    auto* def = G4ParticleTable::GetParticleTable()->FindParticle(pid);
+    if (!def) {
+        G4ExceptionDescription ed; ed << "Unknown PDG code " << pid;
+        G4Exception("PrimaryGeneratorAction", "BadPID", FatalException, ed);
+        return;
+    }
+
+    fParticleGun->SetParticleDefinition(def);
+    fParticleGun->SetParticleEnergy(ekin * MeV);
+    fParticleGun->SetParticlePosition(globalPos);
+    fParticleGun->SetParticleMomentumDirection(globalDir.unit());
+    fParticleGun->GeneratePrimaryVertex(event);
+
+    auto* v = event->GetPrimaryVertex(event->GetNumberOfPrimaryVertex() - 1);
+    if (v) v->SetWeight(weight);
+}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+// Surface flux from MCNP CSV data (external institute). Reuses the same
+// SurfaceFluxSampler alias-table machinery; the only difference is that the
+// data was loaded via LoadCSV() instead of Load(). The sampling, smearing,
+// and C6 rotation logic in Sample() is identical.
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+void PrimaryGeneratorAction::GenerateVertexCASTOR440SurfaceFromCSV(G4Event* event)
+{
+    auto& s = SurfaceFluxSampler::Instance();
+    const G4int caskNum = s.GetPlacementCask();
+
+    if (auto* cask = fDetector->GetCASTOR440(caskNum)) {
+        s.SetGeometryParameters(cask->GetCaskOuterRadius() / CLHEP::mm,
+                                cask->GetCaskHeight()      / CLHEP::mm,
+                                /*tol mm*/ 2.0);
+    } else {
+        G4Exception("PrimaryGeneratorAction", "NoCask", FatalException,
+                    "Cask not constructed; did /run/initialize run first?");
+        return;
+    }
+
+    G4ThreeVector posLocal, dirLocal;
+    G4double      ekin, weight;
+    G4int         pid;
+
+    if (!s.Sample(posLocal, dirLocal, ekin, weight, pid)) {
+        G4Exception("PrimaryGeneratorAction", "SurfaceSampleFail",
+                    FatalException, "No matching crossings in CSV sampler.");
+        return;
+    }
+
+    G4ThreeVector globalPos = posLocal;
+    G4ThreeVector globalDir = dirLocal;
+    if (auto* rot = fDetector->GetCASTOR440Rotation(caskNum)) {
+        globalPos.transform(*rot);
         globalDir.transform(*rot);
     }
     globalPos += fDetector->GetCASTOR440Position(caskNum);
