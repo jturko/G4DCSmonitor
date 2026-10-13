@@ -769,22 +769,35 @@ void GeometryMuonScint::BuildWLSFibres()
                           2.952*eV, 3.100*eV, 3.263*eV };
         G4double rindexW[N] = { 1.59,1.59,1.59,1.59,1.59,1.59,1.59,
                                 1.59,1.59,1.59,1.59,1.59,1.59 };
-        // Bulk absorption: essentially transparent (long polystyrene
-        // attenuation) in the green (>500 nm); drops steeply below the Y-11
-        // absorption peak at 430 nm (2.883 eV) so blue light is captured.
-        G4double absW[N] = {
-            3.5*m, 3.5*m, 3.5*m, 3.5*m, 3.5*m,      // 650-541 nm: transparent
-            3.5*m, 3.5*m, 1.5*m, 0.30*m, 0.06*m,    // 500-428 nm: absorption onset
-            0.006*m, 0.0006*m, 0.00006*m };          // <415 nm: strong Y-11 absorption
-        // Y-11 emission (peak ~476 nm / 2.605 eV), broad, zero above ~3.0 eV.
+        // Non-WLS bulk loss (Rayleigh/impurities): flat and long so it does not
+        // compete with the WLS absorption of the blue scintillation light.
+        G4double absBulk[N] = {
+            5.0*m, 5.0*m, 5.0*m, 5.0*m, 5.0*m, 5.0*m, 5.0*m,
+            5.0*m, 5.0*m, 5.0*m, 5.0*m, 5.0*m, 5.0*m };
+        // WLS (Y-11) absorption length. CRITICAL: it MUST be effectively
+        // transparent (huge) at and below the bottom of the emission band.
+        // G4OpWLS samples the secondary from WLSCOMPONENT and requires it to be
+        // <= the absorbed photon energy; if a green/red photon (e.g. a Cerenkov
+        // photon at ~700 nm, 1.78 eV) is absorbed where the emission spectrum has
+        // no weight below it, no secondary can be sampled and Geant4 raises the
+        // fatal WSL01 exception (abort). The onset is kept for the ~480-460 nm
+        // blue that Y-11 really absorbs, which is the scintillation band.
+        G4double wlsAbs[N] = {
+            1e6*m, 1e6*m, 1e6*m, 1e6*m, 1e6*m,    // 650-541 nm: no WLS absorption
+            1e6*m, 1e6*m,                          // 520-500 nm: none
+            0.60*m, 0.20*m,                        // 480, 460 nm: Y-11 onset
+            0.05*m, 0.005*m, 0.0005*m, 0.00005*m }; // 440-380 nm: strong
+        // Y-11 emission (peak ~476 nm / 2.605 eV). Zero at and above the
+        // absorption onset so the sampled secondary always has E <= the absorbed
+        // photon (keeps G4OpWLS's energy check satisfiable).
         G4double wlsComp[N] = {
-            0.00, 0.02, 0.05, 0.12, 0.30,
-            0.65, 1.00, 0.72, 0.35, 0.12,
-            0.03, 0.00, 0.00 };
+            0.00, 0.03, 0.08, 0.18, 0.40,
+            0.70, 0.95, 1.00, 0.55, 0.00,
+            0.00, 0.00, 0.00 };
         auto* mptW = new G4MaterialPropertiesTable();
         mptW->AddProperty("RINDEX",       e, rindexW, N);
-        mptW->AddProperty("ABSLENGTH",    e, absW,    N);   // non-WLS loss
-        mptW->AddProperty("WLSABSLENGTH", e, absW,    N);   // WLS absorption length
+        mptW->AddProperty("ABSLENGTH",    e, absBulk, N);   // non-WLS loss
+        mptW->AddProperty("WLSABSLENGTH", e, wlsAbs,  N);   // WLS absorption length
         mptW->AddProperty("WLSCOMPONENT", e, wlsComp, N);
         mptW->AddConstProperty("WLSTIMECONSTANT", 7.0*ns);  // Y-11 decay
         coreMat->SetMaterialPropertiesTable(mptW);

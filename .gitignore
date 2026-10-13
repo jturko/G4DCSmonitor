@@ -11,3 +11,9 @@ handoff.tmp
 /None/
 /g4_*.wrl
 /g4tsg_offscreen*.png
+
+# LaTeX build byproducts
+report/*.aux
+report/*.log
+report/*.out
+report/*.toc

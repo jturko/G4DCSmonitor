@@ -209,6 +209,15 @@ Far (**+y**, after the placement flip) ends are full-disc `G4_Al` mirror caps; t
 (**−y**) ends meet the shared grease pad + single SiPM. The clamp LV carries a
 `dielectric_metal` specular mirror skin on its outboard face.
 
+**WLS absorption vs. emission — must not overlap (fatal on some Geant4 builds).** `G4OpWLS`
+samples the secondary from `WLSCOMPONENT` and requires its energy to be ≤ the absorbed photon's.
+If `WLSABSLENGTH` is finite where the emission spectrum has no weight below the photon energy
+(e.g. a green/red Čerenkov photon at ~700 nm absorbed by a finite 3.5 m WLS absorption), no
+secondary can be sampled: newer Geant4 raises the fatal `WSL01` exception (abort/SIGABRT),
+while 11.4.0 silently returns no secondary. Keep `WLSABSLENGTH` effectively transparent (1e6 m)
+at and below the emission onset, make it finite only in the blue absorption band, and zero
+`WLSCOMPONENT` at/above that onset (see `.refs/examples/extended/optical/wls/src/WLSMaterials.cc`).
+
 **Known caveat (documented, not chased):** cfg4 collects ~17 pe/evt (centre) vs cfg3 ~164,
 i.e. cfg4 < cfg3, whereas paper Fig. 12 shows cfg4 > cfg3. The paper itself warns the configs
 "cannot be directly compared" (different SiPM count / gain / input capacitance), and its cfg4
