@@ -397,6 +397,11 @@ void DetectorConstruction::SetMuonScintWrap(G4bool on)
     if (!fMuonScints.empty()) fMuonScints.back()->SetReflectorWrap(on);
 }
 
+void DetectorConstruction::SetMuonScintLightYieldScale(G4double s)
+{
+    if (!fMuonScints.empty()) fMuonScints.back()->SetLightYieldScale(s);
+}
+
 void DetectorConstruction::SetMuonScintSiPMSize(G4double sx, G4double sy)
 {
     if (!fMuonScints.empty()) fMuonScints.back()->SetSiPMSize(sx, sy);
@@ -427,9 +432,10 @@ void DetectorConstruction::ApplyMuonScintPreset(G4int presetId)
         case 2: m->PresetConfig_4SiPM_OnePerSide(); break;
         case 3: m->PresetConfig_2SiPM_OneSide();    break;
         case 4: m->PresetConfig_4SiPM_Corners();    break;
+        case 5: m->PresetConfig_WLSFibreClamp();    break;
         default:
             G4cerr << " [DetectorConstruction::ApplyMuonScintPreset] "
-                   << "Unknown preset " << presetId << " (valid: 1..4)" << G4endl;
+                   << "Unknown preset " << presetId << " (valid: 1..5)" << G4endl;
             break;
     }
 }

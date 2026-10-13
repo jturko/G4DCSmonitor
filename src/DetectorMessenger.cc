@@ -213,9 +213,18 @@ DetectorMessenger::DetectorMessenger(DetectorConstruction* Det) : fDetector(Det)
     fApplyMuonScintPresetCmd->SetGuidance("  2 = Config 2: 4 SiPMs (1 per side, all 4 sides)");
     fApplyMuonScintPresetCmd->SetGuidance("  3 = Config 3: 2 SiPMs (both on the +X side)");
     fApplyMuonScintPresetCmd->SetGuidance("  4 = Corners:  4 SiPMs (one at each corner of +X/-X edges)");
+    fApplyMuonScintPresetCmd->SetGuidance("  5 = Config 4: single SiPM + WLS fibre clamp (Y-11)");
     fApplyMuonScintPresetCmd->SetParameterName("preset", false);
-    fApplyMuonScintPresetCmd->SetRange("preset >= 1 && preset <= 4");
+    fApplyMuonScintPresetCmd->SetRange("preset >= 1 && preset <= 5");
     fApplyMuonScintPresetCmd->AvailableForStates(G4State_PreInit);
+
+    fSetMuonScintLightYieldScaleCmd = new G4UIcmdWithADouble("/dcs-monitor/det/muonScint/setLightYieldScale", this);
+    fSetMuonScintLightYieldScaleCmd->SetGuidance("Multiply the scintillation light yield by a scale factor.");
+    fSetMuonScintLightYieldScaleCmd->SetGuidance("Default 1.0 (physical 10,000 ph/MeV). Use <1 ONLY for event");
+    fSetMuonScintLightYieldScaleCmd->SetGuidance("visualisation, where the full yield renders as a solid photon blob.");
+    fSetMuonScintLightYieldScaleCmd->SetParameterName("scale", false);
+    fSetMuonScintLightYieldScaleCmd->SetRange("scale > 0.");
+    fSetMuonScintLightYieldScaleCmd->AvailableForStates(G4State_PreInit);
 
 
 }
@@ -284,6 +293,7 @@ DetectorMessenger::~DetectorMessenger()
     delete fAddMuonScintSiPMCmd;
     delete fClearMuonScintSiPMsCmd;
     delete fApplyMuonScintPresetCmd;
+    delete fSetMuonScintLightYieldScaleCmd;
 
 }
 
@@ -361,6 +371,7 @@ void DetectorMessenger::SetNewValue(G4UIcommand* command, G4String value)
     }
     if (command == fClearMuonScintSiPMsCmd)      fDetector->ClearMuonScintSiPMs();
     if (command == fApplyMuonScintPresetCmd)     fDetector->ApplyMuonScintPreset(fApplyMuonScintPresetCmd->GetNewIntValue(value));
+    if (command == fSetMuonScintLightYieldScaleCmd) fDetector->SetMuonScintLightYieldScale(fSetMuonScintLightYieldScaleCmd->GetNewDoubleValue(value));
 
 
 }

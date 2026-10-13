@@ -245,7 +245,18 @@ void PhysicsList::SetCuts()
 #include "G4OpticalPhoton.hh"
 #include "G4ProcessManager.hh"
 
+#include "GeometryMuonScint.hh"
+
 void PhysicsList::ConstructProcess() {
+    // Config 4 auto-enable: if the geometry built WLS fibres, turn on G4OpWLS
+    // before the base (modular) physics list constructs its processes, since
+    // G4OpticalPhysics::ConstructProcess reads the activation flag at that
+    // point. Geometry is built before physics, so this flag is reliable.
+    if (G4OpticalParameters::Instance() && GeometryMuonScint::UsesWLSWorld()) {
+        G4OpticalParameters::Instance()->SetProcessActivation("OpWLS", true);
+        G4cout << " [PhysicsList] WLS geometry detected -> enabling OpWLS." << G4endl;
+    }
+
     G4VModularPhysicsList::ConstructProcess();
 
     if (fUseImportanceBiasing) {

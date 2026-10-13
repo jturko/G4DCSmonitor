@@ -55,6 +55,15 @@
 #include <cmath>
 #include <string>
 
+namespace {
+// Safety cap on the number of steps a single track may take. A normally
+// transported optical photon (even in a highly reflective wrap) needs only
+// ~O(100) steps; a TIR-trapped photon can otherwise loop indefinitely and
+// stall a worker thread. Killing after this many steps bounds the runtime
+// with negligible physics bias.
+constexpr G4int kMaxTrackSteps = 10000;
+}
+
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
@@ -153,6 +162,15 @@ void SteppingAction::UserSteppingAction(const G4Step* aStep)
     if (particle == G4OpticalPhoton::OpticalPhoton()) {
         G4VPhysicalVolume* prePV  = aStep->GetPreStepPoint()->GetPhysicalVolume();
         G4VPhysicalVolume* postPV = aStep->GetPostStepPoint()->GetPhysicalVolume();
+
+        // Hard cap against TIR-trapped photons looping forever in reflective
+        // wraps. Counted as a kill so the per-event optical accounting stays
+        // balanced (it is not "escaped": pre/post are both inside the family).
+        if (stepNb > kMaxTrackSteps) {
+            aStep->GetTrack()->SetTrackStatus(fStopAndKill);
+            ++gOpticalDiag.nKilled;
+            return;
+        }
 
         // Generation: first step of a photon created inside the slab family.
         if (aStep->GetTrack()->GetCurrentStepNumber() == 1 &&
@@ -282,7 +300,10 @@ G4bool SteppingAction::IsInMuonScint(const G4VPhysicalVolume* pv) const
         if (lv == ms->GetScintLV() ||
             lv == ms->GetGreaseLV() ||
             lv == ms->GetSiPMLV()  ||
-            lv == ms->GetHolderLV()) {
+            lv == ms->GetHolderLV() ||
+            lv == ms->GetClampLV() ||
+            lv == ms->GetFibreGreaseLV() ||
+            ms->IsFibreLV(lv)) {
             return true;
         }
     }

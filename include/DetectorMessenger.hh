@@ -120,6 +120,7 @@ class DetectorMessenger : public G4UImessenger
     G4UIcmdWith3Vector*        fAddMuonScintSiPMCmd           = nullptr;     // (edge, u, v) ; edge=0..3, u/v in [-1,1]
     G4UIcmdWithoutParameter*   fClearMuonScintSiPMsCmd        = nullptr;
     G4UIcmdWithAnInteger*      fApplyMuonScintPresetCmd       = nullptr;     // 1..4
+    G4UIcmdWithADouble*        fSetMuonScintLightYieldScaleCmd = nullptr;    // viz-only scale
 
 
 };

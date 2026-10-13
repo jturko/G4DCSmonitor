@@ -125,6 +125,7 @@ class DetectorConstruction : public G4VUserDetectorConstruction
         void AddMuonScintSiPM    (G4int edge, G4double u, G4double v);
         void ClearMuonScintSiPMs ();
         void ApplyMuonScintPreset(G4int presetId);    // 1..4 (Configs)
+        void SetMuonScintLightYieldScale(G4double s); // viz-only; 1.0 = physical
 
     private:
         DetectorMessenger* fDetectorMessenger = nullptr;
