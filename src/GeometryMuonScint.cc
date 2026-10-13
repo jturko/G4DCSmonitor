@@ -638,12 +638,15 @@ void GeometryMuonScint::BuildHolder()
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 // Config 4 (Rao et al. 2025): WLS fibre clamp.
 //
-// A black, optically-absorbing bar clamp sits on the +X narrow face of the
+// A black, optically-absorbing bar clamp sits on the -X narrow face of the
 // plate (greased to it). It holds fNFibres Y-11(200) WLS fibres that run the
-// full length of the plate (y); their -X (far) ends are mirrored, their +X
-// ends are bundled onto a single SiPM. The clamp face pointing away from the
-// Slab (the fibre's radial "open" direction, +X) carries a specular reflector
-// so light escaping a fibre radially is bounced back into it.
+// full length of the plate (y); their far ends are mirrored, the other ends are
+// bundled onto a single SiPM. Built with the bundle at slab-local +y / mirror at
+// -y, the whole sub-assembly is then flipped 180 deg about the slab-local x
+// axis at placement so the read-out ends up at -y (report frame: top-left).
+// The clamp face pointing away from the slab (the fibres' radial "open"
+// direction, -X) carries a specular reflector so light escaping a fibre
+// radially is bounced back into it.
 //
 // The fibres are the WLS medium: core = polystyrene + Y-11 fluor
 // (n=1.59, absorption peak 430 nm, emission peak 476 nm, tau=~7 ns), single
@@ -1033,7 +1036,8 @@ void GeometryMuonScint::BuildWLSFibres()
 // fibres run inside channels milled into the clamp and poke slightly out of the
 // channel mouths into the film, so their core/clad TIR (and long-axis
 // attenuation) is preserved. The clamp body is a light absorber, and each
-// fibre's far (-y) end is capped by a specular Al mirror.
+// fibre's far (+y after the placement flip) end is capped by a specular Al
+// mirror; the read-out (converged bundle + SiPM) is at -y.
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 void GeometryMuonScint::PlaceWLSFibres(G4LogicalVolume* worldLV,
@@ -1059,16 +1063,27 @@ void GeometryMuonScint::PlaceWLSFibres(G4LogicalVolume* worldLV,
         if (slabRot) *r = (*slabRot) * (*r);
         return r;
     };
-    G4RotationMatrix noRot;
+    // The WLS sub-assembly is built with the fibre bundle at slab-local +y and
+    // the mirror at -y, then the whole assembly (film, clamp, fibres, caps,
+    // read-out pad) is rotated 180 deg about the slab-local x axis here.  This
+    // puts the clamp along the report-plan TOP edge (the -x narrow face) with
+    // the read-out SiPM at its LEFT (-x) end -- the top-left corner of the
+    // top-down view, matching Fig. 1 / Fig. 3(b) of Rao et al.  Rx180 is a
+    // proper rotation, so the tessellated fibres and the milled clamp/grease
+    // channels keep their outward facet orientation and flip together; the
+    // clamp and grease boxes are symmetric about that axis.  The fibre / clamp
+    // / channel CONSTRUCTION (BuildWLSFibres) is untouched.
+    G4RotationMatrix flipRot;
+    flipRot.rotateX(180.*deg);
 
-    // ---- Thin grease film (no rotation) ----
-    auto* filmPV = new G4PVPlacement(rotCopy(noRot),
+    // ---- Thin grease film (grooves flip with the assembly) ----
+    auto* filmPV = new G4PVPlacement(rotCopy(flipRot),
                                      mapPos(G4ThreeVector(filmCx, 0., 0.)),
                                      fGrease4LV, "WLSCoupleFilmPhys",
                                      worldLV, false, 0, true);
 
     // ---- Black clamp body (outboard of the fibres) ----
-    new G4PVPlacement(rotCopy(noRot),
+    new G4PVPlacement(rotCopy(flipRot),
                       mapPos(G4ThreeVector(clampCx, 0., 0.)),
                       fClampLV, "WLSClampPhys", worldLV, false, 0, true);
     if (fClampMirror) {
@@ -1086,48 +1101,53 @@ void GeometryMuonScint::PlaceWLSFibres(G4LogicalVolume* worldLV,
     // Geant4's mother-containment overlap check.
     //
     // Each fibre solid (MakeSweptTube) is built DIRECTLY in slab-local
-    // coordinates (axis +y, transverse offset in z, centred on y=0), so it is
-    // placed at the slab-local origin with NO rotation. The core is a daughter
-    // of each clad LV (built above), so it is not placed here.
+    // coordinates (axis +y, transverse offset in z, centred on y=0); it is
+    // placed at the slab-local origin and carries the SAME flipRot as the
+    // clamp/film so its bundle moves to -y along with the milled channels. The
+    // core is a daughter of each clad LV (built above), so it is not placed
+    // here.
     std::vector<G4VPhysicalVolume*> cladPVs(fNFibres, nullptr);
     for (G4int k = 0; k < fNFibres; ++k) {
-        cladPVs[k] = new G4PVPlacement(rotCopy(noRot),
+        cladPVs[k] = new G4PVPlacement(rotCopy(flipRot),
                                        mapPos(G4ThreeVector(0., 0., 0.)),
                                        fFibreCladLVs[k],
                                        "WLSFibreCladPhys_" + std::to_string(k),
                                        worldLV, false, k, true);
     }
 
-    // ---- Far-end mirror caps (world siblings just past the -y fibre ends).
-    // The cap disc's axis is put along y (rotateX(+90) maps tube local z -> y);
-    // a full disc is rotationally symmetric so the Phi is immaterial.
+    // ---- Far-end mirror caps (world siblings just past the +y fibre ends
+    // after the flip). The cap disc's axis is put along y (rotateX(+90) maps
+    // tube local z -> y); a full disc is rotationally symmetric so Phi is
+    // immaterial. zk is mirrored so cap k pairs with the flipped fibre k.
     const G4double capPhi = fWLSOnNegX ? 180.*deg : 0.;
     G4RotationMatrix capRot;
     capRot.rotateX(90.*deg);
     std::vector<G4VPhysicalVolume*> capPVs(fNFibres, nullptr);
     for (G4int k = 0; k < fNFibres; ++k) {
-        const G4double zk = (k - 0.5*(fNFibres - 1)) * fFibreZSpacing;
-        const G4ThreeVector capCentre(fFibreAxisX, -Ly - 0.05*mm, zk);
+        const G4double zk = -(k - 0.5*(fNFibres - 1)) * fFibreZSpacing;
+        const G4ThreeVector capCentre(fFibreAxisX, Ly + 0.05*mm, zk);
         capPVs[k] = new G4PVPlacement(rotCopy(capRot), mapPos(capCentre),
                                       fMirrorCapLV,
                                       "WLSFibreMirrorPhys_" + std::to_string(k),
                                       worldLV, false, k, true);
     }
 
-    // ---- Read-out grease pad + single SiPM at the +y fibre ends ----
-    // The pad/SiPM boxes are large in their local (x,y); after the axisRot
-    // (tube axis -> y) we additionally rotate about the axis by Phi so their
-    // wide face aligns with the slab face (x-z), not the slab edge.
-    const G4double padCentreY  = Ly + fCouplingHalfZ;
-    const G4double sipmCentreY = Ly + 2.*fCouplingHalfZ + fSiPMHalfZ;
+    // ---- Read-out grease pad + single SiPM at the -y fibre ends (after the
+    // flip). The pad/SiPM boxes are large in their local (x,y); after the
+    // axisRot (tube axis -> y) we additionally rotate about the axis by Phi so
+    // their wide face aligns with the slab face (x-z), not the slab edge. The
+    // assembly flip is composed on top so the wide face still faces the slab.
+    const G4double padCentreY  = -(Ly + fCouplingHalfZ);
+    const G4double sipmCentreY = -(Ly + 2.*fCouplingHalfZ + fSiPMHalfZ);
     G4RotationMatrix padRot;
     padRot.rotateX(90.*deg);
     padRot.rotateY(capPhi);
-    auto* padPV  = new G4PVPlacement(rotCopy(padRot),
+    const G4RotationMatrix padRotFlip = flipRot * padRot;
+    auto* padPV  = new G4PVPlacement(rotCopy(padRotFlip),
                                      mapPos(G4ThreeVector(fFibreAxisX, padCentreY, 0.)),
                                      fGreaseLV, "WLSReadoutGrease",
                                      worldLV, false, 0, true);
-    auto* sipmPV = new G4PVPlacement(rotCopy(padRot),
+    auto* sipmPV = new G4PVPlacement(rotCopy(padRotFlip),
                                      mapPos(G4ThreeVector(fFibreAxisX, sipmCentreY, 0.)),
                                      fSiPMLV, "WLSReadoutSiPMPhys",
                                      worldLV, false, 0, true);
@@ -1150,9 +1170,10 @@ void GeometryMuonScint::PlaceWLSFibres(G4LogicalVolume* worldLV,
                                        capPVs[k], cladPVs[k], fFibreEndMirror);
         }
     }
-    // fibre +y end -> read-out pad: transparent (couples guided light out).
+    // fibre read-out end (-y after the placement flip) -> read-out pad:
+    // transparent (couples guided light out).
     // The single SiPM views ALL FOUR fibre end faces simultaneously (Rao et al.
-    // Fig. 4a), so every fibre's +y end must carry the coupling border into the
+    // Fig. 4a), so every fibre's read-out end must carry the coupling border into the
     // shared read-out pad. Without this the three un-listed fibres have no
     // surface at their end face, so the default lossless-TIR rule traps their
     // light instead of delivering it to the SiPM.

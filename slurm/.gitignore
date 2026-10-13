@@ -1,0 +1,10 @@
+data_*/
+data_output*/
+data_output_whole*/
+logs/
+muon/
+muon_whole/
+muon_fast/
+muon_whole_fast/
+muon_local/
+muon_whole_local/

@@ -1,0 +1,80 @@
+# =============================================================================
+# muon_vis_wls_closeup.mac -- Config 4 WLS-fibre-clamp close-up views (4 panels).
+#
+#   ./build/G4DCSmonitor macros/muon_vis_wls_closeup.mac
+#
+# Geometry-only visualisation (NO /run/beamOn) of the single-SiPM + WLS-fibre
+# clamp on the -X narrow face, writing report/figures/wls_closeup_<tag>.png:
+#   overview  (a) whole plate, the -x clamp strip and the -y read-out sensor
+#   xsection  (b) cross-section: slab | grease | four fibre discs | clamp bar
+#   readout   (c) the -y read-out end: fibre bundle coupled onto the SiPM
+#   length    (d) oblique on the -x face: fibres run the full plate length in y
+#
+# Fibre geometry (slab-local): four Ø1.0 mm Y-11(200) fibres run the
+# full 250 mm in y. For most of the length they are parallel at a 1.5 mm pitch
+# (z = -2.25, -0.75, +0.75, +2.25 mm) seated in Ø1.1 mm straight channels milled
+# into the clamp bar, so a web of clamp material separates neighbouring channels.
+# Over the last ~15 mm before the -y read-out they CONVERGE to a touching 1.0 mm
+# bundle (z = -1.5, -0.5, +0.5, +1.5 mm) so all four ends face the single 4 mm
+# SiPM; the straight clamp channels stop there and an open slot lets the bundle
+# gather. Each fibre pokes 0.05 mm past the clamp front face into a thin 0.10 mm
+# grease film; the channel stops short of the slab, so grease stays continuous
+# against the scintillator. Colours: scintillator light blue, grease amber, fibre
+# core pale green, cladding green, clamp dark grey, SiPM red.  (The read-out is
+# at slab-local -y, i.e. report-frame top-left.)
+# =============================================================================
+
+/run/numberOfThreads 1
+
+# ---- geometry: plate + Config 4 WLS fibre clamp + reflective wrapper --------
+/dcs-monitor/det/setPosition 0 0 0 mm
+/dcs-monitor/det/setRotation 0 0 0
+/dcs-monitor/det/muonScint/add
+/dcs-monitor/det/muonScint/setSize 250 250 10 mm
+/dcs-monitor/det/muonScint/preset 5
+/dcs-monitor/det/muonScint/setReflector 3
+/dcs-monitor/det/muonScint/setWrap true
+
+/run/initialize
+
+# ---- head-less offscreen rendering (no GUI) ---------------------------------
+/vis/open TSG_OFFSCREEN 2000x1500
+/vis/tsg/offscreen/set/format zb_png
+/vis/tsg/offscreen/set/size 1200 1200
+
+/vis/verbose errors
+/vis/viewer/set/autoRefresh false
+/vis/viewer/set/background white
+/vis/drawVolume
+/vis/viewer/set/style surface
+/vis/viewer/set/edge true
+/vis/viewer/set/upVector 0 0 1
+/vis/tsg/offscreen/set/transparency true
+
+# --- (a) overview: plate with the -x clamp strip and the -y read-out sensor --
+/vis/tsg/offscreen/set/file report/figures/wls_closeup_overview.png
+/vis/viewer/set/viewpointThetaPhi 80 250
+/vis/viewer/set/targetPoint -80 0 0 mm
+/vis/viewer/zoomTo 2.6
+/vis/viewer/flush
+
+# --- (b) x-z cross-section through the clamp (slab | grease | fibres | clamp) -
+/vis/tsg/offscreen/set/file report/figures/wls_closeup_xsection.png
+/vis/viewer/set/viewpointThetaPhi 90 90
+/vis/viewer/set/targetPoint -125.6 0 0 mm
+/vis/viewer/zoomTo 28
+/vis/viewer/flush
+
+# --- (c) read-out end at -y: fibre bundle coupled onto the single SiPM -------
+/vis/tsg/offscreen/set/file report/figures/wls_closeup_readout.png
+/vis/viewer/set/viewpointThetaPhi 60 285
+/vis/viewer/set/targetPoint -125.8 -118 0 mm
+/vis/viewer/zoomTo 20
+/vis/viewer/flush
+
+# --- (d) oblique on the -x face: the four fibres run the full length in y ----
+/vis/tsg/offscreen/set/file report/figures/wls_closeup_length.png
+/vis/viewer/set/viewpointThetaPhi 35 200
+/vis/viewer/set/targetPoint -125.8 0 0 mm
+/vis/viewer/zoomTo 4
+/vis/viewer/flush

@@ -3,24 +3,30 @@
 # Generate the MuonScint configuration matrix from a single template.
 #
 # Scans, for Rao et al. (J. Appl. Phys. 138, 114504):
-#   CONFIG    in {1,2,3}          (SiPM layouts; Config 4/WLS excluded)
+#   CONFIG    in {1,2,3,4}        (SiPM layouts; 4 = single SiPM + WLS clamp)
 #   REFLECTOR in {0,1,2,3}        (none/TiO2/Al/glossy)
-# giving 3 * 4 = 12 macros, written to macros/muon/.
+# giving 4 * 4 = 16 macros, written to macros/muon/.
+#
+# CONFIG 4 is the WLS fibre clamp, which maps onto geometry preset 5 (presets
+# 1-3 stay Configs 1-3; preset 4 is the legacy 4-corner layout and is unused).
 #
 # Each macro runs all THREE beam positions (centre/edge/corner) in one process
-# after a single /run/initialize, so only 12 processes are needed instead of 36.
+# after a single /run/initialize, so only 16 processes are needed instead of 48.
 #
 # The template is macros/muon_scint_template.mac; edit that, not the outputs.
 #
+# Output goes to <repo>/data_<VERSION>/matrix (VERSION default v2.2).
+#
 # Usage:  macros/generate_muon_matrix.sh [NEVENTS] [THREADS]
-#         (default NEVENTS=1000, THREADS=8)
+#         (default NEVENTS=1000, THREADS=8; env VERSION=v2.2)
 # =============================================================================
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TEMPLATE="${HERE}/muon_scint_template.mac"
 OUTDIR="${HERE}/muon"
-DATADIR="$(cd "${HERE}/.." && pwd)/data_output"
+VERSION="${VERSION:-v2.2}"
+DATADIR="$(cd "${HERE}/.." && pwd)/data_${VERSION}/matrix"
 NEVENTS="${1:-1000}"
 THREADS="${2:-8}"
 
@@ -30,10 +36,13 @@ if [[ ! -f "${TEMPLATE}" ]]; then
 fi
 mkdir -p "${OUTDIR}" "${DATADIR}"
 
-for cfg in 1 2 3; do
+for cfg in 1 2 3 4; do
+    # preset: cfg 1-3 -> 1-3, cfg 4 (WLS) -> preset 5
+    if [[ "${cfg}" == "4" ]]; then preset=5; else preset="${cfg}"; fi
     for refl in 0 1 2 3; do
         out="scan_c${cfg}_r${refl}.mac"
         sed -e "s/@CONFIG@/${cfg}/g"    \
+            -e "s/@PRESET@/${preset}/g" \
             -e "s/@REFLECTOR@/${refl}/g" \
             -e "s/@NEVENTS@/${NEVENTS}/g" \
             -e "s/@THREADS@/${THREADS}/g" \

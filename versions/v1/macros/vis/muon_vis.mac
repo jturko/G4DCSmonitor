@@ -1,0 +1,89 @@
+# =============================================================================
+# muon_vis.mac -- single-muon event display for the MuonScint detector.
+#
+# Produces ONE vertical muon through the 250 x 250 x 10 mm^2 polished plate and
+# renders the event (muon + the optical photons it generates) to a PNG using the
+# head-less TOOLSSG_OFFSCREEN driver -- no GUI is ever opened.
+#
+#   ./build/G4DCSmonitor macros/muon_vis.mac
+#
+# The image is written to report/figures/muon_event_display.png. Change the
+# /vis/tsg/offscreen/set/file path below to write elsewhere. The plate is drawn
+# with the glossy-paper wrapper (reflector 3), which gives a rich multi-bounce
+# photon display; swap setReflector to 0/1/2 as desired.
+#
+# The physical yield (~2e4 photons from a 2 MeV MIP deposit) renders as a solid
+# saturated blob, hiding the geometry. setLightYieldScale rescales ONLY the
+# scintillation yield for display legibility; it is not a physics setting and
+# must not be used in production runs.
+# =============================================================================
+
+# Single-threaded: visualization runs on the master thread.
+/run/numberOfThreads 1
+
+# ---- geometry: plate + 8-SiPM layout + reflective wrapper -------------------
+/dcs-monitor/det/setPosition 0 0 0 mm
+/dcs-monitor/det/setRotation 0 0 0
+/dcs-monitor/det/muonScint/add
+/dcs-monitor/det/muonScint/setSize 250 250 10 mm
+/dcs-monitor/det/muonScint/preset 1
+/dcs-monitor/det/muonScint/setReflector 3
+/dcs-monitor/det/muonScint/setWrap true
+
+# Display-only light-yield reduction. The physical yield (~2e4 photons from the
+# ~2 MeV MIP deposit) renders as a solid saturated blob. Two display-only knobs
+# are used together: the muon is lowered to 30 MeV, just below the Cherenkov
+# threshold of the scintillator (beta < 1/n, ~31 MeV here), which removes the
+# ~500 Cherenkov photons that otherwise form a floor independent of the
+# scintillation yield; setLightYieldScale then trims the scintillation light to
+# give a few tens of individually traceable photons per event. Neither is a
+# physics setting and neither must be used in production runs.
+/dcs-monitor/det/muonScint/setLightYieldScale 0.0005
+
+/run/initialize
+
+# ---- one vertical 30 MeV muon at the plate centre ---------------------------
+# (30 MeV is below the Cherenkov threshold; display-only, see above.)
+/dcs-monitor/gun/sourceMode GPS
+/gps/particle mu-
+/gps/ene/type Mono
+/gps/ene/mono 30 MeV
+/gps/pos/type Point
+/gps/pos/centre 0 0 100 mm
+/gps/ang/type planar
+
+# ---- keep the trajectories so the photons can be drawn ----------------------
+/tracking/storeTrajectory 1
+
+# ---- head-less offscreen rendering (no GUI) ---------------------------------
+/vis/open TSG_OFFSCREEN 1600x1200
+/vis/tsg/offscreen/set/format zb_png
+/vis/tsg/offscreen/set/file report/figures/muon_event_display.png
+/vis/tsg/offscreen/set/size 1600 1200
+/vis/tsg/offscreen/set/transparency true
+
+/vis/verbose errors
+/vis/viewer/set/autoRefresh false
+/vis/viewer/set/background white
+/vis/drawVolume
+# Surface style draws the translucent volume colours (slab alpha 0.4, holder
+# alpha 0.5, SiPM opaque red) as well as the volume edges, so the slab extent
+# and the SiPMs are clearly visible with the photons bouncing inside.
+/vis/viewer/set/style surface
+/vis/viewer/set/edge true
+/vis/viewer/set/viewpointThetaPhi 55 22
+/vis/viewer/set/upVector 0 0 1
+/vis/viewer/zoom 1.35
+
+# colour by particle: red muon, blue optical photons (visible on white)
+/vis/scene/add/trajectories smooth
+/vis/modeling/trajectories/create/drawByParticleID
+/vis/modeling/trajectories/drawByParticleID-0/set mu- red
+/vis/modeling/trajectories/drawByParticleID-0/set opticalphoton blue
+
+/vis/scene/endOfEventAction accumulate
+/vis/viewer/set/autoRefresh true
+
+# ---- one event, then render -------------------------------------------------
+/run/beamOn 1
+/vis/viewer/flush

@@ -4,3 +4,10 @@ data_output/
 *_C.so
 *_C.d
 *_ACLiC_dict_rdict.pcm
+
+# scratch / run artifacts (do not commit)
+handoff.tmp
+/G4DCSmonitor.root
+/None/
+/g4_*.wrl
+/g4tsg_offscreen*.png

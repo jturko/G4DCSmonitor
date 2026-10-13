@@ -9,7 +9,9 @@
 # once; only the GPS beam centre and the output file name change between
 # runs).  This is ~3x faster than one process per position.
 #
-#   CONFIG    : 1 = 8 SiPMs (2/side), 2 = 4 SiPMs (1/side), 3 = 2 SiPMs (1 side)
+#   CONFIG    : 1 = 8 SiPMs (2/side), 2 = 4 SiPMs (1/side at the Config-1
+#               offsets), 3 = 2 SiPMs (both on the -X side),
+#               4 = single SiPM + WLS fibre clamp on the -X side (preset 5)
 #   REFLECTOR : 0 = none (held in black holder), 1 = TiO2 paint,
 #               2 = aluminium foil, 3 = high-gloss paper
 #   POSITION  : centre, edge (middle of +Y side), corner (+X/+Y)
@@ -25,7 +27,7 @@
 /dcs-monitor/det/setRotation 0 0 0
 /dcs-monitor/det/muonScint/add
 /dcs-monitor/det/muonScint/setSize 250 250 10 mm
-/dcs-monitor/det/muonScint/preset @CONFIG@
+/dcs-monitor/det/muonScint/preset @PRESET@
 /dcs-monitor/det/muonScint/setReflector @REFLECTOR@
 /dcs-monitor/det/muonScint/setWrap true
 
@@ -53,12 +55,15 @@
 /gps/pos/centre 0 0 100 mm
 /run/beamOn @NEVENTS@
 
-# ---- position 2/3: edge (middle of +Y side) ---------------------------------
+# ---- position 2/3: edge (middle of +X side, fully on the slab) --------------
+# The 50x50 mm beam is centred 25 mm inside the +X edge so the illuminated
+# 50x50 mm patch lies entirely on the plate ([75,125] mm), matching the MCD
+# active area and the equal-area centre region.
 /analysis/setFileName @DATADIR@/muon_out_c@CONFIG@_r@REFLECTOR@_edge.root
-/gps/pos/centre 125 0 100 mm
+/gps/pos/centre 100 0 100 mm
 /run/beamOn @NEVENTS@
 
-# ---- position 3/3: corner (+X/+Y) -------------------------------------------
+# ---- position 3/3: corner (+X/+Y, fully on the slab) ------------------------
 /analysis/setFileName @DATADIR@/muon_out_c@CONFIG@_r@REFLECTOR@_corner.root
-/gps/pos/centre 125 125 100 mm
+/gps/pos/centre 100 100 100 mm
 /run/beamOn @NEVENTS@

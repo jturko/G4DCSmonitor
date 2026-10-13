@@ -34,7 +34,7 @@
 /gps/ene/mono 4 GeV
 /gps/pos/type Plane
 /gps/pos/shape Square
-/gps/pos/centre 125 125 100 mm
+/gps/pos/centre 100 100 100 mm
 /gps/pos/halfx 25 mm
 /gps/pos/halfy 25 mm
 /gps/ang/type planar
