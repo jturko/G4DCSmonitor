@@ -152,7 +152,9 @@ copies figures into `report/figures/`, then `pdflatex` twice).
 dielectric_dielectric → Fresnel/TIR; `groundfrontpainted` → rand-vs-R (Lambertian, no
 TIR); `polishedbackpainted`/`groundbackpainted` → dielectric + backing REFLECTIVITY; no
 surface object → lossless TIR default. `sigma_alpha` on `groundbackpainted` has no effect
-on TIR.
+on TIR. **A `NoRINDEX` kill is silent** (prints only at verbose>1, `G4OpBoundaryProcess.cc:448`),
+so its absence in a normal run log proves nothing — count it with
+`/process/optical/boundary/verbose 2` or via the `opticalStats` budget.
 
 ## Config 4 / WLS (single SiPM + fibre clamp, preset 5)
 
@@ -208,6 +210,17 @@ to the shared read-out pad; giving it to `cladPVs[0]` only traps fibres 1–3 in
 Far (**+y**, after the placement flip) ends are full-disc `G4_Al` mirror caps; the read-out
 (**−y**) ends meet the shared grease pad + single SiPM. The clamp LV carries a
 `dielectric_metal` specular mirror skin on its outboard face.
+
+**Far-end mirror needs a cap skin, not just clad borders.** The borders are registered only
+for the `(cladPV[k], capPV[k])` pair, but guided light sits in the **core**, which is a
+daughter of the clad; the `core→cap` crossing therefore had *no* surface. Since `G4_Al` has no
+`RINDEX`, the default-Fresnel path killed every core photon reaching the mirror with a silent
+`NoRINDEX` (measured: 17/40 events, exactly the core→cap crossings; A/B on cfg4/refl0 showed
+centre 0.186→0.260 pe/evt, +40%; edge +24%, corner +19%). Fix: `new G4LogicalSkinSurface(
+"WLSFibreCapMirrorSkin", fMirrorCapLV, fFibreEndMirror)` — a skin on the cap LV covers every
+face not already border-ed (core→cap, cap→world); borders take precedence, so the existing
+`(clad,cap)` borders are unaffected. Verified: `NoRINDEX`=0, core→cap now `SpikeReflection`.
+`DielectricMetal()` uses the surface REFLECTIVITY and never needs the metal's `RINDEX`.
 
 **WLS absorption vs. emission — must not overlap (fatal on some Geant4 builds).** `G4OpWLS`
 samples the secondary from `WLSCOMPONENT` and requires its energy to be ≤ the absorbed photon's.

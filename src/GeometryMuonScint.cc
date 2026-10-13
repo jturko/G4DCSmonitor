@@ -1174,8 +1174,16 @@ void GeometryMuonScint::PlaceWLSFibres(G4LogicalVolume* worldLV,
         new G4LogicalBorderSurface("MuonScint_FilmSlab", filmPV, fScintPV,
                                    fCouplingSurface);
     }
-    // fibre <-> far-end mirror cap: specular Al reflector.
+    // far-end mirror cap: specular Al reflector.
+    // A skin on the cap LV covers *every* face the borders below do not, in
+    // particular the CORE<->cap crossing.  Without it that crossing has no
+    // surface at all, and since G4_Al carries no RINDEX the boundary process
+    // kills the photon with NoRINDEX (measured: 17/40 events, exactly the
+    // core->cap crossings) instead of reflecting it.  Borders take precedence
+    // over skins, so the clad<->cap borders below are unaffected.
     if (fFibreEndMirror) {
+        new G4LogicalSkinSurface("WLSFibreCapMirrorSkin", fMirrorCapLV,
+                                 fFibreEndMirror);
         for (G4int k = 0; k < fNFibres; ++k) {
             new G4LogicalBorderSurface("MuonScint_FibreCap_" + std::to_string(k),
                                        cladPVs[k], capPVs[k], fFibreEndMirror);
