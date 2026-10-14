@@ -117,6 +117,29 @@ void drawOverlays(int cfg, double half, double side = 8.0, double gap = 2.0)
     slab->SetLineWidth(2);
     slab->Draw("SAME");
 
+    if (cfg == 4) {
+        // Config 4 is not a set of discrete SiPMs but a WLS fibre clamp: a bar
+        // running the full length of the top (+y) edge, outboard of the slab,
+        // with the single read-out SiPM (black) butt-coupled at its left (-x)
+        // end.  Same convention as Fig. 1 (sipm_layouts) and Fig. 3(b) of
+        // Rao et al., so the fibres can be located relative to the read-out.
+        const double y0 = half + gap;
+        const double y1 = half + gap + side;
+        TBox* bar = new TBox(-half, y0, half, y1);
+        bar->SetFillColor(kRed);
+        bar->SetFillStyle(1001);
+        bar->SetLineColor(kBlack);
+        bar->SetLineWidth(1);
+        bar->Draw("SAME");
+        TBox* sipm = new TBox(-half - side, y0, -half, y1);
+        sipm->SetFillColor(kBlack);
+        sipm->SetFillStyle(1001);
+        sipm->SetLineColor(kBlack);
+        sipm->SetLineWidth(1);
+        sipm->Draw("SAME");
+        return;
+    }
+
     const double off = gap + 0.5 * side;
     const double tol = 1e-6;
     for (const auto& t : sipmTiles(cfg, half)) {
@@ -143,6 +166,7 @@ void plot_whole_slab(const char* dir = "slurm/data_output_whole",
 {
     style(0.045);                 // fonts / ticks / title conventions
     gStyle->SetOptStat(0);
+    gStyle->SetOptTitle(1);        // style() hides titles; the panels are labelled by reflector
 
     if (cellSize <= 0.) cellSize = 5.0;
     const double margin = 18.0;

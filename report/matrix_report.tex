@@ -5,6 +5,7 @@
 \usepackage{graphicx}
 \usepackage{float}
 \usepackage{booktabs}
+\usepackage{tabularx}
 \usepackage{caption}
 \usepackage{subcaption}
 \usepackage{siunitx}
@@ -17,6 +18,10 @@
 \sisetup{detect-all}
 \setlist{nosep,leftmargin=1.4em}
 \emergencystretch=3em
+\renewcommand{\topfraction}{0.97}
+\renewcommand{\bottomfraction}{0.8}
+\renewcommand{\textfraction}{0.05}
+\renewcommand{\floatpagefraction}{0.8}
 
 \newcommand{\gfour}{Geant4}
 \newcommand{\pe}{\ensuremath{N_{\mathrm{pe}}}}
@@ -63,7 +68,8 @@ centre/edge/corner trend in the TiO$_2$ configuration.
 % =====================================================================
 
 Plastic scintillators read out at their edges by SiPMs are attractive for
-large-area, low-cost muon triggers and veto systems. The amount of scintillation
+large-area, low-cost muon triggers and veto systems for cosmic-ray muon
+tomography~\cite{Borozdin2003,Bonechi2020}. The amount of scintillation
 light that reaches the photosensor is governed almost entirely by how the
 non-instrumented faces of the plate are treated: a polished plate in air traps
 light by total internal reflection (TIR) and can be a nearly lossless light
@@ -71,9 +77,10 @@ guide, whereas a plate wrapped in an absorbing or diffusive material loses
 photons at every bounce. Understanding this trade-off quantitatively is the
 central design question, and it is precisely where simulation is most useful,
 because the photon transport is a multi-bounce random walk that is difficult to
-model analytically.
+model analytically~\cite{Korpachev2017}.
 
-This report documents a \gfour\ (v11.3.2) simulation built to address that
+This report documents a \gfour\ (v11.3.2)~\cite{Agostinelli2003,Allison2016}
+simulation built to address that
 question for the specific geometry and surface treatments of Rao \emph{et
 al.}~\cite{Rao2025}. The deliverable is a self-contained ``matrix scan'': every
 combination of four SiPM layouts and four reflector treatments, at three beam
@@ -82,13 +89,17 @@ that the simulation reproduces the \emph{ordering} of light-collection
 efficiency that the experiment observes, and to expose the physics behind it.
 
 The remainder of this document is organised as follows.
-Section~\ref{sec:detector} describes the detector model.
-Section~\ref{sec:physics} details the optical physics implementation, verified
-line-by-line against the \gfour\ source.
-Section~\ref{sec:sim} covers the simulation workflow and the matrix scan.
-Section~\ref{sec:results} presents the results.
-Section~\ref{sec:whole} presents the whole-slab full-plate map.
-Section~\ref{sec:caveats} documents known caveats.
+Section~\ref{sec:detector} describes the detector model: the scintillator, the
+SiPM read-out, the four read-out layouts (including the wavelength-shifting
+fibre clamp of config~4), the reflector treatments, and the optical-physics
+implementation, all verified line-by-line against the \gfour\ source.
+Section~\ref{sec:matrix} presents the matrix simulation---its beam and patch
+setup, and the resulting collection efficiencies, photon/photoelectron spectra,
+and position-resolved maps.
+Section~\ref{sec:whole} presents the complementary whole-slab irradiation, which
+samples the full plate uniformly.
+Section~\ref{sec:caveats} documents known caveats, and
+Sec.~\ref{sec:summary} summarises.
 
 % =====================================================================
 \section{Detector model}
@@ -100,38 +111,33 @@ Section~\ref{sec:caveats} documents known caveats.
 The active volume is a rectangular PVT scintillator
 $250 \times 250 \times \SI{10}{\milli\meter}$, mirroring the UPS-92S plate of
 Ref.~\cite{Rao2025}. It is assigned the \gfour\ NIST base material
-\texttt{G4\_PLASTIC\_SC\_VINYLTOLUENE} with a custom optical
-properties table~\cite{EJ200,UPS923A}:
-
-\begin{itemize}
-  \item refractive index $n = 1.58$ (flat across the visible);
-  \item light yield $\SI{1.0e4}{\per\mega\electronvolt}$, single fast component,
-        decay time \SI{2.1}{\nano\second}, rise time \SI{0.9}{\nano\second};
-  \item emission spectrum peaked at \SI{425}{\nano\meter}
-        (\SI{2.917}{\electronvolt}), essentially zero below \SI{380}{\nano\meter}
-        and above \SI{550}{\nano\meter};
-  \item bulk attenuation length peaked at \SI{3.8}{\meter} and falling steeply
-        in the UV to model wavelength-shifter self-absorption;
-  \item Birks constant \SI{0.126}{\milli\meter\per\mega\electronvolt}
-        (standard PVT value~\cite{Birks1970}).
-\end{itemize}
-
-Both scintillation and \v{C}erenkov photons are produced and tracked
-(Sec.~\ref{sec:physics}). The optical grid spans \SIrange{310}{700}{\nano\meter}
-so that the \v{C}erenkov continuum, which extends well below the scintillation
-band, is covered.
+\texttt{G4\_PLASTIC\_SC\_VINYLTOLUENE} with a custom optical properties table
+built from the EJ-200 and UPS-923A data
+sheets~\cite{EljenEJ200,Artikov2005,AmcrysPS}. The optical constants---the
+refractive index ($n = 1.58$, essentially flat across the visible), light yield,
+emission peak, bulk attenuation length, scintillation decay and rise times, and
+the Birks constant~\cite{Birks1951,Craun1970}---are collected in the
+consolidated parameter table of Sec.~\ref{sec:detparams} and are not repeated
+here. Two entries are deliberate modelling choices rather than quoted numbers:
+the bulk attenuation length is peaked at \SI{3.8}{\meter} but falls steeply in
+the UV to model wavelength-shifter self-absorption, and the emission spectrum
+(Fig.~\ref{fig:spectra_opt}) is essentially zero below \SI{380}{\nano\meter} and
+above \SI{550}{\nano\meter}. Both scintillation and \v{C}erenkov photons are
+produced and tracked (Sec.~\ref{sec:physics}); the optical grid spans
+\SIrange{310}{700}{\nano\meter} so that the \v{C}erenkov continuum, which extends
+well below the scintillation band, is covered.
 
 \subsection{SiPM readout and coupling}
 
-Each SiPM is modelled mechanically as a $4 \times 4 \times \SI{0.6}{\milli\meter}$
-box of ``SiPM epoxy'' ($n = 1.55$), coupled to a side face of the plate through a
+Each SiPM~\cite{Gundacker2020} is modelled mechanically as a
+$4 \times 4 \times \SI{0.6}{\milli\meter}$ box of ``SiPM epoxy'' ($n = 1.55$),
+coupled to a side face of the plate through a
 \SI{0.1}{\milli\meter} silicone grease pad ($n = 1.46$). The coupling chain is
 therefore \emph{scintillator\,$\to$\,grease\,$\to$\,SiPM}, with Fresnel
 transmission at each dielectric interface and photodetection at the final
 grease/SiPM boundary.
 
-Four layouts are studied (Figs.~\ref{fig:grid1}--\ref{fig:grid4} and the
-schematic in Fig.~\ref{fig:layouts}):
+Four layouts are studied (schematic in Fig.~\ref{fig:layouts}):
 \begin{description}
   \item[Config 1 (8 SiPMs)] two SiPMs per side face, at $\pm 50\%$ of the half-length.
   \item[Config 2 (4 SiPMs)] one SiPM per side face, at the \emph{same} $\pm 50\%$
@@ -148,7 +154,7 @@ SiPM footprints are clamped so they cannot overhang the slab face.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{figures/sipm_layouts.pdf}
+\includegraphics[width=0.7\textwidth]{figures/sipm_layouts.pdf}
 \caption{Schematic plan view of the four detector layouts on the
 \SI{250}{\milli\meter}$\times$\SI{250}{\milli\meter} plate footprint. Black
 squares mark the side-mounted SiPMs (drawn oversized for visibility; the active
@@ -165,7 +171,7 @@ the perimeter, so ``1'' sits at the top-right (T1), bottom-right (R1),
 bottom-left (B1) and top-left (L1) corners. This is the scheme used in the
 light-sharing discussion below. The same black-square
 markers are overlaid on
-the collection efficiency maps (Figs.~\ref{fig:grid1}--\ref{fig:grid4}).}
+the collection-efficiency maps (Figs.~\ref{fig:wholeslab}--\ref{fig:wholeslab4}).}
 \label{fig:layouts}
 \end{figure}
 
@@ -175,7 +181,9 @@ Four treatments are applied as a \emph{logical skin} over the non-instrumented
 surfaces of the plate; the grease/SiPM patches override the skin locally with
 dedicated \emph{border} surfaces. The mapping from the physical treatment to the
 \gfour\ optical-surface parameters is the heart of the model and is summarised in
-Table~\ref{tab:surfaces} and justified in Sec.~\ref{sec:physics}.
+Table~\ref{tab:surfaces} and justified in Sec.~\ref{sec:physics}; the strong
+sensitivity of light collection to the wrapping and reflector
+choice is well established experimentally~\cite{Taheri2017}.
 
 \begin{table}[H]
 \centering
@@ -212,8 +220,8 @@ it is absorbed. This is modelled by a perfect-absorber skin on the plate
 
 The fourth layout follows the single-SiPM, WLS-readout variant of
 Ref.~\cite{Rao2025}. Four \SI{1.0}{\milli\meter}-diameter Kuraray Y-11(200)
-wavelength-shifting fibres run the full \SI{250}{\milli\meter} length of the
-$-x$ narrow face in a single row. Over most of the length they are parallel at a
+wavelength-shifting fibres~\cite{KurarayPSF,Alekseev2022} run the full
+\SI{250}{\milli\meter} length of the $-x$ narrow face in a single row. Over most of the length they are parallel at a
 \SI{1.5}{\milli\meter} centre-to-centre pitch---so a solid web of clamp material
 separates the milled \SI{1.1}{\milli\meter} channels---and converge over the last
 \SI{15}{\milli\meter} to a touching \SI{1.0}{\milli\meter} bundle that presents
@@ -232,41 +240,31 @@ optically isolated from the clamp, which the air annulus guarantees. The WLS
 process is enabled automatically when this geometry is built. In the report's
 top-down frame the clamp runs along the \emph{top} edge with the single read-out
 SiPM at the \emph{top-left} corner, as in Fig.~3(b) of Ref.~\cite{Rao2025}.
-Figure~\ref{fig:viswls} shows an example event in this layout.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.75\textwidth]{figures/muon_event_display_wls.png}
-\caption{Head-less event display of a single muon in the config-4 WLS-fibre
-layout (same visualisation settings as Fig.~\ref{fig:vis}). Scintillation
-photons cross the thin grease film into the clamp channels and are
-wavelength-shifted in the Y-11 fibre cores, whose re-emission is guided to the
-single read-out SiPM at the $-y$ end.}
-\label{fig:viswls}
-\end{figure}
-
-\begin{figure}[H]
-\centering
-\begin{subfigure}{0.48\textwidth}
-  \includegraphics[width=\linewidth]{figures/wls_closeup_overview.png}
-  \caption{Overview: the plate with the clamp bar running along its $-x$ face and the read-out sensor at the $-y$ end (report-frame top-left).}
-\end{subfigure}\hfill
-\begin{subfigure}{0.48\textwidth}
-  \includegraphics[width=\linewidth]{figures/wls_closeup_xsection.png}
-  \caption{Cross-section through the clamp: scintillator (light blue), the thin grease film (amber) in the slab--clamp gap, the four fibre discs (green) seated in their \SI{1.1}{\milli\meter} channels with a \SI{0.05}{\milli\meter} air annulus, and the outboard black clamp.}
+\begin{subfigure}{0.82\textwidth}
+  \includegraphics[width=\linewidth]{figures/muonScint_3Dview_dimensions.png}
+  \caption{Three-dimensional view of the complete config-4 assembly, with the
+  principal dimensions annotated.}
 \end{subfigure}
 
 \vspace{0.6em}
 \begin{subfigure}{0.48\textwidth}
-  \includegraphics[width=\linewidth]{figures/wls_closeup_readout.png}
-  \caption{Read-out end at $-y$: the converged fibre bundle is coupled onto the single SiPM (red).}
+  \includegraphics[width=\linewidth]{figures/muonScint_WLS_holderWithFibres_top.png}
+  \caption{Top view of the black fibre clamp: the four fibre channels and the
+  read-out SiPM at the end of the converged bundle (report-frame top-left).}
 \end{subfigure}\hfill
 \begin{subfigure}{0.48\textwidth}
-  \includegraphics[width=\linewidth]{figures/wls_closeup_length.png}
-  \caption{Oblique view of the $-x$ face: the four fibres run the full \SI{250}{\milli\meter} plate length in $y$.}
+  \includegraphics[width=\linewidth]{figures/muonScint_WLS_crossSection.png}
+  \caption{Cross-section through the clamp: the scintillator, the thin grease
+  film in the slab--clamp gap, the four fibre discs seated in their
+  \SI{1.1}{\milli\meter} channels with a \SI{0.05}{\milli\meter} air annulus, and
+  the outboard black clamp.}
 \end{subfigure}
-\caption{Geometry-only close-ups of the config-4 WLS-fibre clamp (\emph{no}
-beam-on). Fibre cores are pale green, cladding dark green, the grease film
+\caption{Geometry-only views of the config-4 WLS-fibre clamp, rendered from the
+\gfour\ VRML geometry export (\emph{no} beam-on). Following the event-display
+colour scheme, fibre cores are pale green, cladding dark green, the grease film
 amber, the black clamp and holder dark grey, and the read-out SiPM red. The four
 \SI{1.0}{\milli\meter} fibres sit on the $-x$ narrow face in \SI{1.1}{\milli\meter}
 channels separated by clamp webs, with only a thin grease film in the
@@ -275,17 +273,113 @@ mirrored at $+y$.}
 \label{fig:wlslayout}
 \end{figure}
 
-% =====================================================================
-\section{Optical physics implementation}
+\subsection{Summary of detector parameters}
+\label{sec:detparams}
+
+The principal parameters of the three active components---the scintillator
+plate, the WLS fibre, and the SiPM---are collected in
+Table~\ref{tab:detparams}, alongside the corresponding values quoted for the
+reference experiment of Ref.~\cite{Rao2025}. Where a quantity is not reported
+in Ref.~\cite{Rao2025} or is not modelled here, a dash is shown; the simulation
+follows the experimental values wherever they are available, and the optical
+model of Sec.~\ref{sec:physics} is built entirely from the values in the last
+column.
+
+\begin{table}[H]
+\centering
+\caption{Principal parameters of the scintillator, the WLS fibre, and the SiPM,
+comparing the reference experiment of Ref.~\cite{Rao2025} with the values
+adopted in this simulation.}
+\label{tab:detparams}
+\footnotesize
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{0.26\textwidth} L L@{}}
+\toprule
+Parameter & Ref.~\cite{Rao2025} & This simulation \\
+\midrule
+\multicolumn{3}{@{}l}{\emph{Scintillator (UPS-92S / PVT)}}\\
+Material & UPS-92S (AdvTECH UK) & PVT (\texttt{G4\_PLASTIC\_SC\_VINYLTOLUENE}) \\
+Dimensions & $250 \times 250 \times \SI{10}{\milli\meter}$ & $250 \times 250 \times \SI{10}{\milli\meter}$ \\
+Refractive index & 1.58 & 1.58 \\
+Density & \SI{1.05}{\gram\per\cubic\centi\meter} & \SI{1.032}{\gram\per\cubic\centi\meter} \\
+Light output & 50--60\% of anthracene ($\approx\SIrange{8}{10}{}\times10^3$ ph/MeV) & \SI{1.0e4}{\per\mega\electronvolt} \\
+Emission peak & \SI{425}{\nano\meter} & \SI{425}{\nano\meter} (2.917 eV) \\
+Bulk attenuation length & \SI{2000}{\milli\meter} & \SI{3.8}{\meter} (peak, falling in the UV) \\
+Scintillation decay time & \SI{2.4}{\nano\second} & \SI{2.1}{\nano\second} \\
+Rise time & --- & \SI{0.9}{\nano\second} \\
+Birks constant & --- & \SI{0.126}{\milli\meter\per\mega\electronvolt} \\
+Surface finish & all sides polished & all sides polished \\
+\midrule
+\multicolumn{3}{@{}l}{\emph{WLS fibre (Kuraray Y-11(200))}}\\
+Fibre diameter & \SI{1.0}{\milli\meter} & \SI{1.0}{\milli\meter} (core$+$clad) \\
+Cladding & multi-cladding & single PMMA clad ($n=1.49$) \\
+Core refractive index & --- & 1.59 \\
+Absorption peak & \SI{430}{\nano\meter} & \SIrange{430}{460}{\nano\meter} (WLS onset) \\
+Emission peak & \SI{476}{\nano\meter} & \SI{476}{\nano\meter} \\
+Attenuation length & $>\SI{3500}{\milli\meter}$ & $\gtrsim\SI{5}{\meter}$ (transport) \\
+WLS decay time & --- & \SI{7}{\nano\second} \\
+Read-out arrangement & single row, \SI{250}{\milli\meter} long & 4 fibres, \SI{1.5}{\milli\meter} pitch $\to$ \SI{1.0}{\milli\meter} bundle \\
+Channel diameter & --- & \SI{1.1}{\milli\meter} (\SI{0.05}{\milli\meter} air annulus) \\
+\midrule
+\multicolumn{3}{@{}l}{\emph{SiPM (CEFLA S.C.\ ASD-NUV4S-P-40)}}\\
+Active area & $4 \times \SI{4}{\milli\meter\squared}$ & $4 \times \SI{4}{\milli\meter\squared}$ \\
+Number of cells & 9340 & --- \\
+Peak sensitivity & \SI{420}{\nano\meter} & \SIrange{420}{425}{\nano\meter} \\
+Photon detection efficiency & 43\% & 0.43 (peak) \\
+Epoxy refractive index & 1.5115 & 1.55 \\
+Optical coupling & BC-630 grease & \SI{0.1}{\milli\meter} grease film ($n=1.46$) \\
+Gain / dark-count rate / capacitance & $10^6$ / 50--100 kHz/mm$^2$ / 0.84 nF & --- (light transport only) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Optical property tables}
+\label{sec:optprops}
+
+Figure~\ref{fig:spectra_opt} plots the three sets of optical constants actually
+fed to \gfour, over the same \SIrange{310}{700}{\nano\meter} range used in the
+transport. The left panel compares the normalised emission spectra: the
+scintillator peaks at \SI{425}{\nano\meter}, while the Y-11 fibre re-emits in
+the green, peaked near \SI{480}{\nano\meter}---the shift that makes the config-4
+read-out spectrum green. The middle panel gives the absorption (attenuation)
+lengths on a logarithmic scale: the scintillator is transparent across the
+visible but its bulk attenuation collapses in the UV (the wavelength-shifter
+self-absorption band), whereas the fibre is effectively transparent red-ward of
+\SI{500}{\nano\meter} and absorbs strongly below \SI{480}{\nano\meter} (the WLS
+onset, marked by the dashed line). The right panel is the SiPM photocathode
+efficiency $=$ PDE$(\lambda)$, peaking at \num{0.43} near \SI{420}{\nano\meter}.
+These curves are exactly the tabulated points of
+\texttt{src/GeometryMuonScint.cc}; \gfour\ interpolates them linearly, so the
+drawn segments are what the simulation uses.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figures/optical_spectra.pdf}
+\caption{Optical property tables used by the simulation. \emph{Left:}
+normalised emission spectra of the PVT scintillator (peaking at
+\SI{425}{\nano\meter}) and of the Y-11 WLS fibre (peaking at
+\SI{480}{\nano\meter}). \emph{Middle:} absorption (attenuation) lengths on a
+logarithmic scale---the scintillator bulk absorption and the fibre WLS
+absorption. \emph{Right:} SiPM photocathode PDE$(\lambda)$, peaking at
+\SI{420}{\nano\meter}. The vertical dashed line in each panel marks the
+characteristic wavelength of that panel's process---scintillator emission peak
+at \SI{425}{\nano\meter} (left), WLS absorption onset at \SI{480}{\nano\meter}
+(middle), and SiPM PDE peak at \SI{420}{\nano\meter} (right); the left and right
+lines therefore nearly coincide, whereas the middle line is red-shifted to the
+WLS band. Markers are the tabulated points; segments are the linear
+interpolation \gfour\ applies.}
+\label{fig:spectra_opt}
+\end{figure}
+
+\subsection{Optical physics implementation}
 \label{sec:physics}
-% =====================================================================
 
 Optical photons are transported by the standard \gfour\ optical physics
-module~\cite{G4OpticalPhysics}, with scintillation, \v{C}erenkov, bulk
+module~\cite{Geant4PRM}, with scintillation, \v{C}erenkov, bulk
 absorption, Rayleigh scattering and boundary processes all active. Multiple
 scattering (Mie) is disabled; wavelength shifting (the \texttt{G4OpWLS} process)
 is enabled only for the config-4 fibre layout (Sec.~\ref{sec:wls}) and inert for
-all others. This section describes
+all others. This subsection describes
 the boundary physics and the photodetection model, and states explicitly the
 \gfour\ behaviour that each modelling choice relies on, verified against the
 \gfour\ source in \texttt{.refs/source/processes/optical}.
@@ -294,6 +388,9 @@ the boundary physics and the photodetection model, and states explicitly the
 
 Photon crossing of a dielectric interface is handled by
 \texttt{G4OpBoundaryProcess}, which selects an \texttt{G4OpticalSurface} from
+the unified surface model of Levin and Moisan~\cite{Levin1996} (whose key
+parameters for Geant4/GATE photon transport were later
+characterised~\cite{Nilsson2015}), using
 (\emph{i}) a \texttt{G4LogicalBorderSurface} between two physical volumes or
 (\emph{ii}) a \texttt{G4LogicalSkinSurface} on a logical volume. Reading the
 source (lines 319--347), the lookup is: a border surface between the pre- and
@@ -365,7 +462,7 @@ process is switched on by the physics list when the WLS geometry is detected (th
 so the flag is set before the base construction). Because the shifted emission no
 longer overlaps the fibre absorption band, the re-emitted light is transported
 losslessly along the fibre by TIR to the read-out SiPM---which is why the
-detected config-4 spectrum is green-shifted (mean $\sim\!\SI{496}{\nano\meter}$)
+detected config-4 spectrum is green-shifted (mean $\sim\!\SI{485}{\nano\meter}$)
 relative to the direct-coupled configurations.
 
 \subsection{Photodetection: the SiPM photocathode}
@@ -374,8 +471,8 @@ Photodetection is delegated entirely to \gfour, rather than being drawn
 manually in the sensitive detector. The grease/SiPM boundary is a
 \texttt{dielectric\_metal} surface whose MPT carries the SiPM
 \texttt{EFFICIENCY} as a function of photon energy, i.e.\ the photon detection
-efficiency (PDE) of an ASD-NUV4S-P-40 device, peaking at $\approx 0.43$ near
-\SI{420}{\nano\meter}, with \texttt{REFLECTIVITY} $=0$.
+efficiency (PDE) of an ASD-NUV4S-P-40 device~\cite{AdvanSiD_NUV}, peaking at
+$\approx 0.43$ near \SI{420}{\nano\meter}, with \texttt{REFLECTIVITY} $=0$.
 
 The mechanism is worth stating precisely because it is the reason the sensitive
 detector needs no random draw of its own. In \texttt{DielectricMetal()}
@@ -446,9 +543,12 @@ display is generated reproducibly by \texttt{macros/muon\_vis.mac}.}
 \end{figure}
 
 % =====================================================================
-\section{Simulation setup and matrix scan}
+\section{Matrix simulation}
+\label{sec:matrix}
 \label{sec:sim}
 % =====================================================================
+
+\subsection{Beam, irradiation patches, and efficiency definition}
 
 The primary source is a vertical muon pencil beam: a \SI{50}{\milli\meter}$\times$\SI{50}{\milli\meter}
 square beam of \SI{4}{\giga\electronvolt} $\mu^-$ normally incident on the plate,
@@ -484,7 +584,7 @@ binning, so the map is not needed.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.55\textwidth]{figures/irradiation_sites.pdf}
+\includegraphics[width=0.46\textwidth]{figures/irradiation_sites.pdf}
 \caption{Plan view of the three irradiation sites (regions of interest) on the
 \SI{250}{\milli\meter}$\times$\SI{250}{\milli\meter} plate, in the report frame
 ($+y$ top, $-x$ left). Each coloured square is the \SI{50}{\milli\meter}$\times$\SI{50}{\milli\meter}
@@ -508,7 +608,7 @@ number of photoelectrons in SiPM $s$. The all-SiPM sum over the three beam
 positions is quoted as the figure of merit.
 
 For presentation, all position-resolved results (the maps of
-Figs.~\ref{fig:irr} and \ref{fig:grid1}--\ref{fig:grid4} and the whole-slab maps
+Fig.~\ref{fig:irr} and the whole-slab maps
 of Sec.~\ref{sec:whole}) are shown in the report frame with the top edge at $+y$,
 the bottom at $-y$, the left at $-x$ and the right at $+x$. The internal
 simulation frame is this view rotated by \SI{90}{\degree} clockwise; the primary
@@ -518,11 +618,6 @@ leaves every scalar result (yields, spectra, efficiencies) unchanged; it only
 fixes the orientation of config~3 (top edge) and of the edge/corner irradiation
 sites (bottom edge).
 
-% =====================================================================
-\section{Results}
-\label{sec:results}
-% =====================================================================
-
 \subsection{Overall collection efficiency}
 
 Figure~\ref{fig:bars} shows the overall collection efficiency
@@ -530,9 +625,9 @@ Figure~\ref{fig:bars} shows the overall collection efficiency
 (config, reflector) pair, and Table~\ref{tab:eff} lists the numbers. The
 ordering
 \[
-  \text{bare}\ (6\times10^{-6}\text{--}2\times10^{-4})\ \ll\
+  \text{bare}\ (7\times10^{-6}\text{--}2\times10^{-4})\ \ll\
   \text{TiO}_2\ (2\times10^{-4}\text{--}10^{-2})
-  \ <\ \text{Al}\ (1.4\text{--}2.6\times10^{-2})
+  \ <\ \text{Al}\ (1.3\text{--}2.6\times10^{-2})
   \ \approx\ \text{glossy}\ (1.5\text{--}3.0\times10^{-2})
 \]
 holds for all four layouts, reproducing the experimental result of
@@ -546,11 +641,11 @@ outperform two SiPMs on one face (config~3), and the eight-SiPM layout
 photosensitive coverage. The single-SiPM WLS-fibre layout (config~4) collects
 substantially less than the direct-coupled layouts: only the fraction of light
 that reaches the fibre face is wavelength-shifted and guided to the sensor, so
-its efficiency sits about an order of magnitude below config~3.
+its efficiency sits roughly a factor of three to six below config~3.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{figures/fig_eff_bars.pdf}
+\includegraphics[width=0.85\textwidth]{figures/fig_eff_bars.pdf}
 \caption{Overall collection efficiency $\varepsilon = \sum \pe / \sum \ngam$
 for the four reflector treatments and four detector layouts. The ordering
 $\text{bare} \ll \text{TiO}_2 < \text{Al} \approx \text{glossy}$ is reproduced in
@@ -569,9 +664,9 @@ All beam patches lie fully on the plate.}
 Layout & Bare & TiO$_2$ & Al & Glossy \\
 \midrule
 Config 1 (8 SiPMs) & $1.9\times10^{-4}$ & $9.7\times10^{-3}$ & $2.64\times10^{-2}$ & $2.99\times10^{-2}$ \\
-Config 2 (4 SiPMs) & $9.7\times10^{-5}$ & $4.9\times10^{-3}$ & $1.38\times10^{-2}$ & $1.58\times10^{-2}$ \\
-Config 3 (2 SiPMs) & $2.3\times10^{-5}$ & $1.30\times10^{-3}$ & $7.17\times10^{-3}$ & $8.16\times10^{-3}$ \\
-Config 4 (1 SiPM, WLS) & $6.4\times10^{-6}$ & $2.05\times10^{-4}$ & $1.33\times10^{-3}$ & $1.46\times10^{-3}$ \\
+Config 2 (4 SiPMs) & $9.6\times10^{-5}$ & $4.9\times10^{-3}$ & $1.38\times10^{-2}$ & $1.58\times10^{-2}$ \\
+Config 3 (2 SiPMs) & $2.4\times10^{-5}$ & $1.30\times10^{-3}$ & $7.20\times10^{-3}$ & $8.18\times10^{-3}$ \\
+Config 4 (1 SiPM, WLS) & $6.9\times10^{-6}$ & $2.2\times10^{-4}$ & $1.35\times10^{-3}$ & $1.47\times10^{-3}$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -586,8 +681,8 @@ event-to-event variation in the muon path length.
 
 Figure~\ref{fig:detected} shows the corresponding photoelectron spectra. Here the
 reflector has a dramatic effect: the bare configuration peaks near zero with a
-mean of only \num{3.8}\,\pe/event, whereas glossy paper has a mean of
-\num{574}\,\pe/event. The shift from a near-zero-peaked to a broad distribution
+mean of only \num{3.7}\,\pe/event, whereas glossy paper has a mean of
+\num{586}\,\pe/event. The shift from a near-zero-peaked to a broad distribution
 is the direct signature of effective light collection.
 
 \begin{figure}[H]
@@ -614,7 +709,7 @@ distributions cannot both be resolved on a linear scale.}
 
 The efficiency scale is set by the SiPM PDE and the coupling: of order
 \num{19000} photons are produced and the best wrapper delivers
-$\approx 574$ photoelectrons, i.e.\ $\approx 3\%$. Given a PDE of
+$\approx 586$ photoelectrons, i.e.\ $\approx 3\%$. Given a PDE of
 $\sim\!0.4$ and the geometric acceptance of a side-mounted sensor, this is
 consistent.
 
@@ -623,7 +718,7 @@ consistent.
 Figure~\ref{fig:wavelength} shows the wavelength distribution of detected
 photoelectrons, weighted by their count, for the four reflectors. The
 distribution peaks near \SI{460}{\nano\meter} for the reflective wrappers
-(measured mean $459.5 \pm 4.7\,\mathrm{nm}$ for Al, config~1), i.e.\ slightly
+(measured mean $459.7 \pm 4.8\,\mathrm{nm}$ for Al, config~1), i.e.\ slightly
 red-shifted with respect to the \SI{425}{\nano\meter} emission peak. This is the
 expected consequence of self-absorption: the shorter-wavelength part of the
 emission overlaps the absorption band and is attenuated over the multi-bounce
@@ -644,13 +739,13 @@ Figure~\ref{fig:wavelengthcfg} compares the detected-photon spectrum of the four
 configurations for each wrapper. Configurations~1--3, in which the SiPMs view the
 tile directly, all detect the same blue scintillation spectrum: the
 \emph{mean} wavelength is essentially independent of the number of sensors,
-moving only from \SI{459.5}{\nano\meter} (glossy, config~1) to
-\SI{460.3}{\nano\meter} (config~3), the small increase reflecting the slightly
+moving only from \SI{459.8}{\nano\meter} (glossy, config~1) to
+\SI{460.1}{\nano\meter} (config~3), the small increase reflecting the slightly
 longer collection path of the single-sided layouts. Config~4 is qualitatively
 different: the WLS fibres absorb the blue light and re-emit it at their own
 emission band, so the detected spectrum is shifted to
-\SI{480.6}{\nano\meter} (glossy) --- a green-shift of some
-\SI{20}{\nano\meter}. The same shift appears for every wrapper, including the
+\SI{485.2}{\nano\meter} (glossy) --- a green-shift of some
+\SI{25}{\nano\meter}. The same shift appears for every wrapper, including the
 bare tile (which, with its very small photon count, is statistically noisy),
 confirming that it originates in the fibre wavelength shifter rather than in the
 wrapper.
@@ -663,7 +758,7 @@ count, for each wrapper (panel) and each configuration (curves), using the
 pooled data of the three irradiation positions. Configurations~1--3 follow the
 \SI{460}{\nano\meter} blue scintillation spectrum regardless of sensor count,
 whereas the WLS-fibre readout of config~4 is green-shifted to
-$\approx \SI{480}{\nano\meter}$ by the Y-11(200) emission band.}
+$\approx \SI{485}{\nano\meter}$ by the Y-11(200) emission band.}
 \label{fig:wavelengthcfg}
 \end{figure}
 
@@ -690,26 +785,20 @@ collecting bare plate is resolved alongside the reflective wrappers.
 
 The conspicuous feature is that the reflective wrappers \emph{homogenise} the
 response: for Al and glossy paper the efficiency varies by at most
-\SIrange{1}{9}{\percent} across the three patches in every layout
-(Fig.~\ref{fig:uniformity} and Table~\ref{tab:contrast}), i.e.\ an
+\SI{4}{\percent} across the three patches in every layout, i.e.\ an
 edge- or corner-irradiated plate collects almost exactly as much light as a
-centre-irradiated one. To quantify this we define the \emph{position contrast}
-\begin{equation}
-  \kappa \equiv \frac{\varepsilon_{\max}}{\varepsilon_{\min}},
-  \label{eq:contrast}
-\end{equation}
-the ratio of the largest to the smallest of the three patch-averaged collection
-efficiencies $\varepsilon$ (Eq.~\ref{eq:eff}), so that $\kappa=1$ denotes a
-perfectly uniform response and $\kappa-1$ the fractional spread. The diffuse
-TiO$_2$ paint is markedly less uniform (a
-factor $\approx\!1.7$--$1.9$), and the bare plate records by far the strongest
-position dependence (up to a factor \num{8} for config~4, whose single readout
-amplifies any asymmetry). This is the expected behaviour of a closed reflecting
-cavity: after the first few bounces the light distribution no longer remembers
-where the muon crossed the plate, so the sensor coverage, and not the irradiation
-point, sets the collection. A single-sided layout is the extreme test of this
-argument, and even there the mirror wrappers keep the position contrast below
-\SI{10}{\percent}.
+centre-irradiated one, whereas the diffuse TiO$_2$ paint varies by a factor
+$\approx\!1.7$--$2.1$ and the bare plate by up to \num{3.7} (the largest value,
+config~4, whose single readout amplifies any asymmetry). This is the expected
+behaviour of a closed reflecting cavity: after the first few bounces the light
+distribution no longer remembers where the muon crossed the plate, so the sensor
+coverage, and not the irradiation point, sets the collection.
+
+These three patches lie on the half of the plate \emph{nearest} the sensors, so
+the comparison above captures only the position dependence within the well-lit
+region. The response over the \emph{whole} plate is resolved in
+Sec.~\ref{sec:wholeunif}; there the full-plate position contrast is found to be
+far larger, reaching two orders of magnitude for the bare plate.
 
 \begin{figure}[H]
 \centering
@@ -733,38 +822,6 @@ patches, which sit on the far side of the plate from their sensors.}
 \label{fig:posrefl}
 \end{figure}
 
-\begin{figure}[H]
-\centering
-\includegraphics[width=\textwidth]{figures/fig_uniformity.pdf}
-\caption{Position contrast $\kappa = \varepsilon_{\max}/\varepsilon_{\min}$
-(Eq.~\ref{eq:contrast}) over the three
-irradiation patches, one panel per layout, four reflector bars (dashed line:
-$\kappa=1$). The mirror-like wrappers hold the
-contrast within \SI{9}{\percent} in every layout, whereas diffuse TiO$_2$ and
-especially the bare plate are strongly position-dependent.}
-\label{fig:uniformity}
-\end{figure}
-
-\begin{table}[H]
-\centering
-\caption{Position contrast $\kappa = \varepsilon_{\max}/\varepsilon_{\min}$
-(Eq.~\ref{eq:contrast}) across the
-three irradiation patches (centre, edge, corner). A value of~1 means the layout
-collects the same fraction of light wherever the muon crosses the plate.}
-\label{tab:contrast}
-\small
-\begin{tabular}{@{}lcccc@{}}
-\toprule
-Reflector & Config 1 & Config 2 & Config 3 & Config 4 \\
-\midrule
-Bare   & 2.15 & 2.03 & 3.56 & 8.22 \\
-TiO$_2$& 1.74 & 1.75 & 1.77 & 1.93 \\
-Al     & 1.04 & 1.03 & 1.01 & 1.09 \\
-Glossy & 1.03 & 1.03 & 1.00 & 1.09 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
 Figure~\ref{fig:sharing} resolves the directional response most directly. For
 config~1 (the layout with the most sensors) it shows the \emph{share} of the
 collected light seen by each of the eight sensors, in one panel per reflector,
@@ -778,7 +835,7 @@ times the uniform share each, while the remaining six share only
 at all. A diffuse or mirror wrapper erases this
 structure: for glossy paper the same two nearest sensors reach only about
 \num{1.1} times the uniform share. The total efficiency is nearly the same for all
-three patches (Table~\ref{tab:contrast}), so the cavity keeps the \emph{amount}
+three patches (Table~\ref{tab:positions}), so the cavity keeps the \emph{amount}
 of collected light constant while completely rearranging its spatial division.
 A radius-only summary averages these distinct per-sensor patterns into a single
 number and hides precisely this information.
@@ -796,61 +853,9 @@ almost uniformly over all eight.}
 \label{fig:sharing}
 \end{figure}
 
-\subsection{Position-resolved efficiency maps}
-
-Figures~\ref{fig:grid1}--\ref{fig:grid4} show the two-dimensional collection
-efficiency as a function of the muon entry point $(x,y)$, one panel per
-reflector, for the four configurations. Each map is the ratio of collected
-photoelectrons to produced photons in $5 \times \SI{5}{\milli\meter}$ cells
-(Eq.~\ref{eq:eff}, evaluated bin-by-bin). The black squares mark the SiPM
-positions for that configuration (same convention as Fig.~\ref{fig:layouts}).
-Because the matrix scan only
-irradiates the three \SI{50}{\milli\meter}$\times$\SI{50}{\milli\meter} patches,
-only those regions are populated; the maps therefore show the internal structure
-of each of the three fields. Within a patch the reflective wrappers are almost
-featureless---consistent with the near-uniform integrated response found
-above---while the bare plate and, to a lesser degree, the TiO$_2$ coating show a
-clear gradient across the field, brightest on the side nearest the sensors.
-
 Table~\ref{tab:positions} lists the absolute centre/edge/corner efficiencies for
-config~1; the position- and direction-resolved comparison across all four layouts
-is the subject of the preceding subsection
-(Figs.~\ref{fig:poslayouts}--\ref{fig:sharing}), and the TiO$_2$ corner excess it
-reveals is discussed in Sec.~\ref{sec:caveats}.
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=\textwidth]{figures/efficiency_grid_cfg1_all.pdf}
-\caption{Collection efficiency map, config~1 (8 SiPMs), one panel per reflector
-(bare, TiO$_2$, Al, glossy). Bins are $5 \times \SI{5}{\milli\meter}$; black
-squares mark the SiPM positions (two per edge).}
-\label{fig:grid1}
-\end{figure}
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=\textwidth]{figures/efficiency_grid_cfg2_all.pdf}
-\caption{Collection efficiency map, config~2 (4 SiPMs, one per side). Black
-squares mark the SiPM positions.}
-\label{fig:grid2}
-\end{figure}
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=\textwidth]{figures/efficiency_grid_cfg3_all.pdf}
-\caption{Collection efficiency map, config~3 (2 SiPMs, both on the top $+y$ side).
-Black squares mark the SiPM positions.}
-\label{fig:grid3}
-\end{figure}
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=\textwidth]{figures/efficiency_grid_cfg4_all.pdf}
-\caption{Collection efficiency map, config~4 (single SiPM $+$ WLS fibre clamp).
-The black square marks the read-out SiPM at the top-left corner; the clamp runs
-along the top edge. Same report frame and binning as Figs.~\ref{fig:grid1}--\ref{fig:grid3}.}
-\label{fig:grid4}
-\end{figure}
+config~1; the fully position- and direction-resolved maps over the \emph{entire}
+plate are given in Sec.~\ref{sec:whole}.
 
 \begin{table}[H]
 \centering
@@ -865,16 +870,64 @@ Reflector & Centre & Edge & Corner \\
 \midrule
 Bare   & $1.7\times10^{-4}$ & $1.3\times10^{-4}$ & $2.8\times10^{-4}$ \\
 TiO$_2$& $7.3\times10^{-3}$ & $9.1\times10^{-3}$ & $1.27\times10^{-2}$ \\
-Al     & $2.70\times10^{-2}$ & $2.61\times10^{-2}$ & $2.60\times10^{-2}$ \\
+Al     & $2.69\times10^{-2}$ & $2.62\times10^{-2}$ & $2.61\times10^{-2}$ \\
 Glossy & $3.04\times10^{-2}$ & $2.97\times10^{-2}$ & $2.96\times10^{-2}$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
+\subsection{Photoelectron spectra across configurations and positions}
+\label{sec:pegrid}
+
+Figure~\ref{fig:pegrid} collects the per-event photoelectron spectra over the
+whole matrix scan in the layout of Fig.~10 of Rao et al.~\cite{Rao2025}: the
+three irradiation regions (centre, edge, corner) are the rows and the detector
+configurations are the columns, with the four reflector treatments overlaid in
+every cell. Two adaptations are made. First, the voltage pulse-height spectra of
+the measurement are replaced by the simulation's number of photoelectrons per
+event, the quantity that is directly comparable between our model and the
+experiment. Second, the fourth configuration (single SiPM $+$ WLS fibre clamp)
+is added as a fourth column, so that all four layouts are shown on a common
+footing rather than in a separate, differently-scaled figure.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_pe_grid.pdf}
+\caption{Photoelectron spectra in the layout of Fig.~10 of Rao et
+al.~\cite{Rao2025}: rows are the irradiation regions (centre, edge, corner) and
+columns the detector configurations (1--4, with the WLS-clamp layout as the
+fourth column). Each cell overlays the four reflector treatments. The histograms
+are probability densities (unit area on the populated bins) drawn on logarithmic
+$x$- and $y$-axes; zero-photoelectron events form a pulse below threshold and lie
+off the logarithmic abscissa. The reflective wrappers shift the spectrum by two
+to three orders of magnitude and broaden it into a recognisable pulse-height
+distribution, while the bare plate remains a near-threshold peak at all
+positions and in all layouts.}
+\label{fig:pegrid}
+\end{figure}
+
+The figure condenses the trends established above. The bare plate is
+near-threshold everywhere---its whole spectrum sits below a few
+photoelectrons---whereas TiO$_2$, Al, and glossy paper all produce broad,
+well-separated spectra; at a fixed position the reflector ordering
+TiO$_2$~$<$~Al~$\lesssim$~glossy is preserved in every cell, mirroring the
+experimental conclusion that the two bright wrappers are of comparable quality.
+The position dependence is configuration-specific and not monotone: for the bare
+and TiO$_2$ layouts the corner spectrum is shifted highest (a factor
+$\approx\!\num{1.7}$ in the mean for TiO$_2$, config~1), for Al and glossy paper
+the three positions are essentially degenerate, and for the single-sided
+configurations~3 and~4 the centre is highest and the corner lowest, as expected
+from their placement opposite the beam patches. This is the same
+reflector-versus-position interplay summarised in Table~\ref{tab:positions} and
+the efficiency maps, presented here as the pulse-height distributions that a
+threshold-based read-out would actually see.
+
 % =====================================================================
 \section{Whole-slab irradiation}
 \label{sec:whole}
 % =====================================================================
+
+\subsection{Uniform whole-plate irradiation and full-plate maps}
 
 The matrix scan illuminates only three \SI{50}{\milli\meter}$\times$\SI{50}{\milli\meter}
 patches, so it resolves the light collection at the centre, edge and corner but
@@ -882,9 +935,9 @@ not the full plate. To obtain a complete position-resolved map we ran a second,
 \emph{whole-slab} configuration: the GPS plane is expanded to
 $250 \times \SI{250}{\milli\meter}$ (\texttt{halfx} $=$ \texttt{halfy} $=$
 \SI{125}{\milli\meter}), so the primary muon's first-entry position is sampled
-\emph{uniformly} over the entire plate. Ten thousand events are generated per
+\emph{uniformly} over the entire plate. Twenty-five thousand events are generated per
 (config, reflector); the efficiency is reconstructed from the same
-\texttt{sipmHits} tree, in $10 \times \SI{10}{\milli\meter}$ cells, as
+\texttt{sipmHits} tree, in $5 \times \SI{5}{\milli\meter}$ cells, as
 \[
   \varepsilon(x,y) = \frac{\sum_{e\,\in\,\text{cell}} \pe^{(e)}}
                           {\sum_{e\,\in\,\text{cell}} \ngam^{(e)}},
@@ -895,12 +948,12 @@ by the three-patch scan.
 
 Figure~\ref{fig:wholeslab} shows the complete set of full-plate maps for
 config~1, one panel per reflector. For the bare plate, averaged over the whole
-surface the efficiency is $\varepsilon = 4.7\times10^{-4}$, consistent with the
+surface the efficiency is $\varepsilon = 4.5\times10^{-4}$, consistent with the
 three-patch bare values of Table~\ref{tab:positions}. The map reveals a clear
 radial structure that the three discrete patches could only hint at: the
 efficiency is lowest at the centre ($\varepsilon \approx 1.8\times10^{-4}$ within
 $r < \SI{60}{\milli\meter}$) and rises monotonically toward the edges
-($\varepsilon \approx 5.4\times10^{-4}$ in the outer region), i.e.\ by roughly a
+($\varepsilon \approx 5.1\times10^{-4}$ in the outer region), i.e.\ by roughly a
 factor of three. This is exactly the signature of edge readout combined with
 frustrated-TIR absorption: photons created near a sensor-bearing face have a
 short path to detection, whereas photons born at the centre must random-walk to
@@ -913,19 +966,20 @@ than the bare plate ($\varepsilon = 1.08\times10^{-2}$) and its centre-to-edge
 gradient is much weaker ($7.7\times10^{-3}$ for $r < \SI{60}{\milli\meter}$
 versus $1.15\times10^{-2}$ beyond, a factor of $\sim\!1.5$). Al is brighter again
 ($2.69\times10^{-2}$) and almost perfectly \emph{flat}: the centre
-($2.67\times10^{-2}$) equals the outskirts ($2.70\times10^{-2}$). Glossy is the
+($2.68\times10^{-2}$) equals the outskirts ($2.69\times10^{-2}$). Glossy is the
 brightest ($3.04\times10^{-2}$) and likewise flat ($3.03$ vs.\
 $3.05\times10^{-2}$). Diffuse recycling (TiO$_2$) and specular mixing (Al,
 glossy) both reduce the penalty of being far from a sensor, the specular mirrors
 so thoroughly that the entry position is effectively erased, whereas the bare
 plate---whose frustrated TIR leaks into the holder---retains a steep edge
-gradient.
+ gradient.
 
-\begin{figure}[H]
+\clearpage
+\begin{figure}[t]
 \centering
-\includegraphics[width=\textwidth]{figures/whole_slab_cfg1.pdf}
-\caption{Full-plate collection-efficiency maps for config~1, from \num{10000}
-whole-slab events per panel ($10 \times \SI{10}{\milli\meter}$ cells, on a
+\includegraphics[width=0.74\textwidth]{figures/whole_slab_cfg1.pdf}
+\caption{Full-plate collection-efficiency maps for config~1, from \num{25000}
+whole-slab events per panel ($5 \times \SI{5}{\milli\meter}$ cells, on a
 logarithmic colour scale shared by the panels). Bare plate (top left) rises from
 the centre toward the instrumented edges; TiO$_2$ (top right) is roughly twenty
 times brighter with only a weak gradient; Al (bottom left) and glossy (bottom
@@ -935,23 +989,9 @@ squares mark the eight SiPM positions.}
 \label{fig:wholeslab}
 \end{figure}
 
-Figure~\ref{fig:wholeslab2} repeats the whole-slab scan for config~2 (four
-sensors, one on each lateral face at the config-1 offsets). Every configuration
-is weaker than
-its config-1 counterpart---roughly halved, as expected from the reduced sensor
-area---while the reflector ordering and the flattening behaviour are unchanged.
-The bare plate gives $\varepsilon = 2.6\times10^{-4}$ with the same strong edge
-gradient ($1.3\times10^{-4}$ at the centre versus $2.9\times10^{-4}$ outside
-$r = \SI{60}{\milli\meter}$); TiO$_2$ reaches $5.55\times10^{-3}$ with a milder
-gradient, and Al and glossy reach $1.42\times10^{-2}$ and
-$1.62\times10^{-2}$, both nearly flat. The monotone bare $\ll$ TiO$_2$ $<$ Al
-$\approx$ glossy sequence and the progressive erasure of the position dependence
-are therefore robust against the sensor count: fewer sensors lower the overall
-light collection but do not change the physics of the wrapper.
-
-\begin{figure}[H]
+\begin{figure}[t]
 \centering
-\includegraphics[width=\textwidth]{figures/whole_slab_cfg2.pdf}
+\includegraphics[width=0.74\textwidth]{figures/whole_slab_cfg2.pdf}
 \caption{Full-plate collection-efficiency maps for config~2 (four SiPMs, one per
 lateral face at the config-1 offsets), otherwise identical to
 Fig.~\ref{fig:wholeslab}. The reflector
@@ -959,6 +999,47 @@ ordering and the centre-to-edge flattening are the same, with each efficiency
 about half the config-1 value.}
 \label{fig:wholeslab2}
 \end{figure}
+
+\clearpage
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.74\textwidth]{figures/whole_slab_cfg3.pdf}
+\caption{Full-plate collection-efficiency maps for config~3 (two SiPMs, both on
+the top $+y$ face). The lowest efficiencies of the direct-coupled layouts and the
+clearest top--bottom asymmetry appear here; the specular wrappers (Al, glossy)
+again flatten the response.}
+\label{fig:wholeslab3}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.74\textwidth]{figures/whole_slab_cfg4.pdf}
+\caption{Full-plate collection-efficiency maps for config~4 (single SiPM $+$ WLS
+fibre clamp). The lowest efficiencies of all four layouts appear here; the bare
+and TiO$_2$ panels retain a centre-to-edge gradient, while the specular wrappers
+(Al, glossy) are almost flat. The red bar along the top ($+y$) edge marks the WLS
+fibre clamp (the fibres run the full plate length along it) and the black square
+at its left end is the single read-out SiPM, so the fibres can be located
+relative to the read-out. Same report frame and binning as
+Figs.~\ref{fig:wholeslab}--\ref{fig:wholeslab3}, each panel on its own
+logarithmic colour scale.}
+\label{fig:wholeslab4}
+\end{figure}
+
+\clearpage
+Figure~\ref{fig:wholeslab2} repeats the whole-slab scan for config~2 (four
+sensors, one on each lateral face at the config-1 offsets). Every configuration
+is weaker than
+its config-1 counterpart---roughly halved, as expected from the reduced sensor
+area---while the reflector ordering and the flattening behaviour are unchanged.
+The bare plate gives $\varepsilon = 2.2\times10^{-4}$ with the same strong edge
+gradient ($9.0\times10^{-5}$ at the centre versus $2.5\times10^{-4}$ outside
+$r = \SI{60}{\milli\meter}$); TiO$_2$ reaches $5.5\times10^{-3}$ with a milder
+gradient, and Al and glossy reach $1.42\times10^{-2}$ and
+$1.61\times10^{-2}$, both nearly flat. The monotone bare $\ll$ TiO$_2$ $<$ Al
+$\approx$ glossy sequence and the progressive erasure of the position dependence
+are therefore robust against the sensor count: fewer sensors lower the overall
+light collection but do not change the physics of the wrapper.
 
 Finally, Fig.~\ref{fig:wholeslab3} shows config~3, in which both sensors sit on
 the same (top, $+y$) face. The integrated efficiencies are the lowest of the
@@ -968,15 +1049,25 @@ $7.2\times10^{-3}$, glossy $8.2\times10^{-3}$---because concentrating both
 sensors on one face halves the solid angle available to photons born on the
 opposite side. The maps make the resulting asymmetry visible: the bare and
 TiO$_2$ panels are brightest near the instrumented top ($+y$) edge and dimmest on
-the far ($-y$) side ($4.4\times10^{-5}$ at the centre versus $1.3\times10^{-4}$
+the far ($-y$) side ($4.5\times10^{-5}$ at the centre versus $1.2\times10^{-4}$
 outside $r = \SI{60}{\milli\meter}$ for the bare plate). The specular wrappers
 again homogenise the response, with Al and glossy flat to better than 1\%
 between the inner and outer regions.
 
-The whole-slab irradiation was carried out for the direct-coupled layouts only
-(configs~1--3); the WLS-fibre layout (config~4) is still under development and
-has no full-plate run. Across the three direct-coupled layouts the
-reflector ordering is identical and monotone,
+Figure~\ref{fig:wholeslab4} completes the set with the single-SiPM WLS-fibre
+layout (config~4). The absolute efficiencies are the lowest of all four layouts
+---bare $3.5\times10^{-5}$, TiO$_2$ $5.6\times10^{-4}$, Al
+$1.4\times10^{-3}$, glossy $1.5\times10^{-3}$---as expected from the small
+fibre acceptance, but the reflector ordering and the flattening behaviour are
+unchanged. The bare plate retains a strong gradient
+($1.2\times10^{-5}$ at the centre versus $4.0\times10^{-5}$ outside
+$r=\SI{60}{\milli\meter}$, a factor \num{3.2}) and TiO$_2$ a milder one
+($3.4\times10^{-4}$ versus $6.0\times10^{-4}$), whereas Al and glossy are
+almost flat (the centre and outer values agree to better than \SI{2}{\percent}),
+so even with a single readout face the specular wrappers erase the entry-point
+dependence.
+
+Across all four layouts the reflector ordering is identical and monotone,
 \[
 \text{bare} \;\ll\; \text{TiO}_2 \;<\; \text{Al} \;<\; \text{glossy},
 \]
@@ -984,14 +1075,180 @@ and the efficiency scales roughly with the collected photosensitive area,
 confirming that the wrapper, not the readout layout, governs the collection
 efficiency.
 
+\subsection{Whole-slab uniformity}
+\label{sec:wholeunif}
+
+The full-plate maps also expose an inhomogeneity that the three discrete
+patches of Sec.~\ref{sec:matrix} can only sample.  Because the whole-slab beam
+irradiates every point of the plate, this inhomogeneity can be quantified
+\emph{continuously} and with far better statistics.
+
+A purely radial contrast is deliberately \emph{not} used.  The read-out layouts
+have no continuous rotational symmetry---configs~1 and~2 are four-fold
+symmetric, configs~3 and~4 single-sided---and the plate is square, so the
+collection efficiency is not a function of radius alone.  Beyond the inscribed
+circle ($r > \SI{125}{\milli\meter}$) only the four corner wedges of the plate
+are populated, so a fixed-width radial bin would mix a shrinking range of
+directions and its $\varepsilon(r)$ would reflect the geometry of the square
+rather than the detector.  The uniformity is therefore quantified directly in
+the plate plane $(x,y)$.
+
+\emph{Two complementary uniformity measures.}  The whole-slab scan gives the
+collection efficiency as a \emph{field} $\varepsilon(x,y)$, the position-binned
+image of Eq.~\ref{eq:eff}.  We characterise this field in two ways.
+(i)~The \emph{normalised map} $\varepsilon/\langle\varepsilon\rangle$, with
+$\langle\varepsilon\rangle$ the plate-averaged efficiency, is shown for each
+layout in Figs.~\ref{fig:wholeunifmap}--\ref{fig:wholeunifmap4} in
+\SI{5}{\milli\meter} cells.  It is a dimensionless field of unit mean that shows
+\emph{where} the response is high or low and the spatial pattern of the
+asymmetry (for instance a top--bottom gradient), but \emph{not} the absolute
+efficiency.
+(ii)~The \emph{two-dimensional contrast}
+\[
+  \kappa_{\rm 2D} \;=\; \frac{\max_{\rm cell}\varepsilon}{\min_{\rm cell}\varepsilon}
+\]
+collapses the field to a single number, the ratio of the brightest to the
+darkest region; it answers ``how large is the spread'' and is the quantity that
+ranks the layouts and reflectors.  $\kappa_{\rm 2D}$ is evaluated on a coarser
+$5\times5$ grid of \SI{50}{\milli\meter} cells, because on the
+\SI{5}{\milli\meter} cells of the maps the per-cell statistics are too thin for
+a stable max/min---Poisson noise in the extreme cells would inflate it.  The two
+measures therefore use different binning: the contrast quoted below is
+deliberately the \emph{robust} dynamic range, and is smaller than the raw
+peak-to-trough range of the fine maps.  No symmetry is assumed, so
+$\kappa_{\rm 2D}$ is meaningful for the single-sided layouts~3 and~4 as well as
+for the four-sided ones.
+
+The direction-sensitive contrast $\kappa_{\rm 2D}$ ranks the reflectors
+identically and monotonically in \emph{every} layout,
+\[
+\text{bare} \;\gg\; \text{TiO}_2 \;>\; \text{Al} \;\gtrsim\; \text{glossy},
+\]
+matching the reflector ordering found at the three near-edge patches.
+Numerically it is much larger than the spread there, because the full plate
+includes the extreme corners that the three \SI{50}{\milli\meter} patches
+average away: for the bare plate $\kappa_{\rm 2D}$ runs \num{9.5},
+\num{15.7}, \num{67} and \num{138} for configs~\num{1}--\num{4}, against the
+$\lesssim\SI{4}{\percent}$ variation seen over the three patches.  The specular
+wrappers, by contrast, stay near unity---%
+$\kappa_{\rm 2D} = \num{1.06}$--$\num{1.13}$ for the four-sided layouts~1
+and~2 and $\lesssim\num{1.5}$ even for the single-sided layouts~3 and~4---so
+that for layouts~1 and~2 a muon crossing anywhere on the plate is collected
+within \SI{13}{\percent} of one at the most favourable point, whereas the bare
+plate loses two orders of magnitude at the corners.  TiO$_2$ sits between the
+two families ($\kappa_{\rm 2D} = \num{1.9}$--$\num{16.9}$).  Figure~\ref{fig:wholecontrast}
+collects all sixteen values as bar charts, one panel per layout: the bare bar rises by
+more than an order of magnitude from the four-sided to the single-sided layouts, while the
+reflective bars stay pinned near the unity line.  Table~\ref{tab:wholerefl} lists the
+same values numerically, resolving the near-unity reflective entries that the linear bar
+scale cannot.
+
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{figures/whole_slab_cfg3.pdf}
-\caption{Full-plate collection-efficiency maps for config~3 (two SiPMs, both on
-the top $+y$ face). The lowest efficiencies of the direct-coupled layouts and the
-clearest top--bottom asymmetry appear here; the specular wrappers (Al, glossy)
-again flatten the response.}
-\label{fig:wholeslab3}
+\includegraphics[width=0.72\textwidth]{figures/fig_whole_contrast.pdf}
+\caption{Full-plate position contrast
+$\kappa_{\rm 2D} = \varepsilon_{\max}/\varepsilon_{\min}$ over the
+\SI{50}{\milli\meter} cells of the whole-slab map, one panel per layout and one
+bar per reflector (each panel on its own linear scale).  This is the same kind
+of comparison as the three near-edge patches, but evaluated over the entire
+plate; the dashed line marks unity (a perfectly uniform response).  The bare
+plate dominates, whereas the specular Al and glossy wrappers stay close to unity
+and TiO$_2$ sits in between.}
+\label{fig:wholecontrast}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\caption{Full-plate position contrast $\kappa_{\rm 2D}$ over the
+\SI{50}{\milli\meter} cells of the whole-slab map, per layout and reflector,
+with the propagated Poisson uncertainty.  These are the values plotted in
+Fig.~\ref{fig:wholecontrast}; the table resolves the near-unity reflective
+entries that the linear bar scale cannot, and shows the monotonic
+$\text{bare}\gg\text{TiO}_2>\text{Al}\gtrsim\text{glossy}$ ordering in every
+layout.  The number in parentheses is the uncertainty in the last digits of the
+preceding value.}
+\label{tab:wholerefl}
+\small
+\begin{tabular}{@{}l
+                S[table-format=3.3(2)] S[table-format=3.3(2)]
+                S[table-format=3.3(2)] S[table-format=3.3(2)]@{}}
+\toprule
+Reflector & \multicolumn{1}{c}{Config 1} & \multicolumn{1}{c}{Config 2}
+          & \multicolumn{1}{c}{Config 3} & \multicolumn{1}{c}{Config 4} \\
+\midrule
+Bare    & 9.46(20)  & 15.69(46) & 66.9(43)  & 138(21)   \\
+TiO$_2$ & 1.90(1)   & 2.47(1)   & 8.15(6)   & 16.9(3)   \\
+Al      & 1.077(2)  & 1.128(3)  & 1.293(5)  & 1.513(13) \\
+Glossy  & 1.062(2)  & 1.110(3)  & 1.245(4)  & 1.481(12) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The single-sided layouts are the most demanding.  For config~4 the
+two-dimensional contrast is the largest of the entire study
+($\kappa_{\rm 2D} = 138$): the front--back asymmetry across the plate is far
+stronger than any radial average reveals.  A single-sided layout is simply not
+described by a radius, so only the full $(x,y)$ map---not a radial
+profile---carries the information.
+
+Figures~\ref{fig:wholeunifmap}--\ref{fig:wholeunifmap4} show the same response
+in normalised form, $\varepsilon/\langle\varepsilon\rangle$, for each of the
+four layouts, on a shared \emph{logarithmic} colour scale.  A single linear
+scale cannot hold the range: on the bare plate the response spans several
+decades about its mean, with the minimum at the corners and the maximum near
+the edge mid-points, while the reflective wrappers occupy a narrow band around
+unity.  The two four-sided layouts~(1 and~2) are nearly azimuthally symmetric,
+whereas the single-sided layouts~(3 and~4) show the one-sided read-out
+directly, the region opposite the sensors darkening in the bare and TiO$_2$
+panels.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.68\textwidth]{figures/fig_whole_uniformity_map_cfg1.pdf}
+\caption{Whole-slab efficiency normalised to its plate average,
+$\varepsilon/\langle\varepsilon\rangle$, for config~1, one panel per reflector
+(\SI{5}{\milli\meter} cells, the same binning as
+Figs.~\ref{fig:wholeslab}--\ref{fig:wholeslab4}, on a shared \emph{logarithmic}
+colour scale).  The slab outline and the SiPM positions (black squares), or for
+config~4 the WLS fibre clamp (red bar) with its read-out SiPM, are overlaid as
+in Fig.~\ref{fig:wholeslab4}.  The bare plate spans several decades about its
+mean, with the minimum at the corners and the maximum near the edge mid-points;
+the reflective wrappers occupy a narrow band around unity, confirming that the
+position dependence is erased.}
+\label{fig:wholeunifmap}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.68\textwidth]{figures/fig_whole_uniformity_map_cfg2.pdf}
+\caption{As Fig.~\ref{fig:wholeunifmap} but for config~2 (four SiPMs, one per
+lateral face).  The patterns are almost indistinguishable from config~1---the
+four-sided read-out is effectively azimuthally symmetric---with only the
+overall normalisation (hence the absolute efficiency) reduced.}
+\label{fig:wholeunifmap2}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.68\textwidth]{figures/fig_whole_uniformity_map_cfg3.pdf}
+\caption{As Fig.~\ref{fig:wholeunifmap} but for config~3 (two SiPMs, both on the
+top $+y$ face).  The one-sided read-out breaks the azimuthal symmetry: the bare
+and TiO$_2$ panels show a pronounced top--bottom gradient, with the response
+falling toward the ($-y$) face opposite the sensors.  The specular wrappers
+close most of this gap.}
+\label{fig:wholeunifmap3}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.68\textwidth]{figures/fig_whole_uniformity_map_cfg4.pdf}
+\caption{As Fig.~\ref{fig:wholeunifmap} but for config~4 (single SiPM $+$ WLS
+fibre clamp along the top $+y$ edge, read out at the top-left corner).  The
+single fibre read-out produces the strongest asymmetry of all four layouts, the
+response falling from the instrumented ($+y$) edge toward the opposite ($-y$)
+side; this is the azimuthal structure that gives config~4 the largest
+$\kappa_{\rm 2D}$ of the study.}
+\label{fig:wholeunifmap4}
 \end{figure}
 
 % =====================================================================
@@ -1014,7 +1271,7 @@ run was discarded and regenerated.
 
 \paragraph{Reversed position trend in TiO$_2$.}
 For the mirror-like wrappers (Al, glossy) the response is essentially flat across
-the three patches (contrast $<\!\SI{9}{\percent}$, Table~\ref{tab:contrast}),
+the three patches (contrast $<\!\SI{4}{\percent}$),
 with the centre marginally the most efficient and the corner the least, consistent
 with the shortest average path to a sensor. The TiO$_2$ configuration instead
 shows a clear corner $>$ edge $>$ centre ordering (a factor \num{1.7}). Since \texttt{groundfrontpainted} is purely
@@ -1030,11 +1287,14 @@ interpreted physically.
 \paragraph{Scale and normalisation.}
 The absolute efficiencies are model-dependent: they are fixed by the assumed
 PDE curve, the grease coupling, and the absorbed-fraction of the tabulated
-reflectivities. The robust result is the \emph{ordering} and the qualitative
-splitting into an effectively absorbing bare case and a reflective family.
+reflectivities. The SiPM breakdown-voltage and gain (which drive the PDE) are
+also temperature-dependent~\cite{Anfimov2021}, an effect not modelled here. The
+robust result is the \emph{ordering} and the qualitative splitting into an
+effectively absorbing bare case and a reflective family.
 
 % =====================================================================
 \section{Summary}
+\label{sec:summary}
 % =====================================================================
 
 A \gfour\ optical simulation of a \SI{250}{\milli\meter}$\times$\SI{250}{\milli\meter}$\times$\SI{10}{\milli\meter} polished plastic
@@ -1051,17 +1311,139 @@ the full \SI{250}{\milli\meter}$\times$\SI{250}{\milli\meter} plate uniformly an
 yields a complete collection-efficiency map, which for the bare configuration
 shows the expected factor-of-three rise from centre to edge. Keeping the three
 irradiation patches separate---rather than collapsing them to a single beam-axis
-radius---reveals that the reflective wrappers homogenise the response: the
-position contrast stays below \SI{9}{\percent} in every layout, and the per-sensor
-light sharing becomes nearly uniform, whereas the bare plate concentrates
-\SI{91}{\percent} of the collected light on the two sensors nearest the beam.
+radius---reveals that the reflective wrappers homogenise the response over the
+illuminated region: across the three patches the position contrast stays below
+\SI{4}{\percent} in every layout, and the per-sensor light sharing becomes nearly
+uniform, whereas the bare plate concentrates \SI{91}{\percent} of the collected
+light on the two sensors nearest the beam. Extending the scan to the whole plate
+sharpens this picture: the full-plate contrast reaches
+$\kappa_{\rm 2D} = \num{9.5}$--\num{138} for the bare plate across the four
+layouts, against $\kappa_{\rm 2D}\lesssim\num{1.5}$ for the specular wrappers.
+\begin{thebibliography}{20}
 
-\begin{thebibliography}{9}
-\bibitem{Rao2025} Rao \emph{et al.}, J.~Appl.\ Phys.\ \textbf{138}, 114504 (2025).
-\bibitem{G4OpticalPhysics} \gfour\ Collaboration, \emph{Physics Reference Manual: Optical Processes}, Geant4 v11.3.2.
-\bibitem{EJ200} Eljen Technology, \emph{EJ-200 General Purpose Plastic Scintillator} datasheet.
-\bibitem{UPS923A} Amcrys, \emph{UPS-923A Plastic Scintillator} datasheet.
-\bibitem{Birks1970} J.~B.~Birks and F.~A.~Craun, \emph{The theory and practice of scintillation counting} (1970).
+\bibitem{Rao2025}
+G.~Rao, A.~Bieberle, U.~Hampel, M.~Wagner,
+\emph{Design studies on large muon trigger detectors using silicon photomultiplier devices},
+J.~Appl.\ Phys.\ \textbf{138}, 114504 (2025).
+\href{https://doi.org/10.1063/5.0288270}{doi:10.1063/5.0288270}.
+
+\bibitem{Agostinelli2003}
+S.~Agostinelli \emph{et al.},
+\emph{Geant4---a simulation toolkit},
+Nucl.\ Instrum.\ Methods A \textbf{506}, 250--303 (2003).
+\href{https://doi.org/10.1016/S0168-9002(03)01368-8}{doi:10.1016/S0168-9002(03)01368-8}.
+
+\bibitem{Allison2016}
+J.~Allison \emph{et al.},
+\emph{Recent developments in Geant4},
+Nucl.\ Instrum.\ Methods A \textbf{835}, 186--225 (2016).
+\href{https://doi.org/10.1016/j.nima.2016.06.125}{doi:10.1016/j.nima.2016.06.125}.
+
+\bibitem{Geant4PRM}
+Geant4 Collaboration,
+\emph{Geant4 Physics Reference Manual}, CERN, v11.3.
+\url{https://geant4-userdoc.web.cern.ch/UsersGuides/PhysicsReferenceManual/html/index.html}.
+
+\bibitem{Levin1996}
+A.~Levin, C.~Moisan,
+\emph{A more physical approach to model the surface treatment of scintillation
+counters and its implementation into DETECT},
+1996 IEEE Nuclear Science Symposium Conference Record \textbf{2}, 702--706.
+\href{https://doi.org/10.1109/NSSMIC.1996.591410}{doi:10.1109/NSSMIC.1996.591410}.
+
+\bibitem{Nilsson2015}
+J.~Nilsson, V.~Cuplov, M.~Isaksson,
+\emph{Identifying key surface parameters for optical photon transport in
+GEANT4/GATE simulations},
+Appl.\ Radiat.\ Isot.\ \textbf{103}, 15--24 (2015).
+\href{https://doi.org/10.1016/j.apradiso.2015.04.017}{doi:10.1016/j.apradiso.2015.04.017}.
+
+\bibitem{Korpachev2017}
+S.~Korpachev, M.~Chadeeva,
+\emph{Geant4 simulation of optical photon transport in scintillator tile with
+direct readout by silicon photomultiplier},
+J.\ Phys.\ Conf.\ Ser.\ \textbf{798}, 012218 (2017).
+\href{https://doi.org/10.1088/1742-6596/798/1/012218}{doi:10.1088/1742-6596/798/1/012218}.
+
+\bibitem{Gundacker2020}
+S.~Gundacker, A.~Heering,
+\emph{The silicon photomultiplier: fundamentals and applications of a modern
+solid-state photon detector},
+Phys.\ Med.\ Biol.\ \textbf{65}, 17TR01 (2020).
+\href{https://doi.org/10.1088/1361-6560/ab7b2d}{doi:10.1088/1361-6560/ab7b2d}.
+
+\bibitem{Anfimov2021}
+N.~Anfimov \emph{et al.},
+\emph{Study of silicon photomultiplier performance at different temperatures},
+Nucl.\ Instrum.\ Methods A \textbf{997}, 165162 (2021).
+\href{https://doi.org/10.1016/j.nima.2021.165162}{doi:10.1016/j.nima.2021.165162}.
+
+\bibitem{AdvanSiD_NUV}
+AdvanSiD (Cefla),
+\emph{NUV SiPM Datasheet: ASD-NUV P-on-N Silicon Photomultipliers}, vendor datasheet.
+\url{https://indico.cern.ch/event/566138/contributions/2287560/attachments/1400219/2139198/Advansid_datasheet_NUV.pdf}.
+
+\bibitem{EljenEJ200}
+Eljen Technology,
+\emph{EJ-200, EJ-204, EJ-208, EJ-212 General Purpose Plastic Scintillators},
+data sheet (2024).
+\url{https://eljentechnology.com/images/products/data_sheets/EJ-200_EJ-204_EJ-208_EJ-212.pdf}.
+
+\bibitem{Artikov2005}
+A.~Artikov \emph{et al.},
+\emph{Properties of the Ukraine polystyrene-based plastic scintillator UPS 923A},
+Nucl.\ Instrum.\ Methods A \textbf{555}, 125--131 (2005).
+\href{https://doi.org/10.1016/j.nima.2005.09.021}{doi:10.1016/j.nima.2005.09.021}.
+
+\bibitem{AmcrysPS}
+Amcrys,
+\emph{Polystyrene-based Plastic Scintillators (UPS-923A grade)}, data sheet.
+\url{https://www.amcrys.com/pdf/4286_.pdf}.
+
+\bibitem{Birks1951}
+J.~B.~Birks,
+\emph{Scintillations from organic crystals: specific fluorescence and relative
+response to different radiations},
+Proc.\ Phys.\ Soc.\ A \textbf{64}, 874--877 (1951).
+\href{https://doi.org/10.1088/0370-1298/64/10/303}{doi:10.1088/0370-1298/64/10/303}.
+
+\bibitem{Craun1970}
+R.~L.~Craun, D.~L.~Smith,
+\emph{Analysis of response data for several organic scintillators},
+Nucl.\ Instrum.\ Methods \textbf{80}, 239--244 (1970).
+\href{https://doi.org/10.1016/0029-554X(70)90768-8}{doi:10.1016/0029-554X(70)90768-8}.
+
+\bibitem{KurarayPSF}
+Kuraray Co., Ltd.,
+\emph{Plastic Scintillating Fibers (PSF) Product Catalogue}
+(Y-11 wavelength-shifting grade).
+\url{https://www.kuraray.com/content/dam/methacrylate/en/documents/psf.pdf}.
+
+\bibitem{Alekseev2022}
+I.~Alekseev \emph{et al.},
+\emph{The performance of a new Kuraray wavelength shifting fiber YS-2},
+J.\ Instrum.\ \textbf{17}, P01031 (2022).
+\href{https://doi.org/10.1088/1748-0221/17/01/P01031}{doi:10.1088/1748-0221/17/01/P01031}.
+
+\bibitem{Borozdin2003}
+K.~N.~Borozdin \emph{et al.},
+\emph{Radiographic imaging with cosmic-ray muons},
+Nature \textbf{422}, 277 (2003).
+\href{https://doi.org/10.1038/422277a}{doi:10.1038/422277a}.
+
+\bibitem{Bonechi2020}
+L.~Bonechi, R.~D'Alessandro, A.~Giammanco,
+\emph{Atmospheric muons as an imaging tool},
+Rev.\ Phys.\ \textbf{5}, 100038 (2020).
+\href{https://doi.org/10.1016/j.revip.2020.100038}{doi:10.1016/j.revip.2020.100038}.
+
+\bibitem{Taheri2017}
+A.~Taheri, R.~Gholipour Peyvandi,
+\emph{The impact of wrapping method and reflector type on the performance of rod
+plastic scintillators},
+Measurement \textbf{97}, 100--110 (2017).
+\href{https://doi.org/10.1016/j.measurement.2016.10.051}{doi:10.1016/j.measurement.2016.10.051}.
+
 \end{thebibliography}
 
 \end{document}

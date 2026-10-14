@@ -95,7 +95,7 @@ void irradiation_sites(const char* outdir = "report/figures")
 
     // Labels, offset inward toward the plate centre so they stay on-axis.
     const double lx[3] = {  0.0,   0.0,  95.0};
-    const double ly[3] = { 30.0, -60.0, -60.0};
+    const double ly[3] = { 40.3, -60.0, -60.0};
     const int al[3] = {22, 22, 22};
     for (size_t k = 0; k < sites().size(); ++k) {
         TLatex* t = new TLatex(lx[k], ly[k], sites()[k].label);

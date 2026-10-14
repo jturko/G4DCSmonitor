@@ -1,0 +1,133 @@
+# =============================================================================
+# muon_movie.mac -- time-sliced animation of a muon through the MuonScint plate.
+#
+#   ./build/G4DCSmonitor macros/muon_movie.mac          # writes the frames
+#   macros/build_movie.sh                               # -> GIF + MP4
+#
+# A single 30 MeV muon (below the Cherenkov threshold) crosses the 250 x 250 x
+# 10 mm^3 polished plate wrapped in glossy paper (reflector 3).  The optical
+# photons it generates are drawn with time slicing, and the stored OpenGL viewer
+# is swept through a moving time window so each frame shows a bright "head" with
+# a comet tail that fades with age (setTimeWindow/fadeFactor).  One EPS frame is
+# written per time step.
+#
+# TIME STEPPING (the three phases below)
+#   Photons are emitted over ~0-6 ns (0.9 ns rise + 2.1 ns decay), then just
+#   bounce; a few survive to ~40-60 ns under lossless TIR and must be followed
+#   until they are absorbed/killed.  A uniform fine step over 0-100 ns would be
+#   thousands of frames, so the sweep is split into three phases with growing
+#   steps:
+#       phase 1  0.00 -  6.00 ns  step 0.03 ns  (flash + first bounces, crisp)
+#       phase 2  6.00 - 18.00 ns  step 0.12 ns  (early bounce-out)
+#       phase 3 18.00 - 100.0 ns  step 1.00 ns  (sparse TIR tail -> dark)
+#   Continuity rule: keep step <= tailRange so consecutive frames share a
+#   stretch of each trajectory and the streak never breaks.  That is why the
+#   tail window grows with the step.  Total ~380 frames.
+#
+# WHY THE X11 GLX DRIVER: the OpenGL "display by time" machinery (time window,
+# fade, light front) lives ONLY in the OpenGL STORED viewer
+# (G4OpenGLStoredViewer::DrawView); the head-less TSG_OFFSCREEN driver ignores
+# time windows entirely.  In batch the Qt driver is not UI-session compatible and
+# falls back, so /vis/open OGL selects OpenGLStoredX.  That driver exports no
+# raster format, so frames are saved as NON-VECTOR EPS (printMode pixmap =
+# glReadPixels of the current front buffer, transparency preserved) and are
+# rasterised to PNG/GIF/MP4 afterwards by macros/build_movie.sh.
+#
+# NEEDS A DISPLAY (X11).  On a truly head-less node run it under Xvfb, e.g.
+#   xvfb-run -a -s "-screen 0 1024x768x24" ./build/G4DCSmonitor macros/muon_movie.mac
+#
+# DISPLAY-ONLY SETTINGS: setLightYieldScale and the 30 MeV muon are not physics
+# (see macros/muon_vis.mac); never use them in production runs.
+# =============================================================================
+
+# ---- reproducibility (OFF by default) ---------------------------------------
+# The event is normally drawn from the time-based seed set in main().  To render
+# the identical event on every run (nice for a polished video), set useSeed to 1
+# and optionally change seed1/seed2.  The macro command is /random/setSeeds.
+/control/alias useSeed 0
+/control/alias seed1   12345
+/control/alias seed2   67890
+/control/doif {useSeed} == 1 /random/setSeeds {seed1} {seed2}
+
+# ---- animation configuration ------------------------------------------------
+/control/alias frameDir  report/movie # where the EPS frames are written
+/control/alias frameStem muon_frame   # frameStem_0000.eps, _0001.eps, ...
+
+# ---- single-threaded: visualization runs on the master thread ---------------
+/run/numberOfThreads 1
+
+# ---- geometry: plate + 8-SiPM layout + glossy-paper wrapper -----------------
+/dcs-monitor/det/setPosition 0 0 0 mm
+/dcs-monitor/det/setRotation 0 0 0
+/dcs-monitor/det/muonScint/add
+/dcs-monitor/det/muonScint/setSize 250 250 10 mm
+/dcs-monitor/det/muonScint/preset 1
+/dcs-monitor/det/muonScint/setReflector 3
+/dcs-monitor/det/muonScint/setWrap true
+
+# Display-only light-yield reduction (~2e4 photons from a MIP would be a solid
+# blob).  Raise for more light, lower for fewer, more traceable photons.
+/dcs-monitor/det/muonScint/setLightYieldScale 0.002
+
+/run/initialize
+
+# ---- one vertical 30 MeV muon at the plate centre ---------------------------
+/dcs-monitor/gun/sourceMode GPS
+/gps/particle mu-
+/gps/ene/type Mono
+/gps/ene/mono 30 MeV
+/gps/pos/type Point
+/gps/pos/centre 0 0 100 mm
+/gps/ang/type planar
+
+# keep the trajectories so the photons can be drawn
+/tracking/storeTrajectory 1
+
+# ---- stored OpenGL viewer (X11 fallback), transparent + surface style -------
+/vis/open OGL 800x600
+/vis/verbose errors
+/vis/viewer/set/autoRefresh false
+/vis/viewer/set/background white          # use "black" for glow-in-the-dark look
+/vis/drawVolume
+/vis/viewer/set/style surface             # translucent volume colours
+/vis/viewer/set/edge true
+/vis/viewer/set/viewpointThetaPhi 55 22
+/vis/viewer/set/upVector 0 0 1
+/vis/viewer/zoom 1.35
+
+# ---- trajectories: colour by particle, time-sliced --------------------------
+/vis/scene/add/trajectories rich          # "rich" = per-point times (mandatory)
+/vis/modeling/trajectories/create/drawByParticleID
+/vis/modeling/trajectories/drawByParticleID-0/set mu- red
+/vis/modeling/trajectories/drawByParticleID-0/set opticalphoton blue
+/vis/modeling/trajectories/drawByParticleID-0/default/setTimeSliceInterval 0.01 ns
+/vis/scene/endOfEventAction accumulate
+
+# ---- frame export: non-vector EPS (rasterised glReadPixels), one per step ----
+/vis/ogl/set/exportFormat eps
+/vis/ogl/set/printMode pixmap             # raster EPS -> keeps transparency
+/vis/ogl/set/printSize 800 600
+
+# ---- time window / fade (the "decaying tail" effect) ------------------------
+/vis/viewer/set/timeWindow/fadeFactor 1
+/vis/viewer/set/timeWindow/displayHeadTime true -0.9 0.9 24 0 0 0   # black clock text
+# optional light front, originating at the muon entry point (0 0 100 mm):
+#/vis/viewer/set/timeWindow/displayLightFront true 0 0 100 mm 0 ns
+
+# ---- one event, then sweep the time window (fine -> coarse) -----------------
+/control/shell mkdir -p {frameDir}
+/run/beamOn 1
+
+# phase 1: scintillation flash and first bounces (crisp trails)
+/control/alias tailRange 0.25
+/control/loop macros/muon_movie.loop endTime 0.00 6.00 0.03
+
+# phase 2: early bounce-out
+/control/alias tailRange 0.30
+/control/loop macros/muon_movie.loop endTime 6.00 18.00 0.12
+
+# phase 3: lossless-TIR stragglers, until the scene is dark
+/control/alias tailRange 1.00
+/control/loop macros/muon_movie.loop endTime 18.00 100.00 1.00
+
+/vis/verbose confirmations

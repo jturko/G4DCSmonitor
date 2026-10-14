@@ -1,0 +1,89 @@
+# =============================================================================
+# muon_vis_hits_wls.mac -- Config 4 event display showing ONLY hit light.
+#
+#   G4VRMLFILE_FILE_NAME=report/figures/muon_hits_wls.wrl \
+#       ./build/G4DCSmonitor macros/muon_vis_hits_wls.mac
+#
+# Renders the Config-4 geometry (250 x 250 x 10 mm plate + black WLS-fibre
+# clamp + single read-out SiPM) together with ONLY those optical-photon
+# trajectories that reached the SiPM -- i.e. the light that actually produced a
+# hit.  Every trajectory shown is therefore a "hit" photon; the primary muon and
+# all light that never reached the SiPM are suppressed.  The file is written by
+# the VRML2FILE driver to $G4VRMLFILE_FILE_NAME (default ./g4_00.wrl).
+#
+# How the selection works -- no source changes needed
+# ---------------------------------------------------
+# Geant4 has no per-EVENT visualisation filter: there is no macro command that
+# means "only draw events that recorded a hit".  (The one hook,
+# "/vis/drawOnlyToBeKeptEvents", requires C++ code to call
+# G4EventManager::KeepTheCurrentEvent() on a hit.)  Instead we filter at the
+# TRAJECTORY level:
+#
+#   /vis/filtering/trajectories/create/encounteredVolumeFilter
+#
+# keeps only trajectories whose step points ever entered the read-out SiPM
+# physical volume (WLSReadoutSiPMPhys).  A photon only reaches that volume, and
+# is then killed by the muonScint SiPM sensitive detector's boundary process,
+# when it is detected.  The filter is therefore a faithful "show only the light
+# that hit the SiPM" selection, and non-hit events simply add nothing to the
+# scene.  (encounteredVolumeFilter needs "/vis/scene/add/trajectories rich".)
+#
+# Display-only light-yield reduction
+# ----------------------------------
+# setLightYieldScale is NOT a physics setting (see macros/muon_vis.mac).  For
+# the Config-4 read-out ~0.03 yields a handful (~5) of hit trajectories for a
+# single event.  The muon is kept at 30 MeV, just below the scintillator's
+# Cherenkov threshold, to avoid a Cherenkov floor of unrelated photons.  Neither
+# must be used in production runs.
+# =============================================================================
+
+/run/numberOfThreads 1
+
+# ---- geometry: plate + Config 4 WLS fibre clamp + reflective wrapper --------
+/dcs-monitor/det/setPosition 0 0 0 mm
+/dcs-monitor/det/setRotation 0 0 0
+/dcs-monitor/det/muonScint/add
+/dcs-monitor/det/muonScint/setSize 250 250 10 mm
+/dcs-monitor/det/muonScint/preset 5
+/dcs-monitor/det/muonScint/setReflector 3
+/dcs-monitor/det/muonScint/setWrap true
+/dcs-monitor/det/muonScint/setLightYieldScale 0.03
+
+/run/initialize
+
+# ---- one vertical 30 MeV muon at the plate centre (below Cherenkov thresh) --
+/dcs-monitor/gun/sourceMode GPS
+/gps/particle mu-
+/gps/ene/type Mono
+/gps/ene/mono 30 MeV
+/gps/pos/type Point
+/gps/pos/centre 0 0 100 mm
+/gps/ang/type planar
+
+# ---- keep the trajectories so hit photons can be drawn ----------------------
+/tracking/storeTrajectory 1
+
+# ---- VRML2FILE output (head-less, no GUI) -----------------------------------
+/vis/open VRML2FILE
+/vis/viewer/set/style wireframe
+/vis/viewer/set/viewpointThetaPhi 55 22
+/vis/viewer/set/upVector 0 0 1
+/vis/viewer/zoom 1.35
+/vis/drawVolume
+
+# ---- draw trajectories, then keep only the hit-producing photons ------------
+# "rich" is required by encounteredVolumeFilter; colour by particle ID.
+/vis/scene/add/trajectories rich
+/vis/modeling/trajectories/create/drawByParticleID
+/vis/modeling/trajectories/drawByParticleID-0/set mu- red
+/vis/modeling/trajectories/drawByParticleID-0/set opticalphoton blue
+
+/vis/filtering/trajectories/create/encounteredVolumeFilter
+/vis/filtering/trajectories/encounteredVolumeFilter-0/active true
+/vis/filtering/trajectories/encounteredVolumeFilter-0/add WLSReadoutSiPMPhys
+
+/vis/scene/endOfEventAction accumulate
+
+# ---- one event, then write the VRML file ------------------------------------
+/run/beamOn 1
+/vis/viewer/flush

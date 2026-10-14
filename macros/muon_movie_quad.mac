@@ -1,0 +1,129 @@
+# =============================================================================
+# muon_movie_quad.mac -- ONE pane of the 4-reflector (2x2) muon movie.
+#
+# Tidy sibling of macros/muon_movie.mac:
+#   * a HARD-CAPPED, CONSTANT time step -- no fine->coarse phases and no "run
+#     until every photon is dead".  The sweep simply runs 0 -> MOVIE_END ns at a
+#     fixed MOVIE_STEP ns/frame, so frame k is always at t = k*MOVIE_STEP ns.
+#   * it renders a SINGLE reflector.  build_movie_quad.sh runs it four times
+#     (reflector 0,1,2,3) and stitches the four frame sets into a 2x2 movie.
+#
+# Do NOT run this macro directly: every value comes from an environment variable
+# via /control/getEnv, and an UNSET variable ABORTS the macro.  Use:
+#
+#   macros/build_movie_quad.sh          # 4 panes -> report/movie_quad/*.{gif,mp4}
+#
+# or drive one pane by hand:
+#   MUON_REFLECTOR=2 QUAD_DIR=report/movie_quad/refl2 QUAD_STEM=qframe \
+#   MOVIE_END=5.00 MOVIE_STEP=0.03 MOVIE_TAIL=0.25 \
+#   USE_SEED=1 SEED1=12345 SEED2=67890 \
+#   ./build/G4DCSmonitor macros/muon_movie_quad.mac
+#
+# Env knobs:
+#   MUON_REFLECTOR  0=none/bare  1=TiO2  2=Al foil  3=glossy paper
+#   QUAD_DIR        output dir for this pane's EPS frames
+#   QUAD_STEM       frame basename (STEM_0000.eps, ...)
+#   MOVIE_END       hard cap on the LAST frame's time, ns (e.g. 5.00)
+#   MOVIE_STEP      CONSTANT time between frames, ns      (e.g. 0.03)
+#   MOVIE_TAIL      fixed comet-tail width, ns; keep >= MOVIE_STEP
+#   USE_SEED        1 = seed the RNG (same event every run / every pane)
+#   SEED1 SEED2     the two /random/setSeeds values
+#
+# SAME EVENT ACROSS PANES: with USE_SEED=1 and identical SEED1/SEED2 the primary
+# muon is identical in all four panes, and reflectors 1/2/3 also share identical
+# geometry volumes, so their optical photons are identical too.  Reflector 0
+# (bare) additionally builds the black holder shell, so its photon pattern may
+# differ very slightly.
+#
+# See macros/muon_movie.mac for the full rationale on the X11 OpenGL stored
+# viewer, the raster-EPS export and the display-only settings.
+# =============================================================================
+
+# ---- parameters (mandatory env vars; unset -> macro aborts) -----------------
+/control/getEnv MUON_REFLECTOR
+/control/getEnv QUAD_DIR
+/control/getEnv QUAD_STEM
+/control/getEnv MOVIE_END
+/control/getEnv MOVIE_STEP
+/control/getEnv MOVIE_TAIL
+/control/getEnv USE_SEED
+/control/getEnv SEED1
+/control/getEnv SEED2
+
+# ---- reproducibility (on by default for the quad) ---------------------------
+/control/doif {USE_SEED} == 1 /random/setSeeds {SEED1} {SEED2}
+
+# ---- single-threaded: visualization runs on the master thread ---------------
+/run/numberOfThreads 1
+
+# ---- geometry: plate + 8-SiPM layout + this pane's reflector finish ---------
+/dcs-monitor/det/setPosition 0 0 0 mm
+/dcs-monitor/det/setRotation 0 0 0
+/dcs-monitor/det/muonScint/add
+/dcs-monitor/det/muonScint/setSize 250 250 10 mm
+/dcs-monitor/det/muonScint/preset 1
+/dcs-monitor/det/muonScint/setReflector {MUON_REFLECTOR}
+/dcs-monitor/det/muonScint/setWrap true
+
+# Display-only light-yield reduction (~2e4 photons from a MIP would be a solid
+# blob).  Raise for more light, lower for fewer, more traceable photons.
+/dcs-monitor/det/muonScint/setLightYieldScale 0.002
+
+/run/initialize
+
+# ---- one vertical 30 MeV muon at the plate centre ---------------------------
+/dcs-monitor/gun/sourceMode GPS
+/gps/particle mu-
+/gps/ene/type Mono
+/gps/ene/mono 30 MeV
+/gps/pos/type Point
+/gps/pos/centre 0 0 100 mm
+/gps/ang/type planar
+
+# keep the trajectories so the photons can be drawn
+/tracking/storeTrajectory 1
+
+# ---- stored OpenGL viewer (X11 fallback), transparent + surface style -------
+/vis/open OGL 800x600
+/vis/verbose errors
+/vis/viewer/set/autoRefresh false
+/vis/viewer/set/background white          # use "black" for glow-in-the-dark look
+/vis/drawVolume
+/vis/viewer/set/style surface             # translucent volume colours
+/vis/viewer/set/edge true
+/vis/viewer/set/viewpointThetaPhi 55 22
+/vis/viewer/set/upVector 0 0 1
+/vis/viewer/zoom 1.35
+
+# Hide the opaque black holder shell in the bare pane so it does not mask the
+# plate (visualisation only -- the holder stays in the geometry/physics).  Only
+# the bare finish (reflector 0) builds it, so guard on MUON_REFLECTOR to avoid a
+# harmless "logical volume not found" warning in the other panes.
+/control/doif {MUON_REFLECTOR} == 0 /vis/geometry/set/visibility MuonScintHolderLV 0 false
+
+# ---- trajectories: colour by particle, time-sliced --------------------------
+/vis/scene/add/trajectories rich          # "rich" = per-point times (mandatory)
+/vis/modeling/trajectories/create/drawByParticleID
+/vis/modeling/trajectories/drawByParticleID-0/set mu- red
+/vis/modeling/trajectories/drawByParticleID-0/set opticalphoton blue
+/vis/modeling/trajectories/drawByParticleID-0/default/setTimeSliceInterval 0.01 ns
+/vis/scene/endOfEventAction accumulate
+
+# ---- frame export: non-vector EPS (rasterised glReadPixels), one per step ----
+/vis/ogl/set/exportFormat eps
+/vis/ogl/set/printMode pixmap             # raster EPS -> keeps transparency
+/vis/ogl/set/printSize 800 600
+
+# ---- time window / fade (the "decaying tail" effect) ------------------------
+/vis/viewer/set/timeWindow/fadeFactor 1
+/vis/viewer/set/timeWindow/displayHeadTime true -0.9 0.9 24 0 0 0   # black clock text
+
+# ---- one event, then a SINGLE constant-step sweep to the hard cap -----------
+/control/alias frameDir  {QUAD_DIR}
+/control/alias frameStem {QUAD_STEM}
+/control/alias tailRange {MOVIE_TAIL}
+/control/shell mkdir -p {QUAD_DIR}
+/run/beamOn 1
+/control/loop macros/muon_movie_quad.loop endTime 0.00 {MOVIE_END} {MOVIE_STEP}
+
+/vis/verbose confirmations

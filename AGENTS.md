@@ -143,8 +143,58 @@ Matrix/whole generators emit cfg 1–4 (cfg 4 → `@PRESET@` = 5);
 for bare (long multi-bounce tracks). TTree writer leaves a <2 kB partial file for the
 position *currently* being written — **not** an abort. Regenerate the report with
 `macros/build_report_figures.sh [MATRIX_DIR] [WHOLE_DIR]` (runs `sipm_layouts.C`,
-`report_figures.C`, `plot_collection_efficiency.C`, `plot_whole_slab.C` for cfg 1–4,
-copies figures into `report/figures/`, then `pdflatex` twice).
+`irradiation_sites.C`, `optical_spectra.C`, `report_figures.C`, `pe_spectra_grid.C`,
+`plot_collection_efficiency.C`, `plot_whole_slab.C` for cfg 1–4,
+`whole_slab_uniformity.C`, copies figures into `report/figures/`, then `pdflatex` twice).
+**Per-panel titles:** the shared `style.h` calls `SetOptTitle(0)`, so a macro that wants the
+histogram/panel title drawn must re-enable `gStyle->SetOptTitle(1)` *after* `style(...)`.
+`whole_slab_uniformity.C` always did; `plot_whole_slab.C` and `plot_collection_efficiency.C`
+(the 2×2 reflector grids) do too now — without it the four panel titles (reflector names)
+vanish. **Report packing:** the four whole-slab maps (Figs. 19–22) are `0.74\textwidth` and
+forced two-per-page by a `\clearpage` before/after each pair; the four efficiency grids
+(Figs. 14–17) are `0.68\textwidth` and pack two/page as consecutive `\begin{figure}`s.
+`macros/pe_spectra_grid.C [MATRIX_DIR] [OUTDIR]` draws the Fig. 10 of Rao et al. layout:
+a 3 (region: centre/edge/corner) × 4 (config 1–4) grid in which every cell overlays the four
+reflector treatments, x = photoelectrons/event, y = normalised entries (both log). Zero-p.e.
+events sit below the log abscissa. → `report/figures/fig_pe_grid.{pdf,png}`.
+All 12 cells share one x and one y range (computed globally after normalisation); the
+centre/edge/corner row labels are **rotated 90°** (`SetTextAngle(90)`, `SetTextAlign(22)`),
+drawn on the leftmost pad at NDC `(0.05, 0.5)` (left margin 0.22) so they sit clear of the
+frame and axis title and are centred on their row; the single shared legend is drawn in the
+top-right cell (config 4) at `(0.60, 0.593, 0.995, 0.803)` — its top-right corner.
+`macros/optical_spectra.C [OUTDIR]` plots the optical property tables actually fed to
+Geant4 (`src/GeometryMuonScint.cc`): scintillator `SCINTILLATIONCOMPONENT1` emission +
+bulk `ABSLENGTH`, Y-11 `WLSABSLENGTH` + `WLSCOMPONENT`, and the SiPM `EFFICIENCY` (PDE)
+vs wavelength → `report/figures/optical_spectra.{pdf,png}` (no data files needed). It is a
+horizontal 3×1 grid, each panel reserving a top strip (`SetTopMargin(0.24)`) for a
+borderless fill-0 legend, so no legend overlaps a curve; each panel's vertical dashed line
+marks that panel's characteristic wavelength (scint emission 425 nm, WLS absorption onset
+480 nm, SiPM PDE peak 420 nm) — defined in the report caption.
+`macros/whole_slab_uniformity.C [WHOLE_DIR] [OUTDIR]` is the whole-slab uniformity add-on
+(full-plate analogue of `matrix_positions.C`). **No radial metric**: the SiPM layouts have
+no continuous rotational symmetry and the plate is square, so a radial average is a
+geometric artefact (for r>125 mm only the four corner wedges populate). Instead it computes
+one per-(layout,reflector) contrast, 2-D `kappa_2d` over 5×5 50 mm cells, plus a polar
+`epsilon(r,phi)` map (12 r-bins × 12 φ-bins over all configs, shared log z, SiPM azimuths /
+cfg4 WLS clamp band marked) and a normalized `epsilon/<epsilon>` map for each cfg 1–4
+(**5 mm** cells matching `plot_whole_slab.C`, shared **log** z; slab outline + SiPM/WLS
+markers overlaid via the same `drawOverlays`; map histograms carry ±18 mm padding bins so
+outboard markers fit). Writes `fig_whole_polar`, `fig_whole_uniformity_map_cfg<C>`,
+`fig_whole_contrast` and `whole_uniformity.csv` into OUTDIR. `kappa_2d` is statistically
+robust (25000 ev; e.g. cfg1 bare ≈9.5) and ranks bare ≫ TiO2 > Al ≳ glossy in every layout.
+`fig_whole_contrast` is the **full-slab analogue of the old 3-patch `fig_uniformity`**: a 2×2
+grid (one panel per layout), each a 4-bin bar chart of `kappa_2d` per reflector, **linear y,
+each panel scaled to its own maximum** (dashed unity line), as in the original
+`matrix_positions.C` three-patch figure. The report's "Whole-slab uniformity" subsection (§4.2)
+uses `fig_whole_contrast` (Fig. 18) as the visual for the `kappa_2d` numbers, plus
+`tab:wholerefl` (Table 5: `kappa_2d`±err per layout × reflector, the linear bars' near-unity
+entries resolved numerically), plus the four
+normalised `fig_whole_uniformity_map_cfg<C>` maps (Figs. 19–22, all at `0.68\textwidth` so
+two fit per page). The polar `(r,φ)` `fig_whole_polar` map and its radial defence are
+**deliberately omitted** (retained in the repo in `whole_slab_uniformity.C` but not referenced
+by the report). `whole_uniformity.csv` is retained. The 3-patch κ figure/table and the matrix
+2D efficiency grids were **removed from the report** (the macros still exist); the position
+contrast is now carried by the full-slab `kappa_2d`.
 
 **G4OpBoundaryProcess ground truth** (`.refs/source/processes/optical`): a
 `G4LogicalBorderSurface` overrides a `G4LogicalSkinSurface` at the same boundary;

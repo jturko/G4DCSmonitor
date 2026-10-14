@@ -1,0 +1,11 @@
+# muon_movie_quad.loop -- body of the /control/loop in macros/muon_movie_quad.mac.
+#
+# {endTime} is the loop variable (head time, ns).  tailRange / frameDir /
+# frameStem are /control/alias values set in muon_movie_quad.mac.  The window is
+# [endTime - tailRange, endTime]; segments fade with age over that width, giving
+# the comet tail.  The front buffer is re-rendered, then read back to an EPS
+# frame (printMode pixmap does a glReadPixels) with an auto-incremented index.
+# The step is constant across the whole sweep (hard-capped, no phase change).
+/vis/viewer/set/timeWindow/endTime {endTime} ns {tailRange} ns
+/vis/viewer/refresh
+/vis/ogl/export {frameDir}/{frameStem}

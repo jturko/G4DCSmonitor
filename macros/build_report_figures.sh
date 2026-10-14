@@ -13,12 +13,16 @@
 #   <MATRIX_DATA_DIR>/muon_out_c<C>_r<R>_{centre,edge,corner}.root
 #   <WHOLE_DATA_DIR>/muon_whole_out_c<C>_r<R>.root
 # Writes:
-#   report/figures/{sipm_layouts,irradiation_sites,fig_eff_bars,fig_yield,
-#                   fig_detected,fig_wavelength}.{pdf,png}
+#   report/figures/{sipm_layouts,irradiation_sites,optical_spectra,
+#                   fig_eff_bars,fig_yield,fig_detected,fig_wavelength}.{pdf,png}
 #   report/figures/{fig_pos_layouts,fig_pos_refl,fig_uniformity,
 #                   fig_sipm_sharing}.{pdf,png}
+#   report/figures/fig_pe_grid.{pdf,png}
 #   report/figures/efficiency_grid_cfg<C>_all.{pdf,png}   (cfg 1..4)
 #   report/figures/whole_slab_cfg<C>.{pdf,png}            (cfg 1..4)
+#   report/figures/fig_whole_polar.{pdf,png},
+#   report/figures/fig_whole_uniformity_map_cfg<C>.{pdf,png}   (cfg 1..4)
+#   report/figures/whole_uniformity.csv
 #   report/matrix_report.pdf
 # =============================================================================
 set -uo pipefail
@@ -44,8 +48,14 @@ echo "=== sipm layouts ==="
 echo "=== irradiation sites ==="
 "${ROOT_BIN}" -l -b -q "macros/irradiation_sites.C(\"${FIGDIR}\")"
 
+echo "=== optical property tables (scint / WLS / SiPM) ==="
+"${ROOT_BIN}" -l -b -q "macros/optical_spectra.C(\"${FIGDIR}\")"
+
 echo "=== report figures (bars/yield/wavelength) ==="
 "${ROOT_BIN}" -l -b -q "macros/report_figures.C(\"${MATRIX_DIR}\",\"${FIGDIR}\")"
+
+echo "=== photoelectron spectra grid (Rao Fig. 10 layout) ==="
+"${ROOT_BIN}" -l -b -q "macros/pe_spectra_grid.C(\"${MATRIX_DIR}\",\"${FIGDIR}\")"
 
 echo "=== position-resolved matrix analysis ==="
 "${ROOT_BIN}" -l -b -q "macros/matrix_positions.C(\"${MATRIX_DIR}\",\"${FIGDIR}\")"
@@ -64,6 +74,9 @@ for cfg in 1 2 3 4; do
     cp -f "${WHOLE_DIR}/plots/whole_slab_cfg${cfg}.pdf" "${FIGDIR}/" 2>/dev/null
     cp -f "${WHOLE_DIR}/plots/whole_slab_cfg${cfg}.png" "${FIGDIR}/" 2>/dev/null
 done
+
+echo "=== whole-slab uniformity (polar + 2-D cell) ==="
+"${ROOT_BIN}" -l -b -q "macros/whole_slab_uniformity.C(\"${WHOLE_DIR}\",\"${FIGDIR}\")"
 
 echo "=== LaTeX (two passes for refs/toc) ==="
 ( cd "${ROOTDIR}/report" && pdflatex -interaction=nonstopmode matrix_report.tex >/dev/null 2>&1 )

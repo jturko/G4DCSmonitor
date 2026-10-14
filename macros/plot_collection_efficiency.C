@@ -167,6 +167,29 @@ inline void toReportFrame(double& x, double& y)
 // correct position along it.  `side` is the drawn square side in mm.
 void drawSiPMSquares(int cfg, double half, double side = 8.0, double gap = 2.0)
 {
+    if (cfg == 4) {
+        // Config 4 is a WLS fibre clamp rather than discrete SiPMs: draw the bar
+        // running the full length of the top (+y) edge, outboard of the slab,
+        // with the single read-out SiPM (black) butt-coupled at its left (-x)
+        // end, so the fibres can be located relative to the read-out.  Same
+        // convention as Fig. 1 (sipm_layouts) and Fig. 3(b) of Rao et al.
+        const double y0 = half + gap;
+        const double y1 = half + gap + side;
+        TBox* bar = new TBox(-half, y0, half, y1);
+        bar->SetFillColor(kRed);
+        bar->SetFillStyle(1001);
+        bar->SetLineColor(kBlack);
+        bar->SetLineWidth(1);
+        bar->Draw("SAME");
+        TBox* sipm = new TBox(-half - side, y0, -half, y1);
+        sipm->SetFillColor(kBlack);
+        sipm->SetFillStyle(1001);
+        sipm->SetLineColor(kBlack);
+        sipm->SetLineWidth(1);
+        sipm->Draw("SAME");
+        return;
+    }
+
     const std::vector<SiPMTile> tiles = sipmTiles(cfg, half);
     const double off = gap + 0.5 * side;   // shift from the boundary to the centre
     const double tol = 1e-6;
@@ -221,6 +244,7 @@ void plot_collection_efficiency(const char* dir = "data_output_whole",
 {
     style(0.045);                 // fonts / ticks / title conventions
     gStyle->SetOptStat(0);
+    gStyle->SetOptTitle(1);        // style() hides titles; the panels are labelled by reflector
     gStyle->SetLegendBorderSize(0);
 
     if (cellSize <= 0.) cellSize = 5.0;
