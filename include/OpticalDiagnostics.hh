@@ -57,4 +57,10 @@ struct OpticalDiag {
 
 inline G4ThreadLocal OpticalDiag gOpticalDiag;
 
+// Thread-local row buffers bound to the variable-length `sipmHits` ntuple
+// columns (tDetected / wlDetected_nm). The analysis manager reads these at
+// AddNtupleRow time, so MuonScintSiPMSD refills them per (event, SiPM) row.
+inline G4ThreadLocal std::vector<G4double> gDetectedTimes;
+inline G4ThreadLocal std::vector<G4double> gDetectedWavelengths;
+
 #endif

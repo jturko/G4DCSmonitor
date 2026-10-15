@@ -35,6 +35,7 @@
 #include "RootManager.hh"
 #include "DetectorConstruction.hh"
 #include "GeometryMuonScint.hh"
+#include "OpticalDiagnostics.hh"
 
 #include "G4UnitsTable.hh"
 
@@ -140,6 +141,11 @@ void HistoManager::Book()
     analysisManager->CreateNtupleDColumn("muonX");
     analysisManager->CreateNtupleDColumn("muonY");
     analysisManager->CreateNtupleIColumn("nProduced");
+    // Per-photoelectron arrival times (global, ns) and wavelengths (nm), one
+    // entry per detected photoelectron; empty for zero-detection SiPMs. Bound
+    // to thread-local buffers that MuonScintSiPMSD refills per row.
+    analysisManager->CreateNtupleDColumn("tDetected", gDetectedTimes);
+    analysisManager->CreateNtupleDColumn("wlDetected_nm", gDetectedWavelengths);
     analysisManager->FinishNtuple();
     //G4cout << " Created ntuple \"sipmHits\" (id " << idx << ")" << G4endl;
 

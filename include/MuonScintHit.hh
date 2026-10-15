@@ -10,6 +10,8 @@
 #include "G4ThreeVector.hh"
 #include "G4VHit.hh"
 
+#include <vector>
+
 /// Hit class for the MuonScint SiPM sensitive detector.
 ///
 /// One hit per (event, SiPM) -- aggregates all detected photons that hit
@@ -54,6 +56,8 @@ class MuonScintHit : public G4VHit
         ++fNDetected;
         fSumLam  += lam_nm;
         fSumLam2 += lam_nm * lam_nm;
+        fTimes.push_back(t);
+        fWavelengths.push_back(lam_nm);
     }
 
     // ---- Getters -------------------------------------------------------
@@ -63,6 +67,11 @@ class MuonScintHit : public G4VHit
     G4double GetTFirst()    const { return fTFirst; }
     G4ThreeVector GetPosFirst() const { return fPosFirst; }
     G4double GetWeight()    const { return fWeight; }
+
+    // Per-photoelectron detection times (global, ns) and wavelengths (nm), in
+    // the order detected. One entry per detected photoelectron; empty when none.
+    const std::vector<G4double>& GetTimes()       const { return fTimes; }
+    const std::vector<G4double>& GetWavelengths() const { return fWavelengths; }
 
     G4double GetMeanWavelength() const {
         return (fNDetected > 0) ? (fSumLam / fNDetected) : 0.0;
@@ -83,6 +92,8 @@ class MuonScintHit : public G4VHit
     G4double      fSumLam    =  0.;    // running sum of wavelengths [nm]
     G4double      fSumLam2   =  0.;    // running sum of wavelengths^2 [nm^2]
     G4double      fWeight    =  1.0;
+    std::vector<G4double> fTimes;        // per-photoelectron detection times [ns]
+    std::vector<G4double> fWavelengths;  // per-photoelectron wavelengths [nm]
 };
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

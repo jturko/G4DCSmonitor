@@ -224,6 +224,8 @@ void MuonScintSiPMSD::EndOfEvent(G4HCofThisEvent*)
             analysis->FillNtupleDColumn(idx, 8,  -9999.);
             analysis->FillNtupleDColumn(idx, 9,  -9999.);
             analysis->FillNtupleIColumn(idx, 10, 0);
+            gDetectedTimes       = h->GetTimes();
+            gDetectedWavelengths = h->GetWavelengths();
             analysis->AddNtupleRow(idx);
         }
         return;
@@ -267,6 +269,13 @@ void MuonScintSiPMSD::EndOfEvent(G4HCofThisEvent*)
             analysis->FillNtupleDColumn(idx, 8, muonX);
             analysis->FillNtupleDColumn(idx, 9, muonY);
             analysis->FillNtupleIColumn(idx, 10, nProduced);
+            if (h) {
+                gDetectedTimes       = h->GetTimes();
+                gDetectedWavelengths = h->GetWavelengths();
+            } else {
+                gDetectedTimes.clear();
+                gDetectedWavelengths.clear();
+            }
             analysis->AddNtupleRow(idx);
         }
     }
