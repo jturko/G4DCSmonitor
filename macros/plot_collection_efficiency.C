@@ -407,7 +407,7 @@ void plot_collection_efficiency(const char* dir = "data_output_whole",
             eff->SetTitle(TString::Format("%s (cfg %d);x [mm];y [mm]",
                                           kReflName[refl], cfg));
             eff->SetMinimum(0.);
-            eff->GetZaxis()->SetTitle("N_{pe} / N_{#gamma}");
+            eff->GetZaxis()->SetTitle("#varepsilon(x,y) = N_{#font[42]{pe}}/N_{#gamma}");
             styleFrame(eff);
             effMap[cfg][refl] = eff;
 

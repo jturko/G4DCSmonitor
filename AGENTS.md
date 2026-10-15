@@ -29,26 +29,38 @@ by CLYC / plastic detectors. See `README.md` for physics, geometry, and macros.
   re-run cmake after editing them if running the copied copies.
 - No test suite, lint, or CI. Verification = build cleanly and run a macro.
 
-## CLI / biasing gotcha
-- `G4DCSmonitor [--biasing gamma|neutron|none] [macro] [fileNum]` (args order-insensitive).
-- Importance biasing must be enabled in **both** places or startup throws a fatal
-  `BiasingConfigError`: CLI `--biasing <particle>` **and** macro
-  `/dcs-monitor/det/useBiasing true`. A parallel `BiasingWorld` can only target one
-  particle type, so `--biasing` also selects which parallel world is built.
-- Surface-flux replay (`CASTOR440_surface_from_TTree`) is analog — do **not** pass `--biasing`.
+## CLI / biasing
+- `G4DCSmonitor [macro] [fileNum]` — **positional only** (`G4DCSmonitor.cc:64-97,143`):
+  `argv[1]` is the macro, `argv[2]` an integer that suffixes the output filename via
+  `RootManager::SetFileNum`/`GetFileNum` (`HistoManager.cc:69-72`). There is **no** flag
+  parsing (no `--biasing` or any option string); with no args (`argc==1`) it starts the
+  interactive UI.
+- **Importance biasing is currently disabled, not configurable.** The
+  `G4ImportanceBiasing` / `G4GeometrySampler` block is commented out in
+  `PhysicsList.cc:123-133`, and `RegisterParallelWorld(new GeometryParallelBiasing(...))`
+  is commented out in `DetectorConstruction.cc:81` — `GeometryParallelBiasing.{hh,cc}`
+  exists but is unused. `G4DCSmonitor.cc:113` still passes `useImportanceBiasing=true` to
+  the `PhysicsList` ctor, but it has no effect. There is no `BiasingConfigError`.
+- Macro command `/dcs-monitor/det/useBiasing` (pre-init; `DetectorMessenger.cc:58`) only
+  sets `DetectorConstruction::fUseBiasing` (field default `false`, messenger default
+  `true`); with the parallel world unregistered it changes nothing.
+- The `CASTOR440_surface` source mode is **analog** and reads no phase-space file: it
+  draws uniform-area points on the cask surface (top/bottom discs + side) with
+  cosine-weighted emission (`PrimaryGeneratorAction.cc:113-169`).
 
 ## Command ordering (Geant4 UI)
 - Pre-init geometry commands must precede `/run/initialize`: `setPosition`,
   `setRotation`, `.../add`, `useBiasing`, `setBiasing*`.
 - Gun/surface engine, output toggles, and `/run/beamOn` come after `/run/initialize`.
-- Source-mode candidates are defined in `src/PrimaryGeneratorMessenger.cc` (the enum
-  there is the source of truth): `GPS`, `CASTOR440_surface`, `CASTOR440_surface_from_TTree`,
+- Source-mode candidates are defined in `src/PrimaryGeneratorMessenger.cc:27` (the enum
+  in `PrimaryGeneratorAction.hh` is the source of truth): `GPS`, `CASTOR440_surface`,
   `CASTOR440_fuel`, `CASTOR440_fuel_biased`.
 
 ## MuonScint optical model
 Goal: reproduce Rao et al., J. Appl. Phys. 138, 114504 (2025) — polished 250×250×10 mm³
 UPS-92S plate in a black 3D-printed holder, SiPM ASD-NUV4S-P-40 on the side faces.
-Target ordering **none < TiO₂ < Al ≈ glossy**; yield centre > edge > corner.
+Target ordering **none < TiO₂ < Al ≈ glossy**; yield centre > edge > corner (paper target —
+our bare/TiO₂ corner ordering reverses it; see *Beam regions* below).
 Work lives in `src/GeometryMuonScint.cc` / `include/GeometryMuonScint.hh`.
 
 **Beam positions (centre/edge/corner)**: the 50×50 mm GPS beam is placed fully *on* the
@@ -65,26 +77,42 @@ so a global `/dcs-monitor/det/setRotation` is a **no-op for every output** — o
 only be changed by reorienting a sub-assembly *within* the slab. All report macros therefore
 map simulation→report with the same 90°-CW transform `(x,y) → (y,−x)`
 (`toReportFrame(double&,double&)` in `plot_collection_efficiency.C`, `matrix_positions.C`,
-`plot_whole_slab.C`). In this frame the cfg1/2 SiPMs sit on the four edges, cfg3 on the top
-`+y` edge, and cfg4's clamp on the top `−x` edge with its SiPM at the top-left corner.
+`plot_whole_slab.C`). In this frame the cfg1/2 SiPMs sit on the four edges, and **both** cfg3
+and cfg4 fall on the report **top** (`+y`) edge, because both live on the model's single −X
+face: cfg3's two SiPMs at `x=±62.5`, cfg4's clamp as a bar along the top with its read-out
+SiPM at the top-left corner. This is exactly how report Figs. 1 and 5 draw them
+(`macros/sipm_layouts.C`, `macros/irradiation_sites.C`) — verified consistent with the sim.
+(Rao's Table IV instead puts cfg3 on the top and cfg4 on the left face — adjacent, not
+shared — but we deliberately keep our report's shared-face layout; see the beam-region note
+below.)
 
 **Reflector model per finish** (`BuildOpticalSurfaces`), one shared 10-pt 360–650 nm
 grid (ascending eV). Reflector and bare-absorber skins are mutually exclusive.
-- `kNoReflector` (bare): **no** wrapping skin. The plate is in effective optical contact
-  with the black holder (ABS n≈1.55 ≈ scint 1.58), so TIR is **frustrated** and trapped
-  light leaks into the wall. Modelled by a `MuonScintHolderAbsorber` skin
-  (REFLECTIVITY=TRANSMITTANCE=0); `fReflSurface` is built but **unused**. This is the key
-  fix: a free-standing polished plate is a near-lossless TIR guide and would be the *best*
-  collector, contradicting the measured bare minimum.
+- `kNoReflector` (bare): the slab gets **no** wrapping skin (the `MuonScintSkin` is only
+  placed when `fWrapWithReflector && (fReflectorType != kNoReflector || kStudyBareRoughness>0)`,
+  `GeometryMuonScint.cc:1275-1277`), so it keeps the plain polished scint↔air Fresnel/TIR
+  boundary across a **real 1.2 mm air gap**. The black holder LV (see *Black holder* below)
+  carries the `MuonScintHolderAbsorber` skin (`fHolderSurface`, REFLECTIVITY=TRANSMITTANCE=0,
+  unified/polished), so light that refracts out of the plate crosses the gap and is killed at
+  the wall. But the `R=T=0` constants are **not** what kills it: for a plain `polished`
+  `dielectric_dielectric` boundary `G4OpBoundaryProcess` takes the pure Fresnel/TIR branch and
+  ignores REFLECTIVITY/TRANSMITTANCE (read only for `*backpainted` finishes); the photon dies
+  on the holder **bulk** `ABSLENGTH=1 µm`. `fReflSurface` is built but unused for bare unless
+  `kStudyBareRoughness>0` — and that roughness branch is currently a **no-op**: it is
+  `ground`+`unified`+`SPECULARSPIKECONSTANT=1`, so `ChooseReflection` always picks
+  `SpikeReflection`, resetting the facet normal to the global one and never applying
+  `SetSigmaAlpha(kStudyBareRoughness)` (dormant while `kStudyBareRoughness=0`).
 - `kPaintTiO2`: `groundfrontpainted` (Lambertian, **no TIR**), R≈0.955–0.983.
-- `kAluminumFoil`: `polishedbackpainted` (TIR + specular mirror, SPECULARSPIKE=1),
-  R≈0.840–0.910.
+- `kAluminumFoil`: `polishedbackpainted` (TIR + specular mirror, SPECULARSPIKE=1), backing
+  RINDEX=1.46 (grease), R≈0.904–0.925 (evaporated-Al normal-incidence, McPeak 2015).
 - `kGlossyPaper`: `polishedbackpainted` (lossier mirror, R≈0.900–0.955) — paper reports
   Al ≈ glossy and both highest, so glossy is not a diffuser.
 - `kTeflon`: kept for completeness, not in the paper.
 
-Result (200 evt, cfg1, centre, npe/event): bare=3.4 < TiO₂=139 < Al=513 < glossy=608,
-centre>edge>corner for all four — matches the paper.
+Result (200 evt, cfg1, centre, npe/event): bare=3.4 < TiO₂=139 < Al=513 < glossy=608 —
+matches the paper's reflector ordering. Position ordering at config 1 is **not** uniformly
+centre-dominant: Al/glossy peak at centre, but bare/TiO₂ peak at **corner** (see
+`tab:positions`), reversing the paper's corner-lowest rule.
 
 **SiPM detection via the boundary process**: grease↔SiPM is `dielectric_metal` with
 `EFFICIENCY` = ASD-NUV4S-P-40 PDE(λ) (peak 0.43 @ 420 nm) and `REFLECTIVITY`=0.
@@ -94,9 +122,10 @@ therefore fires only for real photoelectrons and kills the photon (no manual dra
 
 **Black holder** (`BuildHolder`, bare config only): `G4SubtractionSolid` shell
 (outer − cavity), `MuonScintHolderBlack` C:H 1.05 g/cm³ n=1.55 ABSLENGTH=1 µm, cavity =
-slab + `fHolderGap` 1.2 mm all faces. `UsesBlackHolder()` = bare **and** not WLS, so the
-Config 4 clamp never overlaps the holder. The bare frustrated-TIR absorber skin stays on
-the other five faces via `UsesAbsorberSkin()` (bare, independent of the holder shell).
+slab + `fHolderGap` 1.2 mm all faces. `UsesBlackHolder()` = bare (`kNoReflector`) **and**
+not WLS, so the Config 4 clamp never overlaps the holder. The absorber skin
+(`MuonScintHolderSkin` → `fHolderSurface`) is applied to the **holder LV**, not the slab
+(`GeometryMuonScint.cc:1287-1290`); there is no `UsesAbsorberSkin()`.
 
 **SiPM presets** (see `PresetConfig_*` in `GeometryMuonScint.cc`; src is truth):
 - cfg1 = 8 SiPMs: 2 per side, all four sides, at u = ±0.5.
@@ -109,8 +138,13 @@ the other five faces via `UsesAbsorberSkin()` (bare, independent of the holder s
 
 **Beam regions vs. detector side**: beam patch centres stay `(0,0)` (centre), `(100,0)`
 (+X edge), `(100,100)` (+X/+Y corner). The single-sided configs (3, 4) sit on −X so the
-edge/corner beams fall on the opposite, un-instrumented side, as in the paper. Measured
-ordering is **centre > edge > corner for all configs 1–4**, matching the paper's corner-lowest.
+edge/corner beams fall on the opposite, un-instrumented side. This is a **simplification**:
+the paper places config 3 on the top `+y` face and config 4 on the left face (*adjacent*, not
+shared), whereas here both are on −X. On ordering, do **not** assume `centre > edge > corner`
+everywhere: the report's own config-1 table (`tab:positions`) reports **corner highest** for
+bare ($2.8\times10^{-4}$) and TiO$_2$ ($1.27\times10^{-2}$), the reverse of the paper's
+corner-lowest rule (Al/glossy are centre-highest as expected). The universal ordering claim is
+therefore unsupported by the report's own numbers.
 
 **Diagnostics/output**: `include/OpticalDiagnostics.hh` (thread-local per-event optical
 accounting + per-slab produced/detected + primary-muon first-entry x-y); `opticalStats`
@@ -122,11 +156,17 @@ ntuple (nScint/nCerenkov/nKilled/nDetected/nEscaped/nAlive). Toggle
 **Collection efficiency lives in `sipmHits`** (not H2 maps). `MuonScintSiPMSD::EndOfEvent`
 writes one row per (event, SiPM) — including zero-detection rows — with fixed columns
 evtNb, det, sipm, nDetected, tFirst, meanWavelength_nm, rmsWavelength_nm, weight, muonX,
-muonY, nProduced. `nProduced` = all optical photons created in the slab that event
+muonY, nProduced, **tDetected, wlDetected_nm** (the last two are variable-length vector
+branches: per-photoelectron global arrival times [ns] and wavelengths [nm], one entry per
+detected photoelectron, empty for zero-detection rows; bound to the thread-local
+`gDetectedTimes`/`gDetectedWavelengths` buffers in `include/OpticalDiagnostics.hh` and
+refilled per row by `MuonScintSiPMSD::EndOfEvent`, enabling offline pulse-shape studies).
+`nProduced` = all optical photons created in the slab that event
 (scint + Čerenkov). Rows are emitted only for slabs the muon entered
 (`gOpticalDiag.muonEntrySet[det]`); legacy fallback (hit-only, muonX/Y = −9999) when
 `fDetector == nullptr`. SD `EndOfEvent` runs before `EventAction::EndOfEventAction`
-(`.refs/source/event/src/G4EventManager.cc:314` vs `:323`), so it can read `gOpticalDiag`.
+(`.refs/source/event/src/G4EventManager.cc:315` (`sdManager->TerminateCurrentEvent`) vs
+`:323` (`userEventAction->EndOfEventAction`)), so it can read `gOpticalDiag`.
 For pe/evt, sum `nDetected` over all SiPMs and divide by the number of events (`evtNb`),
 **not** by row count — dividing by rows gives per-SiPM pe/evt (the two differ by the SiPM count).
 
@@ -138,21 +178,31 @@ plus whole-slab array). `slurm/run_all.sh [NEVENTS_MATRIX] [NEVENTS_WHOLE] [THRE
 (default 200 / 10000 / 32) generates both macro sets and `sbatch --parsable`s both arrays.
 Matrix/whole generators emit cfg 1–4 (cfg 4 → `@PRESET@` = 5);
 `slurm/run_local.sh <matrix|whole|all> [NEVENTS] [THREADS]` is a no-SLURM local runner
-(default cfg 2 3 4). **There is no SLURM on this login node**, so production runs use
+(defaults NEVENTS 1000, THREADS 8, `CFGS="1 2 3 4"`, `REFLS="0 1 2 3"`, `SUFFIX=_v2`,
+`PARALLEL=2`; override via env vars). **There is no SLURM on this login node**, so production runs use
 `build/G4DCSmonitor` locally (8 threads). Reflective configs run ~2.5 evt/s vs ~100 evt/s
 for bare (long multi-bounce tracks). TTree writer leaves a <2 kB partial file for the
 position *currently* being written — **not** an abort. Regenerate the report with
 `macros/build_report_figures.sh [MATRIX_DIR] [WHOLE_DIR]` (runs `sipm_layouts.C`,
 `irradiation_sites.C`, `optical_spectra.C`, `report_figures.C`, `pe_spectra_grid.C`,
 `plot_collection_efficiency.C`, `plot_whole_slab.C` for cfg 1–4,
-`whole_slab_uniformity.C`, copies figures into `report/figures/`, then `pdflatex` twice).
+`whole_slab_uniformity.C`, `persistence_map_grid.C`, `wavelength_time_grid.C`,
+copies figures into `report/figures/`, then `pdflatex` twice).
+`macros/persistence_map_grid.C [WHOLE_DIR] [OUTDIR] [REFL]` and
+`macros/wavelength_time_grid.C [WHOLE_DIR] [OUTDIR] [REFL]` (default REFL 3 = glossy) consume
+the per-photoelectron `tDetected`/`wlDetected_nm` vector branches of `sipmHits`: a 2×2 grid
+over cfg 1–4 (whole-plate data), shared log-z, from the pooled per-SiPM times of each layout.
+`persistence_map_grid` bins each event's summed arrival times into 0.5 ns bins and fills a map
+(x = arrival time, y = p.e./bin, z = number of events); `wavelength_time_grid` fills
+(x = arrival time, y = wavelength, z = p.e.).
 **Per-panel titles:** the shared `style.h` calls `SetOptTitle(0)`, so a macro that wants the
 histogram/panel title drawn must re-enable `gStyle->SetOptTitle(1)` *after* `style(...)`.
 `whole_slab_uniformity.C` always did; `plot_whole_slab.C` and `plot_collection_efficiency.C`
 (the 2×2 reflector grids) do too now — without it the four panel titles (reflector names)
-vanish. **Report packing:** the four whole-slab maps (Figs. 19–22) are `0.74\textwidth` and
-forced two-per-page by a `\clearpage` before/after each pair; the four efficiency grids
-(Figs. 14–17) are `0.68\textwidth` and pack two/page as consecutive `\begin{figure}`s.
+vanish. **Report packing:** the four whole-slab maps (`fig:wholeslab`–`fig:wholeslab4`,
+Figs. 14–17) are `0.74\textwidth` and forced two-per-page by a `\clearpage` before/after each
+pair; the four normalised whole-slab uniformity maps (`fig:wholeunifmap`–`fig:wholeunifmap4`,
+Figs. 19–22) are `0.68\textwidth` and pack two/page as consecutive `\begin{figure}`s.
 `macros/pe_spectra_grid.C [MATRIX_DIR] [OUTDIR]` draws the Fig. 10 of Rao et al. layout:
 a 3 (region: centre/edge/corner) × 4 (config 1–4) grid in which every cell overlays the four
 reflector treatments, x = photoelectrons/event, y = normalised entries (both log). Zero-p.e.
@@ -198,11 +248,16 @@ contrast is now carried by the full-slab `kappa_2d`.
 
 **G4OpBoundaryProcess ground truth** (`.refs/source/processes/optical`): a
 `G4LogicalBorderSurface` overrides a `G4LogicalSkinSurface` at the same boundary;
-`RINDEX` on both materials is mandatory (else `NoRINDEX` kill); `polished`/`ground`
+`RINDEX` is required on **material-1 always** (`G4OpBoundaryProcess.cc:288-306`) and on
+material-2 only for a `polished`/`ground` `dielectric_dielectric` boundary (`:427-454`,
+else `NoRINDEX` kill); `*backpainted` finishes instead need the **surface** backing `RINDEX`
+(`:356-374`), and `*frontpainted` needs neither. `polished`/`ground`
 dielectric_dielectric → Fresnel/TIR; `groundfrontpainted` → rand-vs-R (Lambertian, no
 TIR); `polishedbackpainted`/`groundbackpainted` → dielectric + backing REFLECTIVITY; no
-surface object → lossless TIR default. `sigma_alpha` on `groundbackpainted` has no effect
-on TIR. **A `NoRINDEX` kill is silent** (prints only at verbose>1, `G4OpBoundaryProcess.cc:448`),
+surface object → lossless TIR default. `sigma_alpha` on `groundbackpainted` **does** reach
+the TIR test — the smeared facet normal sets the incidence cosine (`:1124-1137`) — so it is
+inert only when all three unified constants are zero (pure Lambertian, as in our Teflon).
+**A `NoRINDEX` kill is silent** (prints only at verbose>1, `G4OpBoundaryProcess.cc:448`),
 so its absence in a normal run log proves nothing — count it with
 `/process/optical/boundary/verbose 2` or via the `opticalStats` budget.
 
@@ -246,14 +301,17 @@ cutter's cylinder is tangent to the film's slab-side face, giving a degenerate b
 silently breaks the topmost channel and hangs the `TSG_OFFSCREEN` renderer. **Cutter
 overshoot:** every cutter is `fHalfSize.y() + 10 mm` long so each opening is bounded by the
 object's own faces, never by a face coincident with the tool (coincident faces leave
-degenerate polygons). **Channels must not overlap:** `fFibrePitch = 1.5 mm` (> 2·channel
-radius) keeps a solid clamp web between neighbours (Rao Fig. 4a) and the booleans valid.
+degenerate polygons). **Channels must not overlap in the straight run:** `fFibrePitch = 1.5 mm`
+(> 2·channel radius) keeps a solid clamp web between neighbours (Rao Fig. 4a) and the booleans
+valid. In the converging bundle they *do* meet — `fBundlePitch = 1.0 mm` < 2·`fChannelRadius`
+(1.1 mm) — so the four channels merge into a single slot over the last ~15 mm, by design.
 
 **The Ø1.1 channel / Ø1.0 fibre clearance (0.05 mm air annulus) is deliberate — do NOT make
-it snug.** The real Y-11(200) is multi-clad (outer fluoropolymer n≈1.42) but our single clad
-is n=1.49, so a snug fibre touching the n=1.55 black clamp would kill the low-index gap and
-lose the guided light (smoke: Ø1.1 + air = 15.0 pe/ev; snug Ø1.0 = 8.8 pe/ev). The paper
-specifies grease only in the plate↔clamp gap, not around the fibres.
+it snug.** Sources conflict on cladding: the Kuraray catalogue lists Y-11(200) as **single
+cladding**, while Rao Table III says multi-clad; our model uses a **single PMMA clad n=1.49**
+(following the datasheet). A snug fibre touching the n=1.55 black clamp would kill the
+low-index clad gap and lose the guided light (smoke: Ø1.1 + air = 15.0 pe/ev; snug Ø1.0 =
+8.8 pe/ev). The paper specifies grease only in the plate↔clamp gap, not around the fibres.
 
 **Read-out bug to remember:** **all four** `cladPVs[k]` need the `fCouplingSurface` border
 to the shared read-out pad; giving it to `cladPVs[0]` only traps fibres 1–3 in lossless TIR.
@@ -272,21 +330,26 @@ face not already border-ed (core→cap, cap→world); borders take precedence, s
 `(clad,cap)` borders are unaffected. Verified: `NoRINDEX`=0, core→cap now `SpikeReflection`.
 `DielectricMetal()` uses the surface REFLECTIVITY and never needs the metal's `RINDEX`.
 
-**WLS absorption vs. emission — must not overlap (fatal on some Geant4 builds).** `G4OpWLS`
-samples the secondary from `WLSCOMPONENT` and requires its energy to be ≤ the absorbed photon's.
-If `WLSABSLENGTH` is finite where the emission spectrum has no weight below the photon energy
-(e.g. a green/red Čerenkov photon at ~700 nm absorbed by a finite 3.5 m WLS absorption), no
-secondary can be sampled: newer Geant4 raises the fatal `WSL01` exception (abort/SIGABRT),
-while 11.4.0 silently returns no secondary. Keep `WLSABSLENGTH` effectively transparent (1e6 m)
-at and below the emission onset, make it finite only in the blue absorption band, and zero
-`WLSCOMPONENT` at/above that onset (see `.refs/examples/extended/optical/wls/src/WLSMaterials.cc`).
+**WLS absorption vs. emission — keep the emission inside the absorbed photon's energy.**
+`G4OpWLS` samples the secondary from `WLSCOMPONENT` and requires its energy to be ≤ the absorbed
+photon's; if `WLSABSLENGTH` is finite where `WLSCOMPONENT` has no weight below the photon energy
+(e.g. a green/red Čerenkov photon at ~700 nm absorbed by a finite 3.5 m WLS absorption) no
+secondary can be sampled. Keep `WLSABSLENGTH` effectively transparent (1e6 m) at and below the
+emission onset, make it finite only in the blue absorption band, and zero `WLSCOMPONENT`
+at/above that onset (see `.refs/examples/extended/optical/wls/src/WLSMaterials.cc`). **In the
+v11.3.2 tree there is no `WSL01` fatal at all** — a grep of the whole source/install trees finds
+no such message, and `G4OpWLS` merely drops the photon after 100 failed samples — so this is a
+data/correctness rule, not a crash expected here. Our tables satisfy it (≈69 % of the emission
+weight lies below the absorption onset; failure chance ≈10⁻⁵¹), though our `WLSCOMPONENT`
+extends ~0.23 eV **above** the `WLSABSLENGTH` onset (mild self-absorption), unlike
+`WLSMaterials.cc`, and the emission peak (2.583 eV / 480 nm) actually sits **on** the absorption
+onset — so do not claim "no overlap".
 
 **Known caveat (documented, not chased):** cfg4 collects ~17 pe/evt (centre) vs cfg3 ~164,
 i.e. cfg4 < cfg3, whereas paper Fig. 12 shows cfg4 > cfg3. The paper itself warns the configs
 "cannot be directly compared" (different SiPM count / gain / input capacitance), and its cfg4
 value is a pulse height over a 2500 mm² fibre-augmented effective area, not raw pe. The
-geometry is structurally faithful. Measured ordering is **centre > edge > corner** (the
-paper's corner-lowest) for all configs 1–4.
+geometry is structurally faithful.
 
 **Figures / vis:** collection comes from the `sipmHits` tree
 (`plot_collection_efficiency.C` / `plot_whole_slab.C`). `report_figures.C::fig_wavelength_cfg`
@@ -309,9 +372,13 @@ plate (world 10 m).
   detector-metadata TTree written by the master *after* the MT merge; written only if
   absent, so deleting/re-running is safe. Toggles: `/dcs-monitor/run/writePrimary`,
   `/dcs-monitor/run/writeSurfaceFlux`.
-- `SurfaceFluxSampler` is a master-side singleton; step-1 `surfaceFlux` coordinates are
-  **cask-local**, loaded once then sampled O(1) across threads. Geometry params (outer
-  radius/height) are passed at load time.
+- There is no `SurfaceFluxSampler`. The sampling helper is `RootManager` (singleton,
+  `RootManager::GetInstance()`), which clones a `THnSparseD` into thread-local copies and
+  samples via `GetRandom` (`src/RootManager.cc`). It is **not** wired into the generator:
+  the `rootManager.Initialize(...)` calls are commented out in `G4DCSmonitor.cc:81-87`, so
+  today `RootManager` only carries the output `fileNum`. The `surfaceFlux` tree feeds the
+  two-part `examples/` workflow; the in-binary `CASTOR440_surface` source is a synthetic
+  uniform-area + cosine emitter, not a replay.
 
 ## Examples
 - `examples/p1-surface_flux_generation/` then `examples/p2-detector_response/` is a

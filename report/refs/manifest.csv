@@ -1,0 +1,21 @@
+citekey,type,title,venue,year,doi_or_url,access,source,file
+Rao2025,article,Design studies on large muon trigger detectors using silicon photomultiplier devices,Journal of Applied Physics 138,2025,10.1063/5.0288270,open-downloaded,IOP/AIP CC-BY,refs/Rao2025.pdf
+Agostinelli2003,article,Geant4 - a simulation toolkit,NIM A 506,2003,10.1016/S0168-9002(03)01368-8,open-downloaded,Fermilab/SLAC preprint via inspirehep,refs/Agostinelli2003.pdf
+Allison2016,article,Recent developments in Geant4,NIM A 835,2016,10.1016/j.nima.2016.06.125,open-downloaded,Warwick WRAP OA copy,refs/Allison2016.pdf
+Korpachev2017,article,Geant4 simulation of optical photon transport in scintillator tile with direct readout by SiPM,J. Phys. Conf. Ser. 798,2017,10.1088/1742-6596/798/1/012218,open-downloaded,inspirehep mirror,refs/Korpachev2017.pdf
+Gundacker2020,article,The silicon photomultiplier: fundamentals and applications of a modern solid-state photon detector,Phys. Med. Biol. 65,2020,10.1088/1361-6560/ab7b2d,open-downloaded,IOP CC-BY,refs/Gundacker2020.pdf
+Anfimov2021,article,Study of silicon photomultiplier performance at different temperatures,NIM A 997,2021,10.1016/j.nima.2021.165162,open-downloaded,arXiv 2005.10665,refs/Anfimov2021.pdf
+Alekseev2022,article,The performance of a new Kuraray wavelength shifting fiber YS-2,JINST 17,2022,10.1088/1748-0221/17/01/P01031,open-downloaded,arXiv 2112.00136,refs/Alekseev2022.pdf
+Bonechi2020,article,Atmospheric muons as an imaging tool,Reviews in Physics 5,2020,10.1016/j.revip.2020.100038,open-downloaded,arXiv 1906.03934,refs/Bonechi2020.pdf
+Birks1951,article,Scintillations from Organic Crystals: Specific Fluorescence and Relative Response to Different Radiations,Proc. Phys. Soc. A 64,1951,10.1088/0370-1298/64/10/303,open-downloaded,IOP bronze (crawler UA),refs/Birks1951.pdf
+Borozdin2003,article,Radiographic imaging with cosmic-ray muons,Nature 422,2003,10.1038/422277a,PAYWALLED,user-to-fetch,
+Levin1996,inproceedings,A more physical approach to model the surface treatment of scintillation counters and its implementation into DETECT,1996 IEEE NSS Conf. Record,1996,10.1109/NSSMIC.1996.591410,PAYWALLED,user-to-fetch,
+Nilsson2015,article,Identifying key surface parameters for optical photon transport in GEANT4/GATE simulations,Applied Radiation and Isotopes 103,2015,10.1016/j.apradiso.2015.04.017,PAYWALLED,user-to-fetch,
+Craun1970,article,Analysis of response data for several organic scintillators,NIM 80,1970,10.1016/0029-554X(70)90768-8,PAYWALLED,user-to-fetch,
+EljenEJ200,misc,EJ-200/EJ-204/EJ-208/EJ-212 General Purpose Plastic Scintillators datasheet,Eljen Technology datasheet,2024,https://eljentechnology.com/images/products/data_sheets/EJ-200_EJ-204_EJ-208_EJ-212.pdf,open-downloaded,vendor,refs/EljenEJ200.pdf
+AdvanSiD_NUV,misc,NUV SiPM Datasheet ASD-NUV P-on-N Silicon Photomultipliers (ASD-NUV4S-P-40),AdvanSiD Cefla datasheet,,https://indico.cern.ch/event/566138/contributions/2287560/attachments/1400219/2139198/Advansid_datasheet_NUV.pdf,open-downloaded,CERN indico mirror,refs/AdvanSiD_NUV.pdf
+AmcrysPS,misc,Polystyrene-based Plastic Scintillators datasheet (UPS-923A grade),Amcrys datasheet,,https://www.amcrys.com/pdf/4286_.pdf,open-downloaded,Wayback mirror (origin cert expired),refs/AmcrysPS.pdf
+KurarayPSF,misc,Plastic Scintillating Fibers (PSF) catalogue (Y-11 WLS grade),Kuraray Co. catalogue,,https://www.kuraray.com/content/dam/methacrylate/en/documents/psf.pdf,open-downloaded,vendor,refs/KurarayPSF.pdf
+Geant4PRM,manual,Geant4 Physics Reference Manual,CERN v11.3,,https://geant4-userdoc.web.cern.ch/UsersGuides/PhysicsReferenceManual/html/index.html,online-html,no PDF available,
+Artikov2005,article,Properties of the Ukraine polystyrene-based plastic scintillator UPS 923A,NIM A 555,2005,10.1016/j.nima.2005.09.021,PAYWALLED-uncited,user-to-fetch,
+Taheri2017,article,The impact of wrapping method and reflector type on the performance of rod plastic scintillators,Measurement 97,2017,10.1016/j.measurement.2016.10.051,PAYWALLED-uncited,user-to-fetch,

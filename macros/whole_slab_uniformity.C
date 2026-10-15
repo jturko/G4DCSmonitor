@@ -79,6 +79,7 @@ struct Result {
     // 2-D cell contrast (no symmetry assumed)
     double kappaCell = 0., kappaCellErr = 0.;
     double meanEff = 0.;                   // area-weighted <eps>
+    double meanEffErr = 0.;                // Poisson error on the pooled ratio
 };
 
 // Interior bin edges spanning exactly [-half, half] in nIn equal cells.
@@ -286,6 +287,7 @@ void whole_slab_uniformity(const char* dir = "slurm/data_output_whole",
                 totProd += e.prod; totColl += e.coll;
             }
             R.meanEff = totProd > 0. ? totColl / totProd : 0.;
+            R.meanEffErr = ratioErr(totColl, totProd);
             std::vector<double> ce, cee;
             for (int bx = 1; bx <= kCellN; ++bx)
                 for (int by = 1; by <= kCellN; ++by) {
@@ -514,15 +516,59 @@ void whole_slab_uniformity(const char* dir = "slurm/data_output_whole",
             c->SaveAs(TString::Format("%s/fig_whole_contrast.%s", outdir, ex));
     }
 
+    // ============== Fig E: plate-averaged efficiency bars =================
+    // The whole-slab analogue of the pooled three-patch efficiency figure: a
+    // 2 x 2 grid (one panel per layout), one bar per reflector, linear y with a
+    // shared range.  Every event's entry point is uniform over the plate, so
+    // these are unbiased plate averages rather than a patch-pooled number.
+    {
+        double ymaxAll = 0.;
+        for (int cfg = 1; cfg <= 4; ++cfg)
+            for (int r = 0; r < 4; ++r)
+                ymaxAll = std::max(ymaxAll, res[cfg][r].meanEff);
+        if (ymaxAll <= 0.) ymaxAll = 1.;
+
+        TCanvas* c = new TCanvas("c_ws_eff", "efficiency", 1100, 1060);
+        c->Divide(2, 2, 0.004, 0.004);
+        for (int cfg = 1; cfg <= 4; ++cfg) {
+            c->cd(cfg);
+            gStyle->SetOptTitle(1);        // global style hides titles; show here
+            gPad->SetLeftMargin(0.16);
+            gPad->SetRightMargin(0.03);
+            gPad->SetBottomMargin(0.16);
+            gPad->SetTopMargin(0.12);
+            TH1D* h = new TH1D(TString::Format("he_c%d", cfg), "", 4, 0, 4);
+            for (int r = 0; r < 4; ++r) {
+                h->SetBinContent(r + 1, res[cfg][r].meanEff);
+                h->GetXaxis()->SetBinLabel(r + 1, kReflName[r]);
+            }
+            h->SetTitle(TString::Format("Config %d", cfg));
+            h->GetYaxis()->SetTitle("collection efficiency  #varepsilon = N_{#font[42]{pe}}/N_{#gamma}");
+            h->GetYaxis()->SetTitleSize(0.050);
+            h->GetYaxis()->SetTitleOffset(1.55);
+            h->GetYaxis()->SetLabelSize(0.045);
+            h->GetXaxis()->SetLabelSize(0.075);   // string bin labels
+            h->GetYaxis()->SetRangeUser(0, ymaxAll * 1.15);
+            h->SetBarWidth(0.7); h->SetBarOffset(0.15);
+            h->SetFillColor(kAzure);
+            h->SetLineColor(kBlack);
+            h->Draw("BAR");
+            gPad->SetGridy();
+        }
+        for (auto ex : exts)
+            c->SaveAs(TString::Format("%s/fig_eff_bars.%s", outdir, ex));
+    }
+
     // ============== CSV ====================================================
     FILE* fp = fopen(TString::Format("%s/whole_uniformity.csv", outdir).Data(), "w");
     if (fp) {
-        fprintf(fp, "config,reflector,mean_eff,kappa_2d,kappa_2d_err\n");
+        fprintf(fp, "config,reflector,mean_eff,mean_eff_err,kappa_2d,kappa_2d_err\n");
         for (int cfg = 1; cfg <= 4; ++cfg)
             for (int r = 0; r < 4; ++r) {
                 const Result& R = res[cfg][r];
-                fprintf(fp, "%d,%s,%.6g,%.4f,%.4f\n",
-                        cfg, kReflName[r], R.meanEff, R.kappaCell, R.kappaCellErr);
+                fprintf(fp, "%d,%s,%.6g,%.3g,%.4f,%.4f\n",
+                        cfg, kReflName[r], R.meanEff, R.meanEffErr,
+                        R.kappaCell, R.kappaCellErr);
             }
         fclose(fp);
     }

@@ -210,7 +210,7 @@ void matrix_positions(const char* dir = "slurm/data_output",
             // can be compared directly.
             TH1D* frame = makePosFrame(TString::Format("fr_layout_%d", cfg), yLo, yHi);
             frame->SetTitle(TString::Format("Config %d", cfg));
-            frame->GetYaxis()->SetTitle("collection efficiency  N_{pe}/N_{#gamma}");
+            frame->GetYaxis()->SetTitle("collection efficiency  #varepsilon = N_{#font[42]{pe}}/N_{#gamma}");
             frame->Draw("HIST");
 
             // The legend is identical in every tile, so it is drawn once, in
@@ -256,15 +256,15 @@ void matrix_positions(const char* dir = "slurm/data_output",
             // directly comparable to the layout panels.
             TH1D* frame = makePosFrame(TString::Format("fr_refl_%d", r), yLo, yHi);
             frame->SetTitle(kReflName[r]);
-            frame->GetYaxis()->SetTitle("collection efficiency  N_{pe}/N_{#gamma}");
+            frame->GetYaxis()->SetTitle("collection efficiency  #varepsilon = N_{#font[42]{pe}}/N_{#gamma}");
             frame->Draw("HIST");
             gPad->SetLogy();
 
             // The legend is identical in every tile, so it is drawn once, in
-            // the bare (top-left) tile only.  With the shared range the four
-            // config curves in this panel span ~0.06-0.53 of the pad, leaving
-            // the space above them free, so the legend is placed there.
-            TLegend* leg = new TLegend(0.27, 0.60, 0.61, 0.83);
+            // the bare (top-left) tile only.  The lowest curve (config 4 in the
+            // bare tile) sits near 0.47 of the pad, so the lower-right corner is
+            // free and the legend is tucked there.
+            TLegend* leg = new TLegend(0.62, 0.20, 0.955, 0.41);
             leg->SetBorderSize(0); leg->SetFillStyle(0);
             leg->SetFillColorAlpha(0., 0.);
             leg->SetTextSize(0.040);
@@ -371,15 +371,16 @@ void matrix_positions(const char* dir = "slurm/data_output",
             }
             ymax *= 1.15;
 
-            // Only the top-left panel (r == 0) carries the legend; it sits in
-            // that pad's upper-left corner and is made a little smaller so the
-            // three entries clear the top of the axis box and the bars.
-            TLegend* leg = (r == 0)
-                ? new TLegend(0.14, 0.62, 0.50, 0.84) : nullptr;
+            // Only the top-right panel (r == 1, TiO2) carries the legend.  In
+            // that pad the two leftmost sensor slots (T1, T2) are short, so the
+            // legend sits in the top-left corner; its right edge (NDC 0.38) is
+            // kept left of the tall corner bar on R1 (pad-x ~0.40).
+            TLegend* leg = (r == 1)
+                ? new TLegend(0.15, 0.64, 0.38, 0.86) : nullptr;
             if (leg) {
                 leg->SetBorderSize(0); leg->SetFillStyle(0);
                 leg->SetFillColorAlpha(0., 0.);
-                leg->SetTextSize(0.032);
+                leg->SetTextSize(0.030);
             }
 
             for (int p = 0; p < 3; ++p) {

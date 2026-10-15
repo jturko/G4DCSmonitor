@@ -3,7 +3,6 @@
 // Reads the matrix outputs (muon_out_c<C>_r<R>_{centre,edge,corner}.root) and
 // writes vector PDFs (+ PNG previews) into `outdir`:
 //
-//   fig_eff_bars.pdf      overall collection efficiency, 4 reflectors x 3 configs
 //   fig_yield.pdf         per-event optical-photon yield (produced) per reflector
 //   fig_detected.pdf      per-event photoelectron count per reflector
 //   fig_wavelength.pdf    detected-photon wavelength spectrum per reflector
@@ -73,8 +72,6 @@ void report_figures(const char* dir = "slurm/data_output",
     if (files.empty()) { std::cerr << "No muon_out_*.root in " << dir << "\n"; return; }
 
     // ---- accumulators ---------------------------------------------------
-    struct Tot { double prod = 0., coll = 0.; };
-    std::map<int, std::map<int, Tot>> tot;            // cfg -> refl -> totals
     // per-(cfg=1,refl) per-event distributions
     std::map<int, TH1D*> hProduced, hDetected;
     // detected-photon wavelength: indexed by cfg*4 + refl, so both the
@@ -134,8 +131,6 @@ void report_figures(const char* dir = "slurm/data_output",
         }
         for (auto& kv : ev) {
             double pr = kv.second[2], co = kv.second[3];
-            tot[cfg][refl].prod += pr;
-            tot[cfg][refl].coll += co;
             if (cfg == 1) {
                 hProduced[refl]->Fill(pr);
                 hDetected[refl]->Fill(co);
@@ -146,55 +141,9 @@ void report_figures(const char* dir = "slurm/data_output",
 
     const char* exts[2] = {"pdf", "png"};
 
-    // ================= Fig 1: efficiency bars (config x reflector) ========
-    {
-        // Shared y-axis range over all four configs so the panels are
-        // directly comparable.
-        double ymaxAll = 0.;
-        for (int cfg = 1; cfg <= 4; ++cfg)
-            for (int r = 0; r < 4; ++r) {
-                double p = tot[cfg][r].prod, co = tot[cfg][r].coll;
-                double eff = p > 0 ? co / p : 0.;
-                ymaxAll = std::max(ymaxAll, eff + (p > 0 ? std::sqrt(co) / p : 0.));
-            }
-        if (ymaxAll <= 0.) ymaxAll = 1.;
-
-        TCanvas* c = new TCanvas("c_bars", "efficiency", 1100, 1060);
-        c->Divide(2, 2, 0.004, 0.004);
-        for (int cfg = 1; cfg <= 4; ++cfg) {
-            c->cd(cfg);
-            gStyle->SetOptTitle(1);        // global style hides titles; show here
-            gPad->SetLeftMargin(0.16);
-            gPad->SetRightMargin(0.03);
-            gPad->SetBottomMargin(0.16);
-            gPad->SetTopMargin(0.12);
-            TH1D* h = new TH1D(TString::Format("hb_c%d", cfg), "", 4, 0, 4);
-            for (int r = 0; r < 4; ++r) {
-                double p = tot[cfg][r].prod, co = tot[cfg][r].coll;
-                double eff = p > 0 ? co / p : 0.;
-                h->SetBinContent(r + 1, eff);
-                // No SetBinError: allocating Sumw2 makes THistPainter draw
-                // error bars automatically (THistPainter.cxx: "if
-                // (fH->GetSumw2N() && hdim==1) Hoption.Error = 2"), which we
-                // do not want on these summary bar charts.
-                h->GetXaxis()->SetBinLabel(r + 1, kReflName[r]);
-            }
-            h->SetTitle(TString::Format("Config %d", cfg));
-            h->GetYaxis()->SetTitle("collection efficiency  N_{pe}/N_{#gamma}");
-            h->GetYaxis()->SetTitleSize(0.050);
-            h->GetYaxis()->SetTitleOffset(1.55);
-            h->GetYaxis()->SetLabelSize(0.045);
-            h->GetXaxis()->SetLabelSize(0.075);   // string bin labels
-            h->GetYaxis()->SetRangeUser(0, ymaxAll * 1.15);
-            h->SetBarWidth(0.7); h->SetBarOffset(0.15);
-            h->SetFillColor(kAzure);
-            h->SetLineColor(kBlack);
-            h->Draw("BAR");
-            gPad->SetGridy();
-        }
-        for (auto ex : exts)
-            c->SaveAs(TString::Format("%s/fig_eff_bars.%s", outdir, ex));
-    }
+    // The plate-averaged efficiency figure (fig_eff_bars) is written by
+    // macros/whole_slab_uniformity.C from the whole-slab run; the three-patch
+    // matrix data pooled here would bias it by the choice of patches.
 
     // ================= Fig 2: produced yield (cfg1) ======================
     auto stackDraw = [&](std::map<int, TH1D*>& hs, const char* ytitle,

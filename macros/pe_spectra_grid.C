@@ -9,9 +9,20 @@
 // configuration (single SiPM + WLS fibre clamp) is added as a fourth column.
 //
 // The result is a 3 (region) x 4 (config) grid; each cell overlays the four
-// reflector treatments.  Spectra are probability densities (unit area) on
-// logarithmic x/y axes, so the weakly collecting bare plate and the bright
-// reflective wrappers are both resolved.
+// reflector treatments.  Spectra are probability densities (unit area).  The
+// lower panel uses logarithmic axes with one shared range so the four configs
+// can be compared directly; the upper panel gives every config column its own
+// linear abscissa and ordinate, sized to that config's data, because the
+// WLS-clamp layout (config 4) collects ~20x fewer photoelectrons than the
+// directly-coupled layouts and would otherwise collapse into the first percent
+// of a shared linear axis.
+//
+// Layout: the pads are placed by hand rather than with TCanvas::Divide.  Each
+// pad's *frame* is an identical W x H NDC rectangle separated only by tiny
+// inner gaps, so the panels are equal and carry no inner whitespace.  The
+// generous outer margins live in the (larger) rectangles of the left-column and
+// bottom-row pads, which hold the shared y/x tick labels; the axis titles,
+// region identifiers and column headers are drawn once on the canvas itself.
 //
 // Reads <dir>/muon_out_c<C>_r<R>_{centre,edge,corner}.root (tree "sipmHits").
 //
@@ -74,7 +85,7 @@ void pe_spectra_grid(const char* dir = "slurm/data_v2.2/matrix",
     const std::vector<double> edges = logEdges();
     const int nb = (int)edges.size() - 1;
 
-    // h[cfg][loc][refl]  (cfg 1..4, loc 0..2, refl 0..3)
+    // h[cfg][loc][refl]  (cfg 1..4, loc 0..2, refl 0..3) -- log-spaced bins
     std::map<int, std::map<int, std::map<int, TH1D*>>> h;
     for (int c = 1; c <= 4; ++c)
         for (int l = 0; l < 3; ++l)
@@ -82,6 +93,10 @@ void pe_spectra_grid(const char* dir = "slurm/data_v2.2/matrix",
                 TString nm = TString::Format("hpe_c%d_%s_r%d", c, kLocName[l], r);
                 h[c][l][r] = new TH1D(nm, "", nb, edges.data());
             }
+
+    // Raw pe/event samples per cell, kept so the linear-axes panel can use
+    // linearly-spaced bins (log-spaced bins look wrong on a linear abscissa).
+    std::map<int, std::map<int, std::map<int, std::vector<double>>>> pev;
 
     // ---- discover + reduce files ---------------------------------------
     std::vector<TString> files;
@@ -128,8 +143,45 @@ void pe_spectra_grid(const char* dir = "slurm/data_v2.2/matrix",
             if (det != 0) continue;
             ev[evt] += nDet;
         }
-        for (auto& kv : ev) h[cfg][li][refl]->Fill(kv.second);
+        for (auto& kv : ev) {
+            h[cfg][li][refl]->Fill(kv.second);
+            pev[cfg][li][refl].push_back(kv.second);
+        }
         delete f;
+    }
+
+    // ---- linearly-binned twins for the linear-axes panel ---------------
+    // The linear panel gives every *config column* its own abscissa, sized to
+    // that config's data: the WLS-clamp layout (config 4) collects far fewer
+    // photoelectrons than the directly-coupled layouts, so one shared linear
+    // range would crush config 4 into the first percent of the axis (and
+    // over-spread configs 1-3).  Each column's range is the pooled 99.5th
+    // percentile of all its regions and reflectors (rounded up); the
+    // logarithmic panel keeps a single shared range so the configs stay
+    // comparable there.
+    const int nbl = 100;
+    double xhi_lin[4];                 // per config (index c-1)
+    std::map<int, std::map<int, std::map<int, TH1D*>>> hlin;
+    for (int c = 1; c <= 4; ++c) {
+        std::vector<double> pool;
+        for (int l = 0; l < 3; ++l)
+            for (int r = 0; r < 4; ++r)
+                for (double v : pev[c][l][r]) pool.push_back(v);
+        std::sort(pool.begin(), pool.end());
+        double xh = pool.empty() ? 100. : pool[(size_t)(0.995 * pool.size())];
+        xh = std::ceil(xh / 100.0) * 100.0;
+        if (xh < 100.) xh = 100.;
+        xhi_lin[c - 1] = xh;
+
+        std::vector<double> ledges(nbl + 1);
+        for (int i = 0; i <= nbl; ++i) ledges[i] = xh * i / nbl;   // 0 .. xh
+        for (int l = 0; l < 3; ++l)
+            for (int r = 0; r < 4; ++r) {
+                hlin[c][l][r] = new TH1D(
+                    TString::Format("hplin_c%d_%s_r%d", c, kLocName[l], r),
+                    "", nbl, ledges.data());
+                for (double v : pev[c][l][r]) hlin[c][l][r]->Fill(v);
+            }
     }
 
     // ---- normalise all spectra, then fix SHARED x/y ranges -------------
@@ -160,74 +212,215 @@ void pe_spectra_grid(const char* dir = "slurm/data_v2.2/matrix",
     const double xlo = 0.8 * gxmin, xhi = 1.3 * gxmax;
     const double ylo = 0.4 * gymin, yhi = 1.6 * gymax;
 
-    // ---- draw ----------------------------------------------------------
-    TCanvas* c = new TCanvas("c_pe_grid", "pe spectra grid", 1560, 1180);
-    c->Divide(4, 3, 0.003, 0.003);
-
-    for (int l = 0; l < 3; ++l) {
-        for (int cc = 0; cc < 4; ++cc) {
-            int cfg = cc + 1;
-            c->cd(l * 4 + cc + 1);
-            gPad->SetLogx();
-            gPad->SetLogy();
-            gPad->SetLeftMargin (cc == 0 ? 0.22 : 0.02);
-            gPad->SetRightMargin(cc == 3 ? 0.04 : 0.025);
-            gPad->SetBottomMargin(l == 2 ? 0.16 : 0.03);
-            gPad->SetTopMargin(l == 0 ? 0.14 : 0.05);
-
+    // Linear-axes twin: normalise each cell to unit area over its own abscissa
+    // and size every config column's ordinate to the tallest bin in that column
+    // (all three regions and four reflectors), so each column uses its full
+    // vertical range.  The ordinate is the bin content (normalised entries),
+    // exactly as in panel~(b) -- NOT the probability density: ROOT plots the
+    // content, and sizing the axis from content/bin-width is what clipped every
+    // peak flat against the frame top.
+    double yhi_lin[4];                 // per config (index c-1)
+    for (int c = 1; c <= 4; ++c) {
+        double ymax = 0.;
+        for (int l = 0; l < 3; ++l)
             for (int r = 0; r < 4; ++r) {
-                TH1D* hh = h[cfg][l][r];
-                hh->SetLineColor(kColor[r]);
-                hh->SetLineStyle(kStyle[r]);
-                hh->SetLineWidth(2);
-                hh->GetXaxis()->SetRangeUser(xlo, xhi);
-                hh->GetYaxis()->SetRangeUser(ylo, yhi);
-                hh->GetYaxis()->SetMoreLogLabels();
-                if (cc == 0) {
-                    hh->GetYaxis()->SetTitle("normalised entries");
-                    hh->GetYaxis()->SetTitleSize(0.055);
-                    hh->GetYaxis()->SetTitleOffset(1.15);
+                TH1D* hh = hlin[c][l][r];
+                double I = hh->Integral();
+                if (I > 0) hh->Scale(1. / I);
+                for (int b = 1; b <= hh->GetNbinsX(); ++b) {
+                    double d = hh->GetBinContent(b);
+                    if (d > ymax) ymax = d;
                 }
-                if (l == 2) {
-                    hh->GetXaxis()->SetTitle("photoelectrons / event");
-                    hh->GetXaxis()->SetTitleSize(0.055);
-                    hh->GetXaxis()->SetTitleOffset(1.15);
-                }
-                if (r == 0) hh->Draw("HIST");
-                else        hh->Draw("HIST SAME");
             }
+        // ~1.35x headroom rounded up to a half-decade, so the top tick label is
+        // a round number (config 1 -> 0.03) and the tallest peak sits well clear
+        // of the frame instead of being clipped flat against it.
+        double yh = 1.35 * ymax;
+        double mag = std::pow(10.0, std::floor(std::log10(yh)));
+        yh = std::ceil(yh / (mag / 2.0)) * (mag / 2.0);
+        yhi_lin[c - 1] = yh;
+    }
 
-            // column header (config) on the top row
-            if (l == 0) {
-                TLatex* tc = new TLatex();
-                tc->SetNDC();
-                tc->SetTextSize(0.075);
-                tc->SetTextFont(62);
-                tc->SetTextAlign(21);
-                tc->DrawLatex(0.5, 0.955, TString::Format("Config %d", cfg));
-            }
-            // row label (region): rotated, off the axis to the left and centred
-            // on the row so it never overlaps the frame.
-            if (cc == 0) {
-                TLatex* tx = new TLatex();
-                tx->SetNDC();
-                tx->SetTextSize(0.075);
-                tx->SetTextFont(62);
-                tx->SetTextAlign(22);
-                tx->SetTextAngle(90);
-                tx->DrawLatex(0.05, 0.5, kLocName[l]);
-            }
-            // shared legend in the top-right cell, top-right corner
-            if (l == 0 && cc == 3) {
-                TLegend* leg = new TLegend(0.60, 0.593, 0.995, 0.803);
-                leg->SetBorderSize(0);
-                leg->SetFillStyle(0);
-                for (int r = 0; r < 4; ++r)
-                    leg->AddEntry(h[cfg][l][r], kReflName[r], "l");
-                leg->Draw();
+    // ---- layout + draw one 3 x 4 grid inside the NDC band [y0, y1] ------
+    // Frames are all W x H, packed with small inner gaps; only the outer border
+    // of the band is wide enough for the shared labels.  Pads are placed by hand
+    // so the frames stay identical without introducing inner whitespace.
+    //
+    // A pad's *rectangle* is a little larger than its frame: ROOT clips a pad's
+    // contents to that rectangle, and every tick label is centred on the frame
+    // edge it annotates, so without a margin the labels sitting on a shared or
+    // outer edge are sliced in half (each row's top "0.03"/"10^k", each
+    // non-bottom row's bottom "0", and the "0"/"800" at a column's left/right
+    // edge).  The margins below grow the pad just enough to hold those labels;
+    // the frame stays exactly W x H and the axis ranges are untouched.  GY must
+    // hold a top and a bottom label between two stacked frames (GY >= 2*yLabH)
+    // and GX a left and a right one (GX >= xLabL + xLabR), so the enlarged pads
+    // never overlap (an overlap would let a later pad's opaque background
+    // repaint an earlier pad's label).
+    const double ML = 0.105, MR = 0.020, GX = 0.024;
+    const double MTb = 0.050, MBb = 0.052, GY = 0.021;   // band-edge margins
+    const double xLabL = 0.006, xLabR = 0.016;  // x label half-width at edges
+    const double yLabH = 0.009;                 // y label half-height (bottom)
+    const double xRegionLbl = 0.018;                     // left-margin text x
+    const double xYTitle    = 0.052;   // centred between region labels and the
+                                       // (now wider) per-config y tick labels
+    const double W  = (1.0 - ML - MR - 3.0 * GX) / 4.0;
+
+    TCanvas* c = new TCanvas("c_pe_grid", "pe spectra grid", 1560, 2000);
+
+    auto drawGrid = [&](std::map<int, std::map<int, std::map<int, TH1D*>>>& M,
+                        double y0, double y1, bool useLog,
+                        const double* xa4, const double* xb4,
+                        const double* ya4, const double* yb4,
+                        const char* tag) {
+        const double H = ((y1 - y0) - MTb - MBb - 2.0 * GY) / 3.0;
+
+        for (int l = 0; l < 3; ++l) {
+            for (int cc = 0; cc < 4; ++cc) {
+                int cfg = cc + 1;
+                const double fx = ML + cc * (W + GX);          // frame left
+                const double fy = y0 + MBb + (2 - l) * (H + GY);  // frame bottom
+
+                // The pad rectangle is larger than the frame where the frame
+                // carries boundary labels: the left column needs room for the y
+                // labels (already inside px0=0); a non-bottom row's left-column
+                // pad needs yLabH below the frame for the bottom "0"; and the
+                // bottom row needs xLabL/xLabR at the frame's left/right edges.
+                // The margins re-inset the frame to the shared W x H rectangle.
+                // Left/right only where the frame carries an x tick label (the
+                // bottom row); every pad gets a top margin (each row's top tick
+                // label is centred on the frame top) and every non-bottom row a
+                // bottom margin (its bottom label is centred on the frame
+                // bottom).  All pads share the same top margin so the x tick
+                // labels stay the same physical size (ROOT sizes them by pad
+                // height).
+                const double boxR = (l == 2) ? xLabR : 0.0;
+                const double boxL = (l == 2 && cc != 0) ? xLabL : 0.0;
+                const double px0 = (cc == 0) ? 0.0 : fx - boxL;
+                const double py0 = (l == 2)  ? y0 : fy - yLabH;
+                const double pw  = (fx + W + boxR) - px0;
+                const double ph  = (fy + H + yLabH) - py0;
+
+                c->cd();   // parent must be the canvas, not the previous pad
+                TPad* p = new TPad(TString::Format("p_%s_%d_%d",
+                                                   useLog ? "log" : "lin", l, cc),
+                                   "", px0, py0, fx + W + boxR, fy + H + yLabH);
+                p->SetLeftMargin((fx - px0) / pw);
+                p->SetRightMargin(boxR / pw);
+                p->SetBottomMargin((fy - py0) / ph);
+                p->SetTopMargin(yLabH / ph);
+                p->SetTickx();
+                p->SetTicky();
+                if (useLog) { p->SetLogx(); p->SetLogy(); }
+                p->Draw();
+                p->cd();
+
+                for (int r = 0; r < 4; ++r) {
+                    TH1D* hh = M[cfg][l][r];
+                    hh->SetLineColor(kColor[r]);
+                    hh->SetLineStyle(kStyle[r]);
+                    hh->SetLineWidth(2);
+                    hh->GetXaxis()->SetRangeUser(xa4[cc], xb4[cc]);
+                    // Fix the y-range with SetMinimum/SetMaximum: for a TH1 the
+                    // y-axis autoscales from the bin maximum and ignores a
+                    // SetRangeUser on the y-axis, which was silently clipping the
+                    // tallest peak flat against the frame top.
+                    hh->SetMinimum(ya4[cc]);
+                    hh->SetMaximum(yb4[cc]);
+                    hh->GetYaxis()->SetMoreLogLabels(kFALSE);  // decade labels only
+                    hh->GetYaxis()->SetTitle("");   // shared: drawn on canvas
+                    // ROOT scales the label size by the pad height, and only the
+                    // bottom row's pad carries the extra MBb margin, so divide
+                    // it out to keep every row's labels the same physical size.
+                    if (cc == 0) {
+                        hh->GetYaxis()->SetLabelSize(0.065 * (H + MBb + yLabH) / ph);
+                    } else {
+                        hh->GetYaxis()->SetLabelSize(0);  // shared: left column
+                    }
+                    hh->GetXaxis()->SetTitle("");       // shared: drawn on canvas
+                    if (l == 2) {
+                        hh->GetXaxis()->SetLabelSize(0.065);
+                    } else {
+                        hh->GetXaxis()->SetLabelSize(0);  // shared: bottom row
+                    }
+                    if (r == 0) hh->Draw("HIST");
+                    else        hh->Draw("HIST SAME");
+                }
+
+                // shared legend in the top-right cell (pad coords == frame)
+                if (l == 0 && cc == 3) {
+                    TLegend* leg = new TLegend(0.574, 0.49, 1.064, 0.89);
+                    leg->SetBorderSize(0);
+                    leg->SetFillStyle(0);
+                    leg->SetTextSize(0.058);
+                    for (int r = 0; r < 4; ++r)
+                        leg->AddEntry(M[cfg][l][r], kReflName[r], "l");
+                    leg->Draw();
+                }
             }
         }
+
+        // ---- shared outer labels for this band (canvas NDC) -------------
+        c->cd();
+        for (int cc = 0; cc < 4; ++cc) {                    // column headers
+            TLatex* tc = new TLatex();
+            tc->SetNDC();
+            tc->SetTextSize(0.026);
+            tc->SetTextFont(42);
+            tc->SetTextAlign(21);
+            tc->DrawLatex(ML + cc * (W + GX) + W / 2.0, y1 - MTb * 0.45,
+                          TString::Format("Config %d", cc + 1));
+        }
+        for (int l = 0; l < 3; ++l) {                       // region identifiers
+            TLatex* tx = new TLatex();
+            tx->SetNDC();
+            tx->SetTextSize(0.024);
+            tx->SetTextFont(42);
+            tx->SetTextAlign(22);
+            tx->SetTextAngle(90);
+            tx->DrawLatex(xRegionLbl, y0 + MBb + (2 - l) * (H + GY) + H / 2.0,
+                          kLocName[l]);
+        }
+        {
+            TLatex* ty = new TLatex();                      // shared y title
+            ty->SetNDC();
+            ty->SetTextSize(0.024);
+            ty->SetTextFont(42);
+            ty->SetTextAlign(22);
+            ty->SetTextAngle(90);
+            ty->DrawLatex(xYTitle, (y0 + y1) / 2.0, "normalised entries");
+        }
+        {
+            TLatex* txt = new TLatex();                     // shared x title
+            txt->SetNDC();
+            txt->SetTextSize(0.026);
+            txt->SetTextFont(42);
+            txt->SetTextAlign(22);
+            txt->DrawLatex(ML + (1.0 - ML - MR) / 2.0, y0 + MBb * 0.38,
+                           "photoelectrons / event");
+        }
+        {
+            TLatex* tt = new TLatex();                      // panel-group tag
+            tt->SetNDC();
+            tt->SetTextSize(0.028);
+            tt->SetTextFont(42);
+            tt->SetTextAlign(13);   // left, top
+            tt->DrawLatex(0.010, y1 - 0.006, tag);
+        }
+    };
+
+    // (a) linear, truncated abscissa, linearly-binned; (b) logarithmic, full
+    // range.  Both share the same reflector colours/styles and the same units.
+    double lad_xlo[4], lad_xhi[4], lad_ylo[4], lad_yhi[4];   // linear panel
+    double log_xlo[4], log_xhi[4], log_ylo[4], log_yhi[4];   // shared ranges
+    for (int c = 0; c < 4; ++c) {
+        lad_xlo[c] = 0.0;    lad_xhi[c] = xhi_lin[c];
+        lad_ylo[c] = 0.0;    lad_yhi[c] = yhi_lin[c];
+        log_xlo[c] = xlo;    log_xhi[c] = xhi;
+        log_ylo[c] = ylo;    log_yhi[c] = yhi;
     }
+    drawGrid(hlin, 0.510, 0.995, false, lad_xlo, lad_xhi, lad_ylo, lad_yhi, "(a)");
+    drawGrid(h,    0.005, 0.490, true,  log_xlo, log_xhi, log_ylo, log_yhi, "(b)");
 
     c->SaveAs(TString::Format("%s/fig_pe_grid.pdf", outdir));
     c->SaveAs(TString::Format("%s/fig_pe_grid.png", outdir));

@@ -14,14 +14,17 @@
 #   <WHOLE_DATA_DIR>/muon_whole_out_c<C>_r<R>.root
 # Writes:
 #   report/figures/{sipm_layouts,irradiation_sites,optical_spectra,
-#                   fig_eff_bars,fig_yield,fig_detected,fig_wavelength}.{pdf,png}
+#                   fig_yield,fig_detected,fig_wavelength}.{pdf,png}
 #   report/figures/{fig_pos_layouts,fig_pos_refl,fig_uniformity,
 #                   fig_sipm_sharing}.{pdf,png}
 #   report/figures/fig_pe_grid.{pdf,png}
 #   report/figures/efficiency_grid_cfg<C>_all.{pdf,png}   (cfg 1..4)
 #   report/figures/whole_slab_cfg<C>.{pdf,png}            (cfg 1..4)
-#   report/figures/fig_whole_polar.{pdf,png},
+#   report/figures/fig_whole_polar.{pdf,png}
+#   report/figures/fig_eff_bars.{pdf,png}
 #   report/figures/fig_whole_uniformity_map_cfg<C>.{pdf,png}   (cfg 1..4)
+#   report/figures/fig_persistence_grid.{pdf,png}
+#   report/figures/fig_wavelength_time_grid.{pdf,png}
 #   report/figures/whole_uniformity.csv
 #   report/matrix_report.pdf
 # =============================================================================
@@ -51,7 +54,7 @@ echo "=== irradiation sites ==="
 echo "=== optical property tables (scint / WLS / SiPM) ==="
 "${ROOT_BIN}" -l -b -q "macros/optical_spectra.C(\"${FIGDIR}\")"
 
-echo "=== report figures (bars/yield/wavelength) ==="
+echo "=== report figures (yield/wavelength) ==="
 "${ROOT_BIN}" -l -b -q "macros/report_figures.C(\"${MATRIX_DIR}\",\"${FIGDIR}\")"
 
 echo "=== photoelectron spectra grid (Rao Fig. 10 layout) ==="
@@ -77,6 +80,10 @@ done
 
 echo "=== whole-slab uniformity (polar + 2-D cell) ==="
 "${ROOT_BIN}" -l -b -q "macros/whole_slab_uniformity.C(\"${WHOLE_DIR}\",\"${FIGDIR}\")"
+
+echo "=== arrival-time persistence and wavelength-vs-time (glossy, cfg 1-4) ==="
+"${ROOT_BIN}" -l -b -q "macros/persistence_map_grid.C(\"${WHOLE_DIR}\",\"${FIGDIR}\",3)"
+"${ROOT_BIN}" -l -b -q "macros/wavelength_time_grid.C(\"${WHOLE_DIR}\",\"${FIGDIR}\",3)"
 
 echo "=== LaTeX (two passes for refs/toc) ==="
 ( cd "${ROOTDIR}/report" && pdflatex -interaction=nonstopmode matrix_report.tex >/dev/null 2>&1 )

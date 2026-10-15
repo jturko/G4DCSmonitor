@@ -17,3 +17,6 @@ report/*.aux
 report/*.log
 report/*.out
 report/*.toc
+
+# downloaded reference PDFs (large; refs/manifest.csv is tracked)
+report/refs/*.pdf
