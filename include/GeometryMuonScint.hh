@@ -106,13 +106,6 @@ class GeometryMuonScint
     G4bool UsesBlackHolder() const
     { return fReflectorType == kNoReflector && !fUseWLSFibres; }
 
-    // true when the frustrated-TIR absorber skin belongs on the bare slab
-    // faces. Independent of the holder shell: for Config 4 the +X face is
-    // overridden by the grease/clamp border, but the other five faces must
-    // still be absorbing.
-    G4bool UsesAbsorberSkin() const
-    { return fReflectorType == kNoReflector; }
-
   private:
     void BuildOpticalProperties(G4Material* scintMat);
     void BuildOpticalSurfaces();

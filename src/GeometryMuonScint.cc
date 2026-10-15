@@ -27,6 +27,17 @@
 #include <cmath>
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+// Loss-study knobs (investigation: "can realistic losses make the bare plate
+// the lowest collector?"). Set kStudyBulkAbsScale < 1 to shorten the
+// scintillator bulk attenuation length; set kStudyBareRoughness > 0 to add a
+// ground (sigma_alpha) surface on the bare plate faces. Both default to the
+// physical baseline (unscaled attenuation, no face scattering).
+namespace {
+const G4double kStudyBulkAbsScale  = 1.0;   // multiplies scintillator ABSLENGTH
+const G4double kStudyBareRoughness = 0.0;   // bare-face sigma_alpha (unified)
+}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 GeometryMuonScint::GeometryMuonScint() {}
 GeometryMuonScint::~GeometryMuonScint() {}
@@ -102,6 +113,8 @@ void GeometryMuonScint::BuildOpticalProperties(G4Material* scintMat)
         0.005*m,     // 350 nm  - deep into fluor absorption
         0.0005*m     // 310 nm  - polymer aromatic absorption
     };
+    // Loss study: optionally shorten the bulk attenuation length.
+    for (G4int i = 0; i < N; ++i) absL[i] *= kStudyBulkAbsScale;
 
     // ---- Emission spectrum (SCINTILLATIONCOMPONENT1) -------------------
     // Sharper UV cutoff than before (real spectrum is essentially zero
@@ -197,18 +210,29 @@ void GeometryMuonScint::BuildOpticalSurfaces()
     switch (fReflectorType) {
 
       // ============================================================
-      // 0) BARE: no reflector layer. This G4OpticalSurface is NOT applied
-      //    as a wrapping skin. Instead the plate is treated as in effective
-      //    optical contact with the black holder, so non-instrumented faces
-      //    absorb via the absorber skin (see PlaceDetector / BuildHolder).
-      //    Free-standing polished TIR is deliberately not used: measured
-      //    bare yield is the lowest of all configurations, which a lossless
-      //    TIR guide cannot reproduce.
+      // 0) BARE: no reflector layer. The polished plate sits in the black
+      //    ABS enclosure with a real air gap (fHolderGap), so its faces are
+      //    a plain polished scintillator (n=1.58) <-> air (n=1.0) dielectric
+      //    boundary. With no surface object G4OpBoundaryProcess applies
+      //    Fresnel + TIR from the material RINDEX (glisur/polished
+      //    dielectric_dielectric default, G4OpBoundaryProcess.cc:312-314):
+      //    a near-lossless guide, with the light that refracts past the
+      //    critical angle crossing the gap and being absorbed by the black
+      //    wall. kStudyBareRoughness > 0 attaches a ground surface with that
+      //    sigma_alpha to model scattering at the plate faces (loss study).
+      //    The SiPM coupling border surfaces override at their footprints.
       // ============================================================
       case kNoReflector: {
-        fReflSurface->SetType(dielectric_dielectric);
-        fReflSurface->SetFinish(polished);
-        // Deliberately attach NO MPT here -- this surface is unused.
+        if (kStudyBareRoughness > 0.) {
+          fReflSurface->SetType(dielectric_dielectric);
+          fReflSurface->SetModel(unified);   // sigma_alpha is only honoured by the unified model
+          fReflSurface->SetFinish(ground);
+          fReflSurface->SetSigmaAlpha(kStudyBareRoughness);
+          auto* mpt = new G4MaterialPropertiesTable();
+          G4double sp[N] = { 1.,1.,1.,1.,1., 1.,1.,1.,1.,1. };  // specular micro-facet
+          mpt->AddProperty("SPECULARSPIKECONSTANT", e, sp, N);
+          fReflSurface->SetMaterialPropertiesTable(mpt);
+        }
         break;
       }
 
@@ -239,11 +263,19 @@ void GeometryMuonScint::BuildOpticalSurfaces()
       }
 
       // ============================================================
-      // 2) ALUMINUM FOIL with air gap (loose-wrap like Mylar/Al).
-      //    "polishedbackpainted" preserves TIR at the slab/air
-      //    interface; sub-TIR photons enter the gap, hit the Al
-      //    "paint", and reflect SPECULARLY (spike = 1.0) because Al
-      //    is a smooth metal mirror.
+      // 2) ALUMINIUM FOIL, shiny side, wrapped around the plate.
+      //    Rao et al. (J. Appl. Phys. 138, 114504, 2025, Sec. II B) wrap the
+      //    plate in commercial foil and apply optical grease selectively so
+      //    the foil contacts the scintillator; it is NOT an air gap.
+      //    Modelled as "polishedbackpainted" with the backing index set to
+      //    the coupling grease (n = 1.46, same as fCouplingSurface): TIR is
+      //    then confined to the grazing 67.5 deg cone (asin(1.46/1.58)) and
+      //    most light refracts into the grease and reflects SPECULARLY off
+      //    the smooth Al (SPECULARSPIKE = 1).
+      //    REFLECTIVITY = normal-incidence reflectance of evaporated Al
+      //    computed from the McPeak et al. (2015) n,k data
+      //    (refractiveindex.info, CC0); this is an upper bound for a real,
+      //    slightly rough/oxidised household foil.
       // ============================================================
       case kAluminumFoil: {
         fReflSurface->SetType(dielectric_dielectric);
@@ -251,18 +283,18 @@ void GeometryMuonScint::BuildOpticalSurfaces()
         fReflSurface->SetSigmaAlpha(0.0);
 
         auto* mpt = new G4MaterialPropertiesTable();
-        G4double R[N]      = { 0.880, 0.900, 0.910, 0.910, 0.910,
-                               0.900, 0.890, 0.880, 0.860, 0.840 };
-        G4double nGap[N]   = { 1.0003,1.0003,1.0003,1.0003,1.0003,
-                               1.0003,1.0003,1.0003,1.0003,1.0003 };
-        G4double specSp[N] = { 1.,1.,1.,1.,1., 1.,1.,1.,1.,1. };  // pure mirror
-        G4double specLo[N] = { 0.,0.,0.,0.,0., 0.,0.,0.,0.,0. };
-        G4double backSc[N] = { 0.,0.,0.,0.,0., 0.,0.,0.,0.,0. };
-        mpt->AddProperty("REFLECTIVITY",          e, R,      N);
-        mpt->AddProperty("RINDEX",                e, nGap,   N);
-        mpt->AddProperty("SPECULARSPIKECONSTANT", e, specSp, N);
-        mpt->AddProperty("SPECULARLOBECONSTANT",  e, specLo, N);
-        mpt->AddProperty("BACKSCATTERCONSTANT",   e, backSc, N);
+        G4double R[N]       = { 0.904, 0.911, 0.916, 0.919, 0.921,
+                                0.923, 0.924, 0.924, 0.925, 0.925 };
+        G4double nGrease[N] = { 1.46,1.46,1.46,1.46,1.46,
+                                1.46,1.46,1.46,1.46,1.46 };
+        G4double specSp[N]  = { 1.,1.,1.,1.,1., 1.,1.,1.,1.,1. };  // pure mirror
+        G4double specLo[N]  = { 0.,0.,0.,0.,0., 0.,0.,0.,0.,0. };
+        G4double backSc[N]  = { 0.,0.,0.,0.,0., 0.,0.,0.,0.,0. };
+        mpt->AddProperty("REFLECTIVITY",          e, R,       N);
+        mpt->AddProperty("RINDEX",                e, nGrease, N);
+        mpt->AddProperty("SPECULARSPIKECONSTANT", e, specSp,  N);
+        mpt->AddProperty("SPECULARLOBECONSTANT",  e, specLo,  N);
+        mpt->AddProperty("BACKSCATTERCONSTANT",   e, backSc,  N);
         fReflSurface->SetMaterialPropertiesTable(mpt);
         break;
       }
@@ -1236,31 +1268,18 @@ void GeometryMuonScint::PlaceDetector(G4LogicalVolume* worldLV,
 
     // Wrapping skin -- applies on every face of the slab where no border
     // surface exists. The grease patches will override at their footprints.
-    if (fWrapWithReflector && fReflectorType != kNoReflector) {
+    // The bare configuration (kNoReflector) gets a wrap only when the
+    // face-scattering study is active (kStudyBareRoughness > 0); otherwise it
+    // keeps the plain polished scintillator <-> air Fresnel/TIR boundary
+    // across the real air gap.
+    if (fWrapWithReflector && (fReflectorType != kNoReflector || kStudyBareRoughness > 0.)) {
         new G4LogicalSkinSurface("MuonScintSkin", fScintLV, fReflSurface);
     }
 
-    // Bare configuration: the polished plate is clamped into the black ABS
-    // holder. The holder index (~1.55) is close to the scintillator (1.58)
-    // and the fit is tight, so the plate faces are in effective optical
-    // contact: total internal reflection is frustrated and trapped light
-    // leaks into the black wall, where it is absorbed. This is why the bare
-    // plate is the weakest light collector even though it is "all-sides
-    // polished" (a free-standing polished plate would instead be a near
-    // lossless TIR guide). The absorbing skin on the slab models that
-    // contact / frustrated-TIR loss. SiPM coupling border surfaces override
-    // it at their footprints.
-    if (UsesAbsorberSkin() && fHolderSurface) {
-        new G4LogicalSkinSurface("MuonScintBareAbsorber", fScintLV, fHolderSurface);
-    }
-
     // Black holder: bare configuration only. The shell is the structural
-    // 3D-printed enclosure; its cavity is drawn slightly larger than the slab
-    // for visualization. The optical loss at the plate faces is already
-    // handled by the absorber skin above (effective contact), so the drawn
-    // gap is not optically traversed by this model. The holder's own
-    // absorbing skin is kept as a safety net for any photon that does cross
-    // the gap.
+    // 3D-printed enclosure whose cavity is drawn fHolderGap larger than the
+    // slab. The gap is optically real: light that refracts out of the plate
+    // crosses it and is absorbed by the holder's skin below.
     if (fHolderLV) {
         new G4PVPlacement(rot, pos, fHolderLV,
                           "MuonScintHolderPhys",
