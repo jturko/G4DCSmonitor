@@ -1,0 +1,71 @@
+# =============================================================================
+# muon_vis_wls.mac -- Config 4 event display: single SiPM + WLS fibre clamp.
+#
+#   ./build/G4DCSmonitor macros/muon_vis_wls.mac
+#
+# Same head-less TOOLSSG_OFFSCREEN rendering as macros/muon_vis.mac, but with
+# the Config 4 geometry: a plain polished plate on the -X narrow face of which
+# a black clamp bar holds four Y-11(200) WLS fibres read out by a single SiPM at
+# the -Y end.  The image is written to report/figures/muon_event_display_wls.png.
+#
+# Display-only: the light yield is scaled down so individual photons are
+# traceable (see macros/muon_vis.mac for the rationale).
+# =============================================================================
+
+/run/numberOfThreads 1
+
+# ---- geometry: plate + Config 4 WLS fibre clamp + reflective wrapper --------
+/dcs-monitor/det/setPosition 0 0 0 mm
+/dcs-monitor/det/setRotation 0 0 0
+/dcs-monitor/det/muonScint/add
+/dcs-monitor/det/muonScint/setSize 250 250 10 mm
+/dcs-monitor/det/muonScint/preset 5
+/dcs-monitor/det/muonScint/setReflector 3
+/dcs-monitor/det/muonScint/setWrap true
+
+/dcs-monitor/det/muonScint/setLightYieldScale 0.0005
+
+/run/initialize
+
+# ---- one vertical 30 MeV muon at the plate centre (below Cherenkov thresh) --
+/dcs-monitor/gun/sourceMode GPS
+/gps/particle mu-
+/gps/ene/type Mono
+/gps/ene/mono 30 MeV
+/gps/pos/type Point
+/gps/pos/centre 0 0 100 mm
+/gps/ang/type planar
+
+/tracking/storeTrajectory 1
+
+# ---- head-less offscreen rendering (no GUI) ---------------------------------
+/vis/open TSG_OFFSCREEN 1600x1200
+/vis/tsg/offscreen/set/format zb_png
+/vis/tsg/offscreen/set/file report/figures/muon_event_display_wls.png
+/vis/tsg/offscreen/set/size 1600 1200
+/vis/tsg/offscreen/set/transparency true
+
+/vis/verbose errors
+/vis/viewer/set/autoRefresh false
+/vis/viewer/set/background white
+/vis/drawVolume
+/vis/viewer/set/style surface
+/vis/viewer/set/edge true
+/vis/viewer/set/viewpointThetaPhi 55 22
+/vis/viewer/set/upVector 0 0 1
+/vis/viewer/zoom 1.35
+
+/vis/scene/add/trajectories smooth
+/vis/modeling/trajectories/create/drawByParticleID
+/vis/modeling/trajectories/drawByParticleID-0/set mu- red
+/vis/modeling/trajectories/drawByParticleID-0/set opticalphoton blue
+
+/vis/scene/endOfEventAction accumulate
+/vis/viewer/set/autoRefresh true
+
+/run/beamOn 1
+/vis/viewer/flush
+
+# ---- VRML output for external inspection ------------------------------------
+/vis/open VRML2FILE
+/vis/viewer/flush

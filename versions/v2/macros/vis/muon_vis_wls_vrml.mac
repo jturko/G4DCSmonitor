@@ -1,0 +1,33 @@
+# =============================================================================
+# muon_vis_wls_vrml.mac -- geometry-only VRML export of the Config-4 WLS setup.
+#
+#   G4VRMLFILE_FILE_NAME=report/figures/wls_config4.wrl \
+#       ./build/G4DCSmonitor macros/muon_vis_wls_vrml.mac
+#
+# No beam: writes the bare geometry (no events) to the file named by
+# G4VRMLFILE_FILE_NAME (the VRML2FILE driver defaults to g4_00.wrl when unset).
+# All volumes carry vis-attributes (scintillator light blue, grease amber, fibre
+# core pale green, cladding green, black clamp/holder dark grey, Al mirror caps
+# light grey, SiPM red), so the exported scene is legible in any VRML viewer.
+# =============================================================================
+
+/run/numberOfThreads 1
+
+# ---- geometry: plate + Config 4 WLS fibre clamp + reflective wrapper --------
+/dcs-monitor/det/setPosition 0 0 0 mm
+/dcs-monitor/det/setRotation 0 0 0
+/dcs-monitor/det/muonScint/add
+/dcs-monitor/det/muonScint/setSize 250 250 10 mm
+/dcs-monitor/det/muonScint/preset 5
+/dcs-monitor/det/muonScint/setReflector 3
+/dcs-monitor/det/muonScint/setWrap true
+
+/run/initialize
+
+# ---- geometry-only VRML2FILE export (no beam-on) ----------------------------
+/vis/open VRML2FILE
+/vis/viewer/set/style surface
+/vis/drawVolume
+/vis/scene/add/axes 0 0 0 200 mm
+/vis/viewer/set/autoRefresh true
+/vis/viewer/flush
