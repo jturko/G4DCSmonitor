@@ -433,9 +433,11 @@ void DetectorConstruction::ApplyMuonScintPreset(G4int presetId)
         case 3: m->PresetConfig_2SiPM_OneSide();    break;
         case 4: m->PresetConfig_4SiPM_Corners();    break;
         case 5: m->PresetConfig_WLSFibreClamp();    break;
+        case 6: m->PresetConfig_WLSFibreClampBox(); break;
+        case 7: m->PresetConfig_WLSFibreClampAnalytic(); break;
         default:
             G4cerr << " [DetectorConstruction::ApplyMuonScintPreset] "
-                   << "Unknown preset " << presetId << " (valid: 1..5)" << G4endl;
+                   << "Unknown preset " << presetId << " (valid: 1..7)" << G4endl;
             break;
     }
 }

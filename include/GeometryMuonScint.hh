@@ -63,6 +63,28 @@ class GeometryMuonScint
     void SetUseWLSFibres(G4bool on)      { fUseWLSFibres = on; }
     G4bool UsesWLSFibres() const         { return fUseWLSFibres; }
     void SetNumWLSFibres(G4int n)        { fNFibres = n; }
+    // Fibre cross-section: round Ø1.0 mm (default) or a flat-faced square of the
+    // same width. The square replaces the 24-gon's shallow ~165 deg facet edges
+    // (a documented G4Navigator stuck-track trigger) with 90 deg edges and makes
+    // the clamp/grease booleans purely planar, at the cost of some optical
+    // fidelity. Same spacing/kink/bend as the round fibres.
+    void SetFibreSquareCross(G4bool on)  { fFibreSquareCross = on; }
+    G4bool FibreSquareCross() const      { return fFibreSquareCross; }
+    // Build the square fibre as a G4ExtrudedSolid instead of the tessellated
+    // swept square. EXPERIMENTAL: the swept (Y,Z) outline is non-convex (a tiny
+    // reflex notch at the bend), so G4ExtrudedSolid only supplies analytic
+    // distance along the extrusion axis and falls back to its tessellated base
+    // for the in-plane direction -- measured to INCREASE the stuck-track rate,
+    // so it is off by default. Kept for reference/further experiments.
+    void SetFibreUseExtruded(G4bool on)  { fFibreUseExtruded = on; }
+    G4bool FibreUseExtruded() const      { return fFibreUseExtruded; }
+    // Build the round fibres (and the film groove / clamp channel cutters) from
+    // ANALYTIC G4CutTubs segments, one per straight leg of the BentPath, joined
+    // by exact mitered cut planes. Same centreline/kinks as the tessellated
+    // fibre, but no facet edges: every logged GeomNav1002 stuck track of the
+    // tessellated model sits on a facet edge (24-gon vertex line or miter ring).
+    void SetFibreAnalytic(G4bool on)     { fFibreAnalytic = on; }
+    G4bool FibreAnalytic() const         { return fFibreAnalytic; }
 
     // Presets
     void PresetConfig_8SiPM_AllSides();
@@ -70,6 +92,8 @@ class GeometryMuonScint
     void PresetConfig_2SiPM_OneSide();
     void PresetConfig_4SiPM_Corners();
     void PresetConfig_WLSFibreClamp();   // Config 4
+    void PresetConfig_WLSFibreClampBox();// Config 4, square (box) fibre cross-section
+    void PresetConfig_WLSFibreClampAnalytic(); // Config 4, analytic G4CutTubs fibres
 
     // Accessors
     G4LogicalVolume*   GetScintLV()  const { return fScintLV; }
@@ -163,6 +187,9 @@ class GeometryMuonScint
     G4bool fUseWLSFibres = false;
     G4bool fWLSOnNegX    = true;              // Config 4 clamp side: true = -X
     G4int  fNFibres      = 4;                 // four Ø1.0 mm fibres
+    G4bool fFibreSquareCross = false;         // false = round Ø1.0 mm, true = square
+    G4bool fFibreUseExtruded = false;         // square fibre via G4ExtrudedSolid (experimental)
+    G4bool fFibreAnalytic    = false;         // round fibre from G4CutTubs segments
     G4double fFibreRadius   = 0.5 * CLHEP::mm; // Ø1.0 mm core+clad
     G4double fFibreCladFrac = 0.03;            // cladding thickness fraction
     G4double fClampGap      = 0.10 * CLHEP::mm;// thin grease film slab<->clamp
@@ -186,6 +213,15 @@ class GeometryMuonScint
     G4LogicalVolume*   fHolderLV    = nullptr;
     std::vector<G4LogicalVolume*> fFibreCoreLVs;
     std::vector<G4LogicalVolume*> fFibreCladLVs;
+    // Analytic fibre: per fibre, one clad LV (with its core daughter) per
+    // straight leg, plus that leg's object transform in the (pre-flip)
+    // slab-local construction frame. Leg 0 = mirror end, last = read-out end.
+    struct FibreSeg {
+        G4LogicalVolume*  cladLV = nullptr;
+        G4RotationMatrix  rot;      // object (local -> slab) rotation
+        G4ThreeVector     pos;      // leg centre, slab-local (pre-flip)
+    };
+    std::vector<std::vector<FibreSeg>> fFibreSegs;
     G4LogicalVolume*   fClampLV     = nullptr;
     G4LogicalVolume*   fGrease4LV   = nullptr;
     G4LogicalVolume*   fMirrorCapLV = nullptr;

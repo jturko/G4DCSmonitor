@@ -2,8 +2,12 @@
 
 #include "G4Box.hh"
 #include "G4Tubs.hh"
+#include "G4CutTubs.hh"
+#include "G4Transform3D.hh"
 #include "G4TessellatedSolid.hh"
 #include "G4TriangularFacet.hh"
+#include "G4ExtrudedSolid.hh"
+#include "G4TwoVector.hh"
 #include "G4LogicalVolume.hh"
 #include "G4PVPlacement.hh"
 #include "G4Material.hh"
@@ -25,6 +29,8 @@
 #include "G4RegionStore.hh"
 
 #include <cmath>
+#include <cstdlib>
+#include <string>
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 // Loss-study knobs (investigation: "can realistic losses make the bare plate
@@ -35,6 +41,28 @@
 namespace {
 const G4double kStudyBulkAbsScale  = 1.0;   // multiplies scintillator ABSLENGTH
 const G4double kStudyBareRoughness = 0.0;   // bare-face sigma_alpha (unified)
+
+// TEMPORARY Config-4 study knobs (environment variables, read at geometry
+// construction; unset = current production behaviour). Used only to quantify
+// candidate physics changes before they are made permanent.
+//   DCS_WLS_PEAKABS_MM = L0 > 0 : replace the Y-11 WLSABSLENGTH table by a
+//       Kuraray-shaped absorption band (peak 430 nm) with absorption length
+//       L0 [mm] at the peak.
+//   DCS_CLAMP_SURFACE = mirror | black | white : clamp LV skin. mirror = the
+//       current 95 % specular dielectric_metal skin (applies to EVERY clamp
+//       face, incl. channel walls and the grease-facing front); black = no
+//       skin (the n=1.55, 1 um ABSLENGTH bulk absorbs); white = Lambertian
+//       groundfrontpainted R = 0.85 (white 3D-printed plastic).
+G4double EnvDouble(const char* name, G4double def)
+{
+    const char* v = std::getenv(name);
+    return (v && *v) ? std::atof(v) : def;
+}
+std::string EnvString(const char* name, const std::string& def)
+{
+    const char* v = std::getenv(name);
+    return (v && *v) ? std::string(v) : def;
+}
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -712,15 +740,39 @@ static std::vector<G4ThreeVector> BentPath(G4double x, G4double zSpread,
              G4ThreeVector(x,  Ly + ov, zBundle) };
 }
 
-// Build a swept (generalized) cylinder along a piecewise-linear centreline with
-// a circular cross-section of radius r, as a G4TessellatedSolid.
+// Cross-section generators for MakeSweptPrism. A section is a list of 2-D
+// points (x -> along u=(1,0,0), y -> along the transverse axis v), listed in
+// the same (counter-clockwise) order so the side-wall winding is outward.
+static std::vector<G4ThreeVector> CircleSection(G4double r, G4int nSeg)
+{
+    std::vector<G4ThreeVector> s;
+    s.reserve(nSeg);
+    for (G4int k = 0; k < nSeg; ++k) {
+        const G4double th = (2.*3.14159265358979323846*k)/nSeg;
+        s.emplace_back(r*std::cos(th), r*std::sin(th), 0.);
+    }
+    return s;
+}
+
+// Axis-aligned square of half-width hw. Adjacent side facets meet at a 90 deg
+// dihedral; the 24-gon circle's shallow ~165 deg edges are far more prone to
+// G4Navigator "stuck track" ambiguity, and a square also makes the
+// clamp/film booleans purely planar (box minus box).
+static std::vector<G4ThreeVector> SquareSection(G4double hw)
+{
+    return { G4ThreeVector(+hw, +hw, 0.), G4ThreeVector(-hw, +hw, 0.),
+             G4ThreeVector(-hw, -hw, 0.), G4ThreeVector(+hw, -hw, 0.) };
+}
+
+// Build a swept (generalized) prism along a piecewise-linear centreline, with
+// an arbitrary convex cross-section, as a G4TessellatedSolid.
 //
 // WHY TESSELLATED: Geant4 has no analytic bent-tube solid, and a union of
-// tilted G4Tubs leaves a wedge-shaped AIR GAP on the outside of every kink (a
-// plain union is not watertight there), while adding joint spheres makes the
-// boolean mesher give up (10000-point cloud -> 18 MB VRML). A tessellated
-// generalized cylinder is a single watertight surface with no boolean, no gap,
-// and a tiny mesh.
+// tilted G4Tubs/G4Boxes leaves a wedge-shaped AIR GAP on the outside of every
+// kink (a plain union is not watertight there), while adding joint spheres
+// makes the boolean mesher give up (10000-point cloud -> 18 MB VRML). A
+// tessellated generalized prism is a single watertight surface with no
+// boolean, no gap, and a tiny mesh.
 //
 // The rings at each path node are oriented on the MITERED tangent (the
 // bisector of the incoming/outgoing segments), so consecutive segments share
@@ -728,11 +780,12 @@ static std::vector<G4ThreeVector> BentPath(G4double x, G4double zSpread,
 // is the standard swept-polyline tube). The centreline stays in a plane of
 // constant x, so a single transverse axis u=(1,0,0) is perpendicular to every
 // ring normal and the rings never twist.
-static G4VSolid* MakeSweptTube(const G4String& name, G4double r,
-                               const std::vector<G4ThreeVector>& path,
-                               G4int nSeg)
+static G4VSolid* MakeSweptPrism(const G4String& name,
+                                const std::vector<G4ThreeVector>& section,
+                                const std::vector<G4ThreeVector>& path)
 {
     const std::size_t n = path.size();
+    const std::size_t m = section.size();
     auto* solid = new G4TessellatedSolid(name);
 
     // Ring normal at each node: end nodes use the single adjacent tangent, the
@@ -749,19 +802,18 @@ static G4VSolid* MakeSweptTube(const G4String& name, G4double r,
 
     const G4ThreeVector u(1., 0., 0.);   // perpendicular to every ring normal
     std::vector<std::vector<G4ThreeVector>> ring(n,
-                                                 std::vector<G4ThreeVector>(nSeg));
+                                                 std::vector<G4ThreeVector>(m));
     for (std::size_t i = 0; i < n; ++i) {
         const G4ThreeVector v = nrm[i].cross(u).unit();
-        for (G4int k = 0; k < nSeg; ++k) {
-            const G4double th = (2.*3.14159265358979323846*k)/nSeg;
-            ring[i][k] = path[i] + r*(std::cos(th)*u + std::sin(th)*v);
+        for (std::size_t k = 0; k < m; ++k) {
+            ring[i][k] = path[i] + section[k].x()*u + section[k].y()*v;
         }
     }
 
     // Side wall: two triangles per (segment, azimuth) with outward orientation.
     for (std::size_t i = 0; i + 1 < n; ++i) {
-        for (G4int k = 0; k < nSeg; ++k) {
-            const G4int k2 = (k + 1) % nSeg;
+        for (std::size_t k = 0; k < m; ++k) {
+            const std::size_t k2 = (k + 1) % m;
             solid->AddFacet(new G4TriangularFacet(ring[i][k], ring[i][k2],
                                                   ring[i+1][k2], ABSOLUTE));
             solid->AddFacet(new G4TriangularFacet(ring[i][k], ring[i+1][k2],
@@ -770,8 +822,8 @@ static G4VSolid* MakeSweptTube(const G4String& name, G4double r,
     }
     // Flat end caps (triangle fans); the -y cap winds the opposite way so its
     // normal also points outward.
-    for (G4int k = 0; k < nSeg; ++k) {
-        const G4int k2 = (k + 1) % nSeg;
+    for (std::size_t k = 0; k < m; ++k) {
+        const std::size_t k2 = (k + 1) % m;
         solid->AddFacet(new G4TriangularFacet(path[0], ring[0][k2], ring[0][k],
                                               ABSOLUTE));
         solid->AddFacet(new G4TriangularFacet(path[n-1], ring[n-1][k],
@@ -779,6 +831,136 @@ static G4VSolid* MakeSweptTube(const G4String& name, G4double r,
     }
     solid->SetSolidClosed(true);
     return solid;
+}
+
+// Circular swept tube of radius r (kept for the round-fibre Config 4).
+static G4VSolid* MakeSweptTube(const G4String& name, G4double r,
+                               const std::vector<G4ThreeVector>& path,
+                               G4int nSeg)
+{
+    return MakeSweptPrism(name, CircleSection(r, nSeg), path);
+}
+
+// Square swept prism of half-width hw (Config 4 "box" cross-section).
+static G4VSolid* MakeSweptSquare(const G4String& name, G4double hw,
+                                 const std::vector<G4ThreeVector>& path)
+{
+    return MakeSweptPrism(name, SquareSection(hw), path);
+}
+
+// 2-D outline (in a local x-y plane holding the path's (Y,Z) coordinates) of the
+// square cross-section swept along a planar polyline with mitered joins. The
+// centreline lies in a plane of constant slab-x, so the swept solid is exactly
+// the Cartesian product of an x-interval with this 2-D region: the polygon is
+// the +hw offset chain followed by the -hw offset chain, using the same
+// mitered bisector normal as MakeSweptPrism (v = nrm x u).
+static std::vector<G4TwoVector> SweptSquareRegion2D(
+        const std::vector<G4ThreeVector>& path, G4double hw)
+{
+    const std::size_t n = path.size();
+    std::vector<G4TwoVector> P(n), N(n);
+    for (std::size_t i = 0; i < n; ++i) P[i] = G4TwoVector(path[i].y(), path[i].z());
+    for (std::size_t i = 0; i < n; ++i) {
+        G4TwoVector tIn, tOut;
+        if (i > 0)     tIn  = (P[i] - P[i-1]).unit();
+        if (i + 1 < n) tOut = (P[i+1] - P[i]).unit();
+        const G4TwoVector t =
+            (i == 0) ? tOut : (i + 1 == n) ? tIn : (tIn + tOut).unit();
+        N[i] = G4TwoVector(t.y(), -t.x());   // matches MakeSweptPrism's v
+    }
+    std::vector<G4TwoVector> poly;
+    poly.reserve(2*n);
+    for (std::size_t i = 0; i < n; ++i) poly.push_back(P[i] + hw*N[i]);
+    for (std::size_t i = n; i-- > 0; )  poly.push_back(P[i] - hw*N[i]);
+    return poly;
+}
+
+// Analytic equivalent of MakeSweptSquare: an extrusion of the swept (Y,Z)
+// region along the fibre axis. G4ExtrudedSolid supplies exact surface normals
+// and a prism-aware navigation (exact out-distance for a convex prism), so it
+// avoids the near-tangent G4TessellatedSolid "stuck track" pathology that the
+// 24-gon (round) and generic-tessellated (box) fibres both exhibit.
+static G4VSolid* MakeExtrudedFibre(const G4String& name,
+        const std::vector<G4ThreeVector>& path, G4double hw)
+{
+    return new G4ExtrudedSolid(name, SweptSquareRegion2D(path, hw), hw);
+}
+
+// ANALYTIC alternative to MakeSweptTube: one G4CutTubs per straight leg of a
+// planar polyline (constant slab-x, as produced by BentPath), joined by exact
+// miter planes. At an interior node both neighbouring legs are cut by the SAME
+// bisector plane, so their elliptical end faces coincide exactly (the defining
+// property of a miter joint) and the union is watertight with no facet edges.
+// End nodes are cut perpendicular to the leg. Returns, per leg, the solid in
+// its own frame (local z = leg direction, local x = slab x) and its object
+// transform (rotation local->slab and centre) in the slab-local frame.
+struct CutTubeLeg {
+    G4VSolid*        solid = nullptr;
+    G4RotationMatrix rot;
+    G4ThreeVector    pos;
+};
+static std::vector<CutTubeLeg> MakeCutTubeLegs(const G4String& name,
+                                               G4double rmax,
+                                               const std::vector<G4ThreeVector>& path)
+{
+    const std::size_t n = path.size();
+    std::vector<G4ThreeVector> dir(n - 1);
+    for (std::size_t i = 0; i + 1 < n; ++i) dir[i] = (path[i+1] - path[i]).unit();
+
+    std::vector<CutTubeLeg> legs;
+    legs.reserve(n - 1);
+    const G4ThreeVector ex(1., 0., 0.);   // every leg is perpendicular to slab x
+    for (std::size_t i = 0; i + 1 < n; ++i) {
+        const G4ThreeVector ez = dir[i];
+        const G4ThreeVector ey = ez.cross(ex);
+        G4RotationMatrix R;
+        R.set(ex, ey, ez);                // columns = images of local x,y,z
+        const G4RotationMatrix Rinv = R.inverse();
+
+        // Outward cut normals in the slab frame: perpendicular at the polyline
+        // ends, the (negated, at the low end) miter bisector at interior nodes.
+        const G4ThreeVector mLo = (i == 0)     ? ez : (dir[i-1] + dir[i]).unit();
+        const G4ThreeVector mHi = (i + 2 == n) ? ez : (dir[i] + dir[i+1]).unit();
+        const G4ThreeVector lowN  = Rinv * (-mLo);
+        const G4ThreeVector highN = Rinv * ( mHi);
+
+        const G4double halfL = 0.5 * (path[i+1] - path[i]).mag();
+        CutTubeLeg leg;
+        leg.solid = new G4CutTubs(name + "_leg" + std::to_string(i),
+                                  0., rmax, halfL, 0., CLHEP::twopi,
+                                  lowN, highN);
+        leg.rot = R;
+        leg.pos = 0.5 * (path[i] + path[i+1]);
+        legs.push_back(leg);
+    }
+    return legs;
+}
+
+// Union of the analytic legs of one cutter, expressed in the frame of the
+// object being carved (path already shifted into that frame).
+static G4VSolid* MakeCutTubeCutter(const G4String& name, G4double rmax,
+                                   const std::vector<G4ThreeVector>& path)
+{
+    auto legs = MakeCutTubeLegs(name, rmax, path);
+    G4VSolid* u = new G4DisplacedSolid(name + "_d0", legs[0].solid,
+                                       G4Transform3D(legs[0].rot, legs[0].pos));
+    for (std::size_t i = 1; i < legs.size(); ++i) {
+        u = new G4UnionSolid(name + "_u" + std::to_string(i), u, legs[i].solid,
+                             G4Transform3D(legs[i].rot, legs[i].pos));
+    }
+    return u;
+}
+
+// Rotation mapping the extruded solid's local frame (poly-x=Y, poly-y=Z,
+// extrusion=local z) onto slab-local axes slab = (local z, local x, local y).
+// Set explicitly by columns to avoid any active/passive-rotation ambiguity.
+static G4RotationMatrix ExtrudedFibreRot()
+{
+    G4RotationMatrix m;
+    m.set(G4ThreeVector(0., 1., 0.),    // image of local x -> slab y
+          G4ThreeVector(0., 0., 1.),    // image of local y -> slab z
+          G4ThreeVector(1., 0., 0.));   // image of local z (extrusion) -> slab x
+    return m;
 }
 
 void GeometryMuonScint::BuildWLSFibres()
@@ -829,8 +1011,52 @@ void GeometryMuonScint::BuildWLSFibres()
         auto* mptW = new G4MaterialPropertiesTable();
         mptW->AddProperty("RINDEX",       e, rindexW, N);
         mptW->AddProperty("ABSLENGTH",    e, absBulk, N);   // non-WLS loss
-        mptW->AddProperty("WLSABSLENGTH", e, wlsAbs,  N);   // WLS absorption length
-        mptW->AddProperty("WLSCOMPONENT", e, wlsComp, N);
+        const G4double L0 = EnvDouble("DCS_WLS_PEAKABS_MM", -1.) * mm;
+        if (L0 > 0.) {
+            // STUDY: Kuraray Y-11(200) absorption AND emission spectra, digitized
+            // from report/refs/KurarayPSF.pdf (catalogue p. 9, "Absorption and
+            // Emission Spectra", thickest curve = Y-11), both normalised to 1 at
+            // their peaks (absorption 430 nm, emission 476 nm). The catalogue
+            // gives only the SHAPE; L0 = absolute absorption length at 430 nm.
+            // Tables are in wavelength-descending order (= energy ascending).
+            const G4double hc = 1239.84193;   // eV*nm
+            const G4int Na = 37;
+            const G4double lamA[Na] = { 650, 500, 488, 486, 483, 478, 474, 472, 470,
+                                        467, 465, 462, 459, 457, 453, 450, 448, 444,
+                                        442, 440, 437, 435, 430, 427, 423, 420, 415,
+                                        410, 405, 400, 396, 390, 386, 380, 370, 360,
+                                        350 };
+            const G4double relA[Na] = { 0.0, 0.0, 0.0, 0.005, 0.015, 0.054, 0.11, 0.20,
+                                        0.31, 0.45, 0.59, 0.71, 0.80, 0.85, 0.88, 0.85,
+                                        0.81, 0.77, 0.79, 0.84, 0.90, 0.96, 1.00, 0.93,
+                                        0.84, 0.75, 0.64, 0.59, 0.51, 0.44, 0.37, 0.29,
+                                        0.24, 0.15, 0.075, 0.045, 0.03 };
+            G4double ea[Na], la[Na];
+            for (G4int i = 0; i < Na; ++i) {
+                ea[i] = hc/lamA[i] * eV;
+                la[i] = (relA[i] > 0.) ? L0/relA[i] : 1e6*m;
+            }
+            mptW->AddProperty("WLSABSLENGTH", ea, la, Na);
+
+            const G4int Ne = 36;
+            const G4double lamE[Ne] = { 650, 640, 620, 600, 590, 580, 570, 560, 550,
+                                        540, 531, 526, 520, 516, 512, 507, 503, 500,
+                                        495, 490, 487, 485, 482, 479, 476, 473, 471,
+                                        469, 466, 463, 461, 458, 456, 452, 449, 444 };
+            const G4double relE[Ne] = { 0.0, 0.0, 0.005, 0.02, 0.03, 0.05, 0.085, 0.13,
+                                        0.19, 0.25, 0.31, 0.43, 0.55, 0.63, 0.71, 0.77,
+                                        0.76, 0.73, 0.69, 0.73, 0.80, 0.85, 0.92, 0.98,
+                                        1.00, 0.92, 0.82, 0.67, 0.50, 0.32, 0.21, 0.14,
+                                        0.09, 0.04, 0.01, 0.0 };
+            G4double ee[Ne], we[Ne];
+            for (G4int i = 0; i < Ne; ++i) { ee[i] = hc/lamE[i] * eV; we[i] = relE[i]; }
+            mptW->AddProperty("WLSCOMPONENT", ee, we, Ne);
+            G4cout << " [MuonScint] STUDY: Y-11 Kuraray absorption+emission spectra, "
+                   << "WLSABSLENGTH = " << L0/mm << " mm at 430 nm" << G4endl;
+        } else {
+            mptW->AddProperty("WLSABSLENGTH", e, wlsAbs, N); // WLS absorption length
+            mptW->AddProperty("WLSCOMPONENT", e, wlsComp, N);
+        }
         mptW->AddConstProperty("WLSTIMECONSTANT", 7.0*ns);  // Y-11 decay
         coreMat->SetMaterialPropertiesTable(mptW);
     }
@@ -862,6 +1088,15 @@ void GeometryMuonScint::BuildWLSFibres()
     // because the transverse bend offset differs per fibre.
     const G4double rFibre = fFibreRadius;
     const G4double rCore  = rFibre * (1.0 - fFibreCladFrac);
+    // At the touching bundle the centre pitch equals 2*rFibre, so square
+    // cross-sections would share fully coincident flat faces and the mitered
+    // ramp rings interpenetrate by ~0.1 um (GeomVol1002). Round fibres dodge
+    // this because tangent circles meet only along a line. Shrink the square by
+    // 2% (0.02 mm bundle gap); spacing/kink/bend are unchanged, only the
+    // cross-section width. For round fibres the factor is exactly 1.
+    const G4double sqShrink = fFibreSquareCross ? 0.98 : 1.0;
+    const G4double cladSize = rFibre * sqShrink;
+    const G4double coreSize = rCore  * sqShrink;
     const G4double halfL  = fHalfSize.y();   // run the full plate length (y)
     const G4double resL   = 2.0*mm;          // straight bundled stub before +end
     const G4double conv   = fFibreConvergeLen;
@@ -869,7 +1104,30 @@ void GeometryMuonScint::BuildWLSFibres()
     // the opening is bounded by the object's own faces, never by a face
     // coincident with the tool (coincident faces -> degenerate polygons).
     const G4double cutterOv = 10.0*mm;
+    // Radial clearance of the grease groove over the fibre cladding.  Carving
+    // the groove at exactly rFibre makes the boolean-meshed groove surface
+    // coincide with the tessellated cladding surface to within the re-meshing
+    // error (~18 nm, well above the 0.1-1 nm navigation tolerance); the
+    // resulting ambiguity makes G4Navigator emit GeomNav1002 "Stuck Track".
+    // A small clearance (<< fClampGap/2, so a grease layer still wets the
+    // scintillator face) removes the coincidence.  Set grooveClear = 0 to
+    // restore the original coincident-surface behaviour.
+    // A/B result (round preset 5, centre, 400 ev): grooveClear = 0 -> 28.35 pe/evt,
+    // grooveClear = 4 um -> 40.99 pe/evt (+45 %), because the sub-mm vacuum annulus
+    // left around the fibre acts as a low-index cladding and boosts TIR guiding.
+    // The clearance is therefore NOT optics-preserving and is rejected as a fix;
+    // 0 (coincident, physically correct) is kept.
+    const G4double grooveClear = 0.0*um;   // coincident clad<->grease (see above)
     const G4int    ringSeg  = 24;            // azimuthal facets around a fibre
+    const G4bool   squareCross = fFibreSquareCross;
+    // Cross-section dispatch: round swept tube (ringSeg-gon) or square swept
+    // prism of the same width. r is the circle radius, hw the square half-width
+    // (numerically equal in every use here, so a single "size" value suffices).
+    auto swept = [&](const G4String& nm, G4double size,
+                     const std::vector<G4ThreeVector>& p) -> G4VSolid* {
+        return squareCross ? MakeSweptSquare(nm, size, p)
+                           : MakeSweptTube(nm, size, p, ringSeg);
+    };
 
     const G4double sx = fWLSOnNegX ? -1.0 : +1.0;      // instrumented face normal
     const G4double zSpacing = fFibrePitch;              // straight-section pitch
@@ -888,27 +1146,64 @@ void GeometryMuonScint::BuildWLSFibres()
 
     // Per-fibre centreline z on the straight run and at the bundle. The paths
     // below are in slab-local coordinates, so no rotation is ever involved.
+    // Analytic round fibre: each straight leg of the centreline is a clad
+    // G4CutTubs with a coaxial core G4CutTubs daughter carrying the SAME cut
+    // planes (so core and clad end faces are coplanar, as in the tessellated
+    // model). Legs of one fibre are world siblings joined at exact miter planes.
+    const G4bool analytic = fFibreAnalytic && !squareCross;
+    // Exactly touching bundled cylinders (pitch = 2 r) are tangent, and near
+    // the end of the ramp the tilted legs (ellipse half-width r/cos(alpha),
+    // alpha <= 3.3 deg) interpenetrate by up to ~0.3 um (GeomVol1002). The
+    // analytic fibre therefore bundles at 2 r + 2 um: optically still touching.
+    const G4double bundlePitch = analytic ? fBundlePitch + 2.0*um : fBundlePitch;
+
     std::vector<G4double> zSpread(fNFibres), zBundle(fNFibres);
     for (G4int k = 0; k < fNFibres; ++k) {
         zSpread[k] = (k - 0.5*(fNFibres - 1)) * fFibrePitch;
-        zBundle[k] = (k - 0.5*(fNFibres - 1)) * fBundlePitch;
+        zBundle[k] = (k - 0.5*(fNFibres - 1)) * bundlePitch;
     }
 
     fFibreCoreLVs.clear();
     fFibreCladLVs.clear();
-    for (G4int k = 0; k < fNFibres; ++k) {
+    fFibreSegs.clear();
+    if (analytic) fFibreSegs.resize(fNFibres);
+    for (G4int k = 0; analytic && k < fNFibres; ++k) {
+        const auto tag = std::to_string(k);
+        const auto path = BentPath(fFibreAxisX, zSpread[k], zBundle[k],
+                                   halfL, conv, resL, 0.);
+        auto cladLegs = MakeCutTubeLegs("WLSFibreCladSolid_" + tag, rFibre, path);
+        auto coreLegs = MakeCutTubeLegs("WLSFibreCoreSolid_" + tag, rCore,  path);
+        for (std::size_t s = 0; s < cladLegs.size(); ++s) {
+            const auto stag = tag + "_" + std::to_string(s);
+            auto* cladLV = new G4LogicalVolume(cladLegs[s].solid, cladMat,
+                                               "WLSFibreCladLV_" + stag);
+            cladLV->SetVisAttributes(new G4VisAttributes(true, G4Colour(0.2, 0.9, 0.5, 0.6)));
+            auto* coreLV = new G4LogicalVolume(coreLegs[s].solid, coreMat,
+                                               "WLSFibreCoreLV_" + stag);
+            coreLV->SetVisAttributes(new G4VisAttributes(true, G4Colour(0.7, 1.0, 0.9, 0.95)));
+            coreLV->SetUserLimits(new G4UserLimits(DBL_MAX, DBL_MAX, 10.*ms));
+            new G4PVPlacement(nullptr, G4ThreeVector(), coreLV,
+                              "WLSFibreCorePhys_" + stag, cladLV, false, k, false);
+            fFibreSegs[k].push_back({cladLV, cladLegs[s].rot, cladLegs[s].pos});
+            fFibreCladLVs.push_back(cladLV);   // for IsFibreLV only
+            fFibreCoreLVs.push_back(coreLV);
+        }
+    }
+    for (G4int k = 0; !analytic && k < fNFibres; ++k) {
         const auto tag = std::to_string(k);
         const auto path = BentPath(fFibreAxisX, zSpread[k], zBundle[k],
                                    halfL, conv, resL, 0.);
 
-        auto* cladSolid = MakeSweptTube("WLSFibreCladSolid_" + tag, rFibre,
-                                        path, ringSeg);
+        auto* cladSolid = (squareCross && fFibreUseExtruded)
+            ? MakeExtrudedFibre("WLSFibreCladSolid_" + tag, path, cladSize)
+            : swept("WLSFibreCladSolid_" + tag, cladSize, path);
         auto* cladLV = new G4LogicalVolume(cladSolid, cladMat,
                                            "WLSFibreCladLV_" + tag);
         cladLV->SetVisAttributes(new G4VisAttributes(true, G4Colour(0.2, 0.9, 0.5, 0.6)));
 
-        auto* coreSolid = MakeSweptTube("WLSFibreCoreSolid_" + tag, rCore,
-                                        path, ringSeg);
+        auto* coreSolid = (squareCross && fFibreUseExtruded)
+            ? MakeExtrudedFibre("WLSFibreCoreSolid_" + tag, path, coreSize)
+            : swept("WLSFibreCoreSolid_" + tag, coreSize, path);
         auto* coreLV = new G4LogicalVolume(coreSolid, coreMat,
                                            "WLSFibreCoreLV_" + tag);
         coreLV->SetVisAttributes(new G4VisAttributes(true, G4Colour(0.7, 1.0, 0.9, 0.95)));
@@ -941,9 +1236,10 @@ void GeometryMuonScint::BuildWLSFibres()
                               filmHalfX, fHalfSize.y(), fHalfSize.z());
     G4Material* greaseMat = G4Material::GetMaterial("OpticalGrease", false);
     {
-        // Carve the film with a groove CONCENTRIC to each fibre and of radius
-        // rFibre, so the grease directly wets the fibre surface -- a coincident
-        // clad<->grease optical boundary, as in the real greased clamp. It must
+        // Carve the film with a groove CONCENTRIC to each fibre, of radius
+        // rFibre + grooveClear, so the grease closely wets the fibre surface
+        // without sharing a boolean-meshed boundary with the tessellated
+        // cladding (which caused GeomNav1002 stuck tracks). The clearance must
         // NOT reuse fChannelRadius (rFibre + 0.05 mm): that larger cutter reaches
         // exactly the film's slab-side face (tangency -> degenerate boolean) and
         // leaves a 50 um air annulus, so the fibre never couples to the grease.
@@ -956,8 +1252,11 @@ void GeometryMuonScint::BuildWLSFibres()
         for (G4int k = 0; k < fNFibres; ++k) {
             const auto tool = BentPath(fFibreAxisX - filmCx, zSpread[k],
                                        zBundle[k], halfL, conv, resL, cutterOv);
-            auto* groove = MakeSweptTube("WLSCoupleGroove_" + std::to_string(k),
-                                         rFibre, tool, ringSeg);
+            auto* groove = analytic
+                ? MakeCutTubeCutter("WLSCoupleGroove_" + std::to_string(k),
+                                    rFibre + grooveClear, tool)
+                : swept("WLSCoupleGroove_" + std::to_string(k),
+                        rFibre + grooveClear, tool);
             solid = new G4SubtractionSolid("WLSCoupleCut_" + std::to_string(k),
                                            solid, groove, nullptr,
                                            G4ThreeVector(0., 0., 0.));
@@ -998,8 +1297,10 @@ void GeometryMuonScint::BuildWLSFibres()
         for (G4int k = 0; k < fNFibres; ++k) {
             const auto tool = BentPath(relChX, zSpread[k],
                                        zBundle[k], halfL, conv, resL, cutterOv);
-            auto* channel = MakeSweptTube("WLSChannel_" + std::to_string(k),
-                                          fChannelRadius, tool, ringSeg);
+            auto* channel = analytic
+                ? MakeCutTubeCutter("WLSChannel_" + std::to_string(k),
+                                    fChannelRadius, tool)
+                : swept("WLSChannel_" + std::to_string(k), fChannelRadius, tool);
             clampSolid = new G4SubtractionSolid("WLSClampSolid_" + std::to_string(k),
                                                 clampSolid, channel, nullptr,
                                                 G4ThreeVector(0., 0., 0.));
@@ -1046,8 +1347,14 @@ void GeometryMuonScint::BuildWLSFibres()
     // covered half the face; full discs sit at the SPREAD pitch fFibrePitch >
     // 2*rFibre so neighbouring caps do not overlap.)
     const G4double capHalf = 0.05 * mm;
-    auto* capSolid = new G4Tubs("WLSFibreMirrorCap", 0., rFibre, capHalf,
-                                0., 360.*deg);
+    // Round fibre: a Ø2*rFibre disc (tube axis later rotated z->y). Square
+    // fibre: an axis-aligned box closing the flat end face (fibre axis already
+    // +y, so no placement rotation is needed for it).
+    G4VSolid* capSolid = squareCross
+        ? static_cast<G4VSolid*>(new G4Box("WLSFibreMirrorCap",
+                                           rFibre, capHalf, rFibre))
+        : static_cast<G4VSolid*>(new G4Tubs("WLSFibreMirrorCap", 0., rFibre,
+                                            capHalf, 0., 360.*deg));
     G4Material* capMat = nist->FindOrBuildMaterial("G4_Al");
     fMirrorCapLV = new G4LogicalVolume(capSolid, capMat, "WLSFibreMirrorCapLV");
     fMirrorCapLV->SetVisAttributes(new G4VisAttributes(true, G4Colour(0.9, 0.9, 0.9, 0.9)));
@@ -1131,7 +1438,25 @@ void GeometryMuonScint::PlaceWLSFibres(G4LogicalVolume* worldLV,
     new G4PVPlacement(rotCopy(flipRot),
                       mapPos(G4ThreeVector(clampCx, 0., 0.)),
                       fClampLV, "WLSClampPhys", worldLV, false, 0, true);
-    if (fClampMirror) {
+    // NOTE: a skin surface applies to EVERY face of the LV (channel walls and
+    // the grease-facing front included), not just the outboard face.
+    const std::string clampMode = EnvString("DCS_CLAMP_SURFACE", "mirror");
+    if (clampMode == "black") {
+        G4cout << " [MuonScint] STUDY: clamp skin = none (black absorbing bulk)" << G4endl;
+    } else if (clampMode == "white") {
+        auto* white = new G4OpticalSurface("MuonScintClampWhite");
+        white->SetModel(unified);
+        white->SetType(dielectric_dielectric);
+        white->SetFinish(groundfrontpainted);   // Lambertian, no TIR
+        const G4int Nw = 2;
+        G4double ew[Nw] = { 1.5*eV, 6.0*eV };
+        G4double rw[Nw] = { 0.85, 0.85 };
+        auto* mptWh = new G4MaterialPropertiesTable();
+        mptWh->AddProperty("REFLECTIVITY", ew, rw, Nw);
+        white->SetMaterialPropertiesTable(mptWh);
+        new G4LogicalSkinSurface("WLSClampWhiteSkin", fClampLV, white);
+        G4cout << " [MuonScint] STUDY: clamp skin = white Lambertian R=0.85" << G4endl;
+    } else if (fClampMirror) {
         new G4LogicalSkinSurface("WLSClampMirrorSkin", fClampLV, fClampMirror);
     }
 
@@ -1152,12 +1477,50 @@ void GeometryMuonScint::PlaceWLSFibres(G4LogicalVolume* worldLV,
     // core is a daughter of each clad LV (built above), so it is not placed
     // here.
     std::vector<G4VPhysicalVolume*> cladPVs(fNFibres, nullptr);
-    for (G4int k = 0; k < fNFibres; ++k) {
-        cladPVs[k] = new G4PVPlacement(rotCopy(flipRot),
-                                       mapPos(G4ThreeVector(0., 0., 0.)),
+    // Square fibres are built as G4ExtrudedSolid in their own local frame (see
+    // MakeExtrudedFibre), which needs an extra local->slab rotation and an x
+    // offset; the round tessellated fibres are already in slab-local coordinates.
+    G4RotationMatrix baseFibreRot = flipRot;
+    G4ThreeVector    cladPos(0., 0., 0.);
+    if (fFibreSquareCross && fFibreUseExtruded) {
+        // Desired object (local->slab) rotation is flipRot*M; G4 stores the
+        // inverse of the matrix passed to G4PVPlacement, so pass its inverse.
+        G4RotationMatrix objRot = flipRot * ExtrudedFibreRot();
+        baseFibreRot = objRot.inverse();
+        cladPos      = flipRot * G4ThreeVector(fFibreAxisX, 0., 0.);
+    }
+    // The clad PV touching the far-end mirror cap and the one touching the
+    // read-out pad (the same PV for a single-solid fibre; the first / last leg
+    // for the analytic multi-leg fibre).
+    std::vector<G4VPhysicalVolume*> capSidePVs(fNFibres, nullptr);
+    std::vector<G4VPhysicalVolume*> padSidePVs(fNFibres, nullptr);
+    if (!fFibreSegs.empty()) {
+        // Analytic legs: object transform = slab o flip o leg (all active).
+        for (G4int k = 0; k < fNFibres; ++k) {
+            const auto& legs = fFibreSegs[k];
+            for (std::size_t s = 0; s < legs.size(); ++s) {
+                G4RotationMatrix objRot = flipRot * legs[s].rot;
+                G4ThreeVector    objPos = flipRot * legs[s].pos;
+                if (slabRot) { objRot = (*slabRot) * objRot; objPos = (*slabRot) * objPos; }
+                objPos += slabPos;
+                auto* pv = new G4PVPlacement(G4Transform3D(objRot, objPos),
+                                             legs[s].cladLV,
+                                             "WLSFibreCladPhys_" + std::to_string(k)
+                                                 + "_" + std::to_string(s),
+                                             worldLV, false, k, true);
+                if (s == 0)               capSidePVs[k] = pv;
+                if (s + 1 == legs.size()) padSidePVs[k] = pv;
+            }
+        }
+    }
+    for (G4int k = 0; fFibreSegs.empty() && k < fNFibres; ++k) {
+        cladPVs[k] = new G4PVPlacement(rotCopy(baseFibreRot),
+                                       mapPos(cladPos),
                                        fFibreCladLVs[k],
                                        "WLSFibreCladPhys_" + std::to_string(k),
                                        worldLV, false, k, true);
+        capSidePVs[k] = cladPVs[k];
+        padSidePVs[k] = cladPVs[k];
     }
 
     // ---- Far-end mirror caps (world siblings just past the +y fibre ends
@@ -1166,7 +1529,7 @@ void GeometryMuonScint::PlaceWLSFibres(G4LogicalVolume* worldLV,
     // immaterial. zk is mirrored so cap k pairs with the flipped fibre k.
     const G4double capPhi = fWLSOnNegX ? 180.*deg : 0.;
     G4RotationMatrix capRot;
-    capRot.rotateX(90.*deg);
+    if (!fFibreSquareCross) capRot.rotateX(90.*deg);  // tube axis z -> y (box cap already aligned)
     std::vector<G4VPhysicalVolume*> capPVs(fNFibres, nullptr);
     for (G4int k = 0; k < fNFibres; ++k) {
         const G4double zk = -(k - 0.5*(fNFibres - 1)) * fFibreZSpacing;
@@ -1218,9 +1581,9 @@ void GeometryMuonScint::PlaceWLSFibres(G4LogicalVolume* worldLV,
                                  fFibreEndMirror);
         for (G4int k = 0; k < fNFibres; ++k) {
             new G4LogicalBorderSurface("MuonScint_FibreCap_" + std::to_string(k),
-                                       cladPVs[k], capPVs[k], fFibreEndMirror);
+                                       capSidePVs[k], capPVs[k], fFibreEndMirror);
             new G4LogicalBorderSurface("MuonScint_CapFibre_" + std::to_string(k),
-                                       capPVs[k], cladPVs[k], fFibreEndMirror);
+                                       capPVs[k], capSidePVs[k], fFibreEndMirror);
         }
     }
     // fibre read-out end (-y after the placement flip) -> read-out pad:
@@ -1231,11 +1594,11 @@ void GeometryMuonScint::PlaceWLSFibres(G4LogicalVolume* worldLV,
     // surface at their end face, so the default lossless-TIR rule traps their
     // light instead of delivering it to the SiPM.
     if (fCouplingSurface && padPV) {
-        for (std::size_t k = 0; k < cladPVs.size(); ++k) {
+        for (std::size_t k = 0; k < padSidePVs.size(); ++k) {
             new G4LogicalBorderSurface("MuonScint_FibrePad_" + std::to_string(k),
-                                       cladPVs[k], padPV, fCouplingSurface);
+                                       padSidePVs[k], padPV, fCouplingSurface);
             new G4LogicalBorderSurface("MuonScint_PadFibre_" + std::to_string(k),
-                                       padPV, cladPVs[k], fCouplingSurface);
+                                       padPV, padSidePVs[k], fCouplingSurface);
         }
     }
     // pad -> SiPM: photocathode (PDE) detection.
@@ -1529,6 +1892,30 @@ void GeometryMuonScint::PresetConfig_WLSFibreClamp() {
     // are built in Build() once fUseWLSFibres is set.
     ClearSiPMs();
     SetUseWLSFibres(true);
+    SetFibreSquareCross(false);
+    SetFibreAnalytic(false);
+    fWLSOnNegX = true;
+    AddSiPM({0, 0.0, 0.0});   // read-out SiPM; placement is overridden in PlaceWLSFibres
+}
+
+void GeometryMuonScint::PresetConfig_WLSFibreClampAnalytic() {
+    // Config 4 with the round fibres, film grooves and clamp channels built
+    // from analytic mitered G4CutTubs legs instead of tessellated swept tubes.
+    // Identical centreline, radii, materials and surfaces as preset 5.
+    PresetConfig_WLSFibreClamp();
+    SetFibreAnalytic(true);
+}
+
+void GeometryMuonScint::PresetConfig_WLSFibreClampBox() {
+    // Config 4 variant: identical to PresetConfig_WLSFibreClamp (same four
+    // fibres, same pitch/kink/bend, single read-out SiPM on the -X narrow face)
+    // but with a flat-faced SQUARE fibre cross-section instead of the Ø1.0 mm
+    // round one. This removes the 24-gon's shallow facet edges (the suspected
+    // G4Navigator stuck-track trigger) and makes the clamp/grease booleans
+    // purely planar. Used for the round-vs-box stuck-track A/B comparison.
+    ClearSiPMs();
+    SetUseWLSFibres(true);
+    SetFibreSquareCross(true);
     fWLSOnNegX = true;
     AddSiPM({0, 0.0, 0.0});   // read-out SiPM; placement is overridden in PlaceWLSFibres
 }

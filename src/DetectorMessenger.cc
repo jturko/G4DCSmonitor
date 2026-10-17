@@ -213,9 +213,11 @@ DetectorMessenger::DetectorMessenger(DetectorConstruction* Det) : fDetector(Det)
     fApplyMuonScintPresetCmd->SetGuidance("  2 = Config 2: 4 SiPMs (1 per side, all 4 sides)");
     fApplyMuonScintPresetCmd->SetGuidance("  3 = Config 3: 2 SiPMs (both on the +X side)");
     fApplyMuonScintPresetCmd->SetGuidance("  4 = Corners:  4 SiPMs (one at each corner of +X/-X edges)");
-    fApplyMuonScintPresetCmd->SetGuidance("  5 = Config 4: single SiPM + WLS fibre clamp (Y-11)");
+    fApplyMuonScintPresetCmd->SetGuidance("  5 = Config 4: single SiPM + WLS fibre clamp (Y-11, round)");
+    fApplyMuonScintPresetCmd->SetGuidance("  6 = Config 4b: as 5 but square (box) fibre cross-section");
+    fApplyMuonScintPresetCmd->SetGuidance("  7 = Config 4c: as 5 but analytic G4CutTubs fibres/grooves");
     fApplyMuonScintPresetCmd->SetParameterName("preset", false);
-    fApplyMuonScintPresetCmd->SetRange("preset >= 1 && preset <= 5");
+    fApplyMuonScintPresetCmd->SetRange("preset >= 1 && preset <= 7");
     fApplyMuonScintPresetCmd->AvailableForStates(G4State_PreInit);
 
     fSetMuonScintLightYieldScaleCmd = new G4UIcmdWithADouble("/dcs-monitor/det/muonScint/setLightYieldScale", this);
