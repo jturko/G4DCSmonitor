@@ -943,3 +943,31 @@ L0 = 0.1/0.3/0.5/1.0/1.5/3.0 mm → 0.76/0.62/0.49/0.31/0.23/0.125.
   and the WLS delay should be exponential.
 - **Process.** Implement in the order of §8, verify each step with the overlap test and a
   400-event smoke run, and report to the user between steps.
+
+---
+
+## 14. Implementation status (this session — steps 1–7 + 9 done)
+
+All steps 1–7 (P1–P6) are implemented, build clean, and smoke-tested locally (8 threads).
+**Deviations from §8:** per the user, preset 5 stays the legacy tessellated variant
+(**visualisation only**) and the analytic geometry is promoted to **preset 7 (production)**;
+cfg-4 generators/templates were repointed to `preset 7`; presets 5 and 6 were **not** deleted
+(kept for vis / A–B).
+
+Smoke runs (cfg4, glossy, centre, 100 evt, 4 threads) — `sipmHits` pe/evt:
+| step | geometry | clamp | clad | PDE | pe/evt | λ<440 |
+|---|---|---|---|---|---|---|
+| 2 | analytic | mirror | single | old | 91.97 | 0.009 |
+| 3+4 A | analytic | white | single | old | 73.85 | — |
+| 3+4 B | analytic | white | multi | old | 83.83 | — |
+| 4 C | analytic | mirror | multi | old | 102.08 | — |
+| 7 | analytic | white | multi | **digitized** | **67.33** | 0.015 |
+
+- Step 5 (P4a bare direct-path fix): bare cfg4 λ<440 **21.8 % → 1.4 %** (200 evt), matching the
+  expected physical film→pad residual. Creator diagnostic verified (`creatorDetected`:
+  OpWLS 8041, Scint 479, Cer 12). Step 6: `SetWLSTimeProfile("exponential")`.
+- Step 8 (10 000-event stuck-track validation) **not** run here — left to the user.
+- `report/matrix_report.tex` deliberately untouched (stall caveat ~`:1500`; cfg-4 numbers and
+  WLS text are now outdated — user to decide).
+- Production data under `.../MuonScinti/data_v3/` is stale for **all** configs (Step 7 PDE
+  affects 1–3; Steps 1–6 affect 4) and must be regenerated (`slurm/run_local.sh`).

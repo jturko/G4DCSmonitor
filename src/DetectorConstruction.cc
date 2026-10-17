@@ -402,6 +402,21 @@ void DetectorConstruction::SetMuonScintLightYieldScale(G4double s)
     if (!fMuonScints.empty()) fMuonScints.back()->SetLightYieldScale(s);
 }
 
+void DetectorConstruction::SetMuonScintWLSAbsLength(G4double l)
+{
+    if (!fMuonScints.empty()) fMuonScints.back()->SetWLSAbsLength430(l);
+}
+
+void DetectorConstruction::SetMuonScintClampSurface(ClampSurfaceMode m)
+{
+    if (!fMuonScints.empty()) fMuonScints.back()->SetClampSurfaceMode(m);
+}
+
+void DetectorConstruction::SetMuonScintFibreMultiClad(G4bool on)
+{
+    if (!fMuonScints.empty()) fMuonScints.back()->SetFibreMultiClad(on);
+}
+
 void DetectorConstruction::SetMuonScintSiPMSize(G4double sx, G4double sy)
 {
     if (!fMuonScints.empty()) fMuonScints.back()->SetSiPMSize(sx, sy);

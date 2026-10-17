@@ -47,7 +47,8 @@ class MuonScintHit : public G4VHit
     // Wavelength `lam` is in nm.
     void AddDetected(G4double t,
                      G4double lam_nm,
-                     const G4ThreeVector& pos)
+                     const G4ThreeVector& pos,
+                     G4int creator = 0)
     {
         if (fNDetected == 0 || t < fTFirst) {
             fTFirst   = t;
@@ -58,6 +59,7 @@ class MuonScintHit : public G4VHit
         fSumLam2 += lam_nm * lam_nm;
         fTimes.push_back(t);
         fWavelengths.push_back(lam_nm);
+        fCreators.push_back(creator);
     }
 
     // ---- Getters -------------------------------------------------------
@@ -72,6 +74,8 @@ class MuonScintHit : public G4VHit
     // the order detected. One entry per detected photoelectron; empty when none.
     const std::vector<G4double>& GetTimes()       const { return fTimes; }
     const std::vector<G4double>& GetWavelengths() const { return fWavelengths; }
+    // Per-photoelectron creator-process code, parallel to GetTimes().
+    const std::vector<G4int>&    GetCreators()    const { return fCreators; }
 
     G4double GetMeanWavelength() const {
         return (fNDetected > 0) ? (fSumLam / fNDetected) : 0.0;
@@ -94,6 +98,7 @@ class MuonScintHit : public G4VHit
     G4double      fWeight    =  1.0;
     std::vector<G4double> fTimes;        // per-photoelectron detection times [ns]
     std::vector<G4double> fWavelengths;  // per-photoelectron wavelengths [nm]
+    std::vector<G4int>    fCreators;     // per-photoelectron creator-process code
 };
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

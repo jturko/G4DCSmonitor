@@ -62,5 +62,8 @@ inline G4ThreadLocal OpticalDiag gOpticalDiag;
 // AddNtupleRow time, so MuonScintSiPMSD refills them per (event, SiPM) row.
 inline G4ThreadLocal std::vector<G4double> gDetectedTimes;
 inline G4ThreadLocal std::vector<G4double> gDetectedWavelengths;
+// Per-photoelectron creator-process code (1=OpWLS, 2=Scintillation, 3=Cerenkov,
+// 0=other), parallel to gDetectedTimes / gDetectedWavelengths.
+inline G4ThreadLocal std::vector<G4int> gDetectedCreator;
 
 #endif

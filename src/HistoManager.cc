@@ -146,6 +146,9 @@ void HistoManager::Book()
     // to thread-local buffers that MuonScintSiPMSD refills per row.
     analysisManager->CreateNtupleDColumn("tDetected", gDetectedTimes);
     analysisManager->CreateNtupleDColumn("wlDetected_nm", gDetectedWavelengths);
+    // Per-photoelectron creator-process code (1=OpWLS, 2=Scintillation,
+    // 3=Cerenkov, 0=other), parallel to the two vector columns above.
+    analysisManager->CreateNtupleIColumn("creatorDetected", gDetectedCreator);
     analysisManager->FinishNtuple();
     //G4cout << " Created ntuple \"sipmHits\" (id " << idx << ")" << G4endl;
 

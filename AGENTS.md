@@ -94,10 +94,11 @@ grid (ascending eV). Reflector and bare-absorber skins are mutually exclusive.
   boundary across a **real 1.2 mm air gap**. The black holder LV (see *Black holder* below)
   carries the `MuonScintHolderAbsorber` skin (`fHolderSurface`, REFLECTIVITY=TRANSMITTANCE=0,
   unified/polished), so light that refracts out of the plate crosses the gap and is killed at
-  the wall. But the `R=T=0` constants are **not** what kills it: for a plain `polished`
-  `dielectric_dielectric` boundary `G4OpBoundaryProcess` takes the pure Fresnel/TIR branch and
-  ignores REFLECTIVITY/TRANSMITTANCE (read only for `*backpainted` finishes); the photon dies
-  on the holder **bulk** `ABSLENGTH=1 µm`. `fReflSurface` is built but unused for bare unless
+  the wall. The `R=T=0` constants **do** kill it at the surface: `G4OpBoundaryProcess.cc:460-466`
+  computes `rand > R + T` for a `polished`/`ground` `dielectric_dielectric` boundary and, with
+  R=T=0, absorbs every photon that reaches the holder skin (the Fresnel/TIR branch is only
+  reached when `rand <= R`). The holder **bulk** `ABSLENGTH=1 µm` would absorb it too, so the
+  outcome is the same either way. `fReflSurface` is built but unused for bare unless
   `kStudyBareRoughness>0` — and that roughness branch is currently a **no-op**: it is
   `ground`+`unified`+`SPECULARSPIKECONSTANT=1`, so `ChooseReflection` always picks
   `SpikeReflection`, resetting the facet normal to the global one and never applying
@@ -115,7 +116,8 @@ centre-dominant: Al/glossy peak at centre, but bare/TiO₂ peak at **corner** (s
 `tab:positions`), reversing the paper's corner-lowest rule.
 
 **SiPM detection via the boundary process**: grease↔SiPM is `dielectric_metal` with
-`EFFICIENCY` = ASD-NUV4S-P-40 PDE(λ) (peak 0.43 @ 420 nm) and `REFLECTIVITY`=0.
+`EFFICIENCY` = ASD-NUV4S-P-40 PDE(λ), the 25-pt digitized AdvanSiD Fig. 8 curve (6 V OV,
+360–750 nm; peak 0.431 @ 410 nm, ~0.30 @ 490 nm, 0.086 @ 750 nm) and `REFLECTIVITY`=0.
 `G4OpBoundaryProcess` does the PDE draw, sets status `Detection`, and invokes the SD —
 needs **`SetBoundaryInvokeSD(true)`** (`PhysicsList.cc`). `MuonScintSiPMSD::ProcessHits`
 therefore fires only for real photoelectrons and kills the photon (no manual draw).
@@ -134,7 +136,8 @@ not WLS, so the Config 4 clamp never overlaps the holder. The absorber skin
   +Y u=+0.5, −Y u=−0.5. **NOT centred.**
 - cfg3 = 2 SiPMs: both on the **−X** side at u = −0.5, +0.5 (single instrumented side,
   opposite the beam edge/corner regions). **Not** +X.
-- cfg4 (preset 5) = WLS fibre clamp on the **−X** narrow face (see "Config 4 / WLS").
+- cfg4 (preset 7 analytic; preset 5 = legacy tessellated, vis only) = WLS fibre clamp on the
+  **−X** narrow face (see "Config 4 / WLS").
 
 **Beam regions vs. detector side**: beam patch centres stay `(0,0)` (centre), `(100,0)`
 (+X edge), `(100,100)` (+X/+Y corner). The single-sided configs (3, 4) sit on −X so the
@@ -156,11 +159,14 @@ ntuple (nScint/nCerenkov/nKilled/nDetected/nEscaped/nAlive). Toggle
 **Collection efficiency lives in `sipmHits`** (not H2 maps). `MuonScintSiPMSD::EndOfEvent`
 writes one row per (event, SiPM) — including zero-detection rows — with fixed columns
 evtNb, det, sipm, nDetected, tFirst, meanWavelength_nm, rmsWavelength_nm, weight, muonX,
-muonY, nProduced, **tDetected, wlDetected_nm** (the last two are variable-length vector
-branches: per-photoelectron global arrival times [ns] and wavelengths [nm], one entry per
-detected photoelectron, empty for zero-detection rows; bound to the thread-local
-`gDetectedTimes`/`gDetectedWavelengths` buffers in `include/OpticalDiagnostics.hh` and
-refilled per row by `MuonScintSiPMSD::EndOfEvent`, enabling offline pulse-shape studies).
+muonY, nProduced, **tDetected, wlDetected_nm, creatorDetected** (the first two are
+variable-length vector branches: per-photoelectron global arrival times [ns] and wavelengths
+[nm], one entry per detected photoelectron, empty for zero-detection rows; `creatorDetected`
+is a parallel vector<int> giving the creating process of each recorded photoelectron —
+1 = OpWLS, 2 = Scintillation, 3 = Čerenkov, 0 = unknown — via the thread-local
+`gDetectedTimes`/`gDetectedWavelengths`/`gDetectedCreator` buffers in
+`include/OpticalDiagnostics.hh`, refilled per row by `MuonScintSiPMSD::EndOfEvent`, enabling
+offline pulse-shape and process-mix studies).
 `nProduced` = all optical photons created in the slab that event
 (scint + Čerenkov). Rows are emitted only for slabs the muon entered
 (`gOpticalDiag.muonEntrySet[det]`); legacy fallback (hit-only, muonX/Y = −9999) when
@@ -174,13 +180,23 @@ For pe/evt, sum `nDetected` over all SiPMs and divide by the number of events (`
 `macros/plot_muon.C`, `macros/analyze_muon.C`, `macros/plot_collection_efficiency.C`
 (tree-based collection-efficiency maps; `plot_light_efficiency.C` is a thin forwarder
 kept for old command lines). `slurm/` bundle (one config×reflector per task, 32 threads,
-plus whole-slab array). `slurm/run_all.sh [NEVENTS_MATRIX] [NEVENTS_WHOLE] [THREADS]`
-(default 200 / 10000 / 32) generates both macro sets and `sbatch --parsable`s both arrays.
-Matrix/whole generators emit cfg 1–4 (cfg 4 → `@PRESET@` = 5);
+plus whole-slab array). `slurm/run_fast.sh [MATRIX_EVENTS] [WHOLE_EVENTS] [MATRIX_THREADS]
+[WHOLE_THREADS]` is the **recommended SLURM driver** (matrix flux map off, `--mem=4G`, `low`
+queue; defaults 200/10000/32/32): it generates `slurm/muon_fast/` + `slurm/muon_whole_fast/`
+macros and `sbatch --parsable`s `run_matrix_fast.sbatch` / `run_whole_fast.sbatch`. Key env
+knobs: `BIN=/abs/path/G4DCSmonitor` (the **only** thing selecting a specific build — it must be
+built on the cluster's module stack, e.g. via `slurm/build.sbatch`; the login-node `build/`
+links Geant4 11.3.2), `VERSION` (data tag → `data_<VERSION>/`, default `v2.2` — **override or
+it clobbers existing data**), `DATAROOT` (default `$PWD`; `cd` to the bigdata dir first), plus
+per-array `MATRIX_*`/`WHOLE_*` partition/account/time/mem and `ARRAY_LIMIT`.
+`slurm/run_all.sh [NEVENTS_MATRIX] [NEVENTS_WHOLE] [THREADS]` (default 200/10000/32) is the
+older heavier driver (flux map on, 64G, `cpu-genoa`). Matrix/whole generators emit cfg 1–4
+(cfg 4 → `@PRESET@` = **7**, the analytic variant; preset 5 = legacy tessellated vis-only);
 `slurm/run_local.sh <matrix|whole|all> [NEVENTS] [THREADS]` is a no-SLURM local runner
 (defaults NEVENTS 1000, THREADS 8, `CFGS="1 2 3 4"`, `REFLS="0 1 2 3"`, `SUFFIX=_v2`,
-`PARALLEL=2`; override via env vars). **There is no SLURM on this login node**, so production runs use
-`build/G4DCSmonitor` locally (8 threads). Reflective configs run ~2.5 evt/s vs ~100 evt/s
+`PARALLEL=2`; override via env vars). **There is no SLURM on this login node**, so local runs
+use `build/G4DCSmonitor` (8 threads) while production runs on the HPC via `run_fast.sh`.
+Reflective configs run ~2.5 evt/s vs ~100 evt/s
 for bare (long multi-bounce tracks). TTree writer leaves a <2 kB partial file for the
 position *currently* being written — **not** an abort. Regenerate the report with
 `macros/build_report_figures.sh [MATRIX_DIR] [WHOLE_DIR]` (runs `sipm_layouts.C`,
@@ -261,63 +277,71 @@ inert only when all three unified constants are zero (pure Lambertian, as in our
 so its absence in a normal run log proves nothing — count it with
 `/process/optical/boundary/verbose 2` or via the `opticalStats` budget.
 
-## Config 4 / WLS (single SiPM + fibre clamp, preset 5)
+## Config 4 / WLS (single SiPM + fibre clamp, preset 7 analytic; preset 5 legacy vis)
 
 **Goal / paper basis:** `~/Documents/muon_paper.pdf` (extract with `pdftotext -layout`)
 specifies **four Ø1.0 mm fibres in a 250 mm bar with ~1.0 mm channels**, far side "covered
 with a reflective material", one SiPM viewing all four ends. Trust the paper body over
 `wls_image_description.txt` (surrogate vision: its Ø/pitch/white-holder are unverified).
-Chosen: paper text + **black clamp with far-side reflector**.
+Chosen: paper text + **white clamp (default; `setClampSurface white|black|mirror`) with a
+far-side reflector**. Production runs use the analytic preset 7 geometry with multi-clad fibres
+and the digitized Kuraray Y-11 tables.
 
 **Geometry / coupling:** single row of fibres running the full 250 mm in **y** on the **−X**
 narrow face (`fWLSOnNegX`, default true, signs all x placements). A **thin 0.10 mm grease
 film** (`fClampGap`) sits between the slab face and the clamp front; each fibre pokes
 `fFibreProtrusion = 0.05 mm` into it (coincident clad↔grease boundary; the grease stays
 continuous against the slab). The clamp is a `G4Box` with one Ø1.1 mm
-(`fChannelRadius = 0.55`) bent channel per fibre. Cladding n=1.49 > grease n=1.46 keeps the
-core/clad TIR guide. Fibres are **world siblings** of the slab (not clamp daughters), so
+(`fChannelRadius = 0.55`) bent channel per fibre. The outer sheath (n=1.42) sits over the
+core/inner-clad (n=1.59/1.49) guide across the grease (n=1.46). Fibres are **world siblings**
+of the slab (not clamp daughters), so
 they can protrude past the clamp mouth without tripping the mother-containment check, and
 clamp/grease booleans reuse the same footprints so the volumes stay disjoint. Built in
 `BuildWLSFibres()` / `PlaceWLSFibres()` (`fUseWLSFibres`); `OpWLS` auto-enabled in
 `PhysicsList::ConstructProcess()` when `GeometryMuonScint::UsesWLSWorld()` (flag set in
 Build; geometry precedes physics).
 
-**Fibre solid = `G4TessellatedSolid` swept mitered cylinder**, built directly in slab-local
-coords by `MakeSweptTube(name, r, path, ringSeg)` from the 4-point centreline
-`BentPath(x, zSpread, zBundle, Ly, conv, resL, ov)`: a straight spread run at
-`fFibrePitch = 1.5 mm`, a ramp converging over `fFibreConvergeLen = 15 mm` to a touching
-`fBundlePitch = 1.0 mm` bundle (four +y ends bunch to a 4 mm bundle facing the single SiPM),
-then a short stub before +y. Core and clad are separate tessellated solids (core is a
-daughter of the clad). Paths are built slab-local in a canonical **+y-bundle / −y-mirror**
-frame; `PlaceWLSFibres` then applies one `Rx180` (`flipRot`) to the film/clamp/fibre
-placements so the read-out lands at slab-local **−y** (report-plan **top-left**) with the
-mirror caps at **+y**. Why tessellated: an earlier `G4Tubs`+`G4Orb` union defeated
-HepPolyhedron (`too many edges` → 10000-point cloud in VRML) — do **not** reintroduce
-tube/sphere unions.
+**Fibre solid = analytic mitered `G4CutTubs` legs** (production, preset 7), one per straight
+segment of the 4-point centreline `BentPath(x, zSpread, zBundle, Ly, conv, resL, ov)`: a
+straight spread run at `fFibrePitch = 1.5 mm`, a ramp converging over
+`fFibreConvergeLen = 15 mm` to a touching `fBundlePitch = 1.0 mm` bundle (four +y ends bunch to
+a 4 mm bundle facing the single SiPM), then a short stub before +y. `MakeCutTubeLegs` builds
+each leg; `PlaceWLSFibres` places the legs as world siblings joined at exact miter planes
+("analytic", `fFibreAnalytic`) — no facet edges, hence no stuck tracks. Preset 5 keeps the
+legacy `G4TessellatedSolid` swept cylinder (`MakeSweptTube`) **for visualisation only**.
+Multi-clad nesting: core (r=0.46) ⊂ inner PMMA clad (r=0.48) ⊂ outer fluoropolymer sheath
+(r=0.50) ⊂ the leg solid. Paths are built slab-local in a canonical **+y-bundle / −y-mirror**
+frame; `PlaceWLSFibres` then applies one `Rx180` (`flipRot`) to the film/clamp/fibre placements
+so the read-out lands at slab-local **−y** (report-plan **top-left**) with the mirror caps at
+**+y**. Do **not** reintroduce `G4Tubs`+`G4Orb` unions (HepPolyhedron `too many edges` →
+10000-point VRML cloud).
 
-**Tessellated booleans are fragile — avoid tangency.** The grease film is carved with a
-groove **concentric to each fibre at `rFibre`**, NOT the larger Ø1.1 channel radius: that
-cutter's cylinder is tangent to the film's slab-side face, giving a degenerate boolean that
-silently breaks the topmost channel and hangs the `TSG_OFFSCREEN` renderer. **Cutter
-overshoot:** every cutter is `fHalfSize.y() + 10 mm` long so each opening is bounded by the
-object's own faces, never by a face coincident with the tool (coincident faces leave
-degenerate polygons). **Channels must not overlap in the straight run:** `fFibrePitch = 1.5 mm`
-(> 2·channel radius) keeps a solid clamp web between neighbours (Rao Fig. 4a) and the booleans
-valid. In the converging bundle they *do* meet — `fBundlePitch = 1.0 mm` < 2·`fChannelRadius`
-(1.1 mm) — so the four channels merge into a single slot over the last ~15 mm, by design.
+**Booleans — avoid tangency.** The grease film and clamp channels are carved with analytic
+mitered `G4CutTubs` cutters (`MakeCutTubeCutter`); the film groove is **concentric to each
+fibre at `rFibre`**, NOT the larger Ø1.1 channel radius: that cutter's cylinder would be
+tangent to the film's slab-side face, giving a degenerate boolean that silently breaks the
+topmost channel and hangs the `TSG_OFFSCREEN` renderer. **Cutter overshoot:** every cutter is
+`fHalfSize.y() + 10 mm` long so each opening is bounded by the object's own faces, never by a
+face coincident with the tool (coincident faces leave degenerate polygons). **Channels must not
+overlap in the straight run:** `fFibrePitch = 1.5 mm` (> 2·channel radius) keeps a solid clamp
+web between neighbours (Rao Fig. 4a). In the converging bundle they *do* meet —
+`fBundlePitch = 1.0 mm` < 2·`fChannelRadius` (1.1 mm) — so the four channels merge into a single
+slot over the last ~15 mm, by design.
 
 **The Ø1.1 channel / Ø1.0 fibre clearance (0.05 mm air annulus) is deliberate — do NOT make
-it snug.** Sources conflict on cladding: the Kuraray catalogue lists Y-11(200) as **single
-cladding**, while Rao Table III says multi-clad; our model uses a **single PMMA clad n=1.49**
-(following the datasheet). A snug fibre touching the n=1.55 black clamp would kill the
-low-index clad gap and lose the guided light (smoke: Ø1.1 + air = 15.0 pe/ev; snug Ø1.0 =
-8.8 pe/ev). The paper specifies grease only in the plate↔clamp gap, not around the fibres.
+it snug.** The real Y-11(200) is multi-clad, so the model builds an **outer fluoropolymer
+sheath (n=1.42)** over the **PMMA inner clad (n=1.49)** and core (n=1.59) — toggle
+`/dcs-monitor/det/muonScint/setFibreMultiClad` (default on). A snug fibre touching the n=1.55
+clamp would kill the low-index gap and lose the guided light. The paper specifies grease only
+in the plate↔clamp gap, not around the fibres.
 
-**Read-out bug to remember:** **all four** `cladPVs[k]` need the `fCouplingSurface` border
-to the shared read-out pad; giving it to `cladPVs[0]` only traps fibres 1–3 in lossless TIR.
-Far (**+y**, after the placement flip) ends are full-disc `G4_Al` mirror caps; the read-out
-(**−y**) ends meet the shared grease pad + single SiPM. The clamp LV carries a
-`dielectric_metal` specular mirror skin on its outboard face.
+**Read-out / clamp skin:** all four fibre read-out ends carry the `fCouplingSurface` border to
+the shared read-out pad (belt-and-braces: with no surface the default is Fresnel, optically
+similar). Far (**+y**, after the placement flip) ends are full-disc `G4_Al` mirror caps; the
+read-out (**−y**) ends meet the shared grease pad + single SiPM. The clamp LV skin covers
+**every** clamp face (channel walls and grease-facing front included), not just the outboard
+one: default **white Lambertian R=0.85** (`setClampSurface white|black|mirror`; `mirror` = the
+legacy all-faces 95 % specular `dielectric_metal` skin, `black` = no skin).
 
 **Far-end mirror needs a cap skin, not just clad borders.** The borders are registered only
 for the `(cladPV[k], capPV[k])` pair, but guided light sits in the **core**, which is a
@@ -330,26 +354,32 @@ face not already border-ed (core→cap, cap→world); borders take precedence, s
 `(clad,cap)` borders are unaffected. Verified: `NoRINDEX`=0, core→cap now `SpikeReflection`.
 `DielectricMetal()` uses the surface REFLECTIVITY and never needs the metal's `RINDEX`.
 
-**WLS absorption vs. emission — keep the emission inside the absorbed photon's energy.**
-`G4OpWLS` samples the secondary from `WLSCOMPONENT` and requires its energy to be ≤ the absorbed
-photon's; if `WLSABSLENGTH` is finite where `WLSCOMPONENT` has no weight below the photon energy
-(e.g. a green/red Čerenkov photon at ~700 nm absorbed by a finite 3.5 m WLS absorption) no
-secondary can be sampled. Keep `WLSABSLENGTH` effectively transparent (1e6 m) at and below the
-emission onset, make it finite only in the blue absorption band, and zero `WLSCOMPONENT`
-at/above that onset (see `.refs/examples/extended/optical/wls/src/WLSMaterials.cc`). **In the
-v11.3.2 tree there is no `WSL01` fatal at all** — a grep of the whole source/install trees finds
-no such message, and `G4OpWLS` merely drops the photon after 100 failed samples — so this is a
+**WLS core tables = digitized Kuraray Y-11 (P1).** The core `WLSABSLENGTH` is the digitized
+Kuraray Y-11 absorption band (finite only in the blue, ~430 nm peak) and `WLSCOMPONENT` the
+digitized Y-11 emission, both fed unconditionally (no env switch). The absolute scale is set by
+`fWLSAbsLength430` (L(430 nm), default **1.0 mm**; systematic band 0.3–3 mm) via
+`/dcs-monitor/det/muonScint/setWLSAbsLength <value> <unit>` (pre-init). `G4OpWLS` samples the
+secondary from `WLSCOMPONENT` and requires E_sec ≤ E_absorbed, so keep `WLSABSLENGTH`
+effectively transparent at and below the emission onset and zero `WLSCOMPONENT` at/above that
+onset (see `.refs/examples/extended/optical/wls/src/WLSMaterials.cc`). **In the v11.3.2 tree
+there is no `WSL01` fatal at all** — a grep of the whole source/install trees finds no such
+message, and `G4OpWLS` merely drops the photon after 100 failed samples — so this is a
 data/correctness rule, not a crash expected here. Our tables satisfy it (≈69 % of the emission
 weight lies below the absorption onset; failure chance ≈10⁻⁵¹), though our `WLSCOMPONENT`
 extends ~0.23 eV **above** the `WLSABSLENGTH` onset (mild self-absorption), unlike
-`WLSMaterials.cc`, and the emission peak (2.583 eV / 480 nm) actually sits **on** the absorption
-onset — so do not claim "no overlap".
+`WLSMaterials.cc`, and the emission peak (2.583 eV / 480 nm) sits **on** the absorption onset —
+so do not claim "no overlap".
 
-**Known caveat (documented, not chased):** cfg4 collects ~17 pe/evt (centre) vs cfg3 ~164,
-i.e. cfg4 < cfg3, whereas paper Fig. 12 shows cfg4 > cfg3. The paper itself warns the configs
-"cannot be directly compared" (different SiPM count / gain / input capacitance), and its cfg4
-value is a pulse height over a 2500 mm² fibre-augmented effective area, not raw pe. The
-geometry is structurally faithful.
+**WLS re-emission is exponential** (`SetWLSTimeProfile("exponential")`, τ ≈ 7 ns), not the old
+`"delta"` fixed-delay profile. This only affects the timing histograms
+(`persistence_map_grid.C` / `wavelength_time_grid.C`), not yields.
+
+**Known caveat (documented, not chased):** cfg4 collects ~67 pe/evt (centre, glossy; the
+post-P1–P6 nominal: analytic + Kuraray L0=1 mm + white clamp + multi-clad + digitized PDE)
+vs cfg3 ~164, i.e. cfg4 < cfg3, whereas paper Fig. 12 shows cfg4 > cfg3. (The old production
+`data_v3` value was 29.0.) The paper itself warns the configs "cannot be directly compared"
+(different SiPM count / gain / input capacitance), and its cfg4 value is a pulse height over a
+2500 mm² fibre-augmented effective area, not raw pe. The geometry is structurally faithful.
 
 **Figures / vis:** collection comes from the `sipmHits` tree
 (`plot_collection_efficiency.C` / `plot_whole_slab.C`). `report_figures.C::fig_wavelength_cfg`

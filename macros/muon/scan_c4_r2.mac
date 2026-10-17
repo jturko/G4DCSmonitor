@@ -11,7 +11,7 @@
 #
 #   CONFIG    : 1 = 8 SiPMs (2/side), 2 = 4 SiPMs (1/side at the Config-1
 #               offsets), 3 = 2 SiPMs (both on the -X side),
-#               4 = single SiPM + WLS fibre clamp on the -X side (preset 5)
+#               4 = single SiPM + WLS fibre clamp on the -X side (preset 7)
 #   REFLECTOR : 0 = none (held in black holder), 1 = TiO2 paint,
 #               2 = aluminium foil, 3 = high-gloss paper
 #   POSITION  : centre, edge (middle of +Y side), corner (+X/+Y)
@@ -27,7 +27,7 @@
 /dcs-monitor/det/setRotation 0 0 0
 /dcs-monitor/det/muonScint/add
 /dcs-monitor/det/muonScint/setSize 250 250 10 mm
-/dcs-monitor/det/muonScint/preset 5
+/dcs-monitor/det/muonScint/preset 7
 /dcs-monitor/det/muonScint/setReflector 2
 /dcs-monitor/det/muonScint/setWrap true
 

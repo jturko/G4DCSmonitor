@@ -8,6 +8,7 @@
 #include "G4Step.hh"
 #include "G4StepPoint.hh"
 #include "G4Track.hh"
+#include "G4VProcess.hh"
 #include "G4TouchableHandle.hh"
 #include "G4OpticalPhoton.hh"
 #include "G4ParticleDefinition.hh"
@@ -22,6 +23,19 @@
 #include "OpticalDiagnostics.hh"
 #include "DetectorConstruction.hh"
 #include "GeometryMuonScint.hh"
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+// Compact creator-process code stored per detected photoelectron (column
+// `creatorDetected` of sipmHits): 1=OpWLS (WLS-shifted), 2=Scintillation
+// (unshifted), 3=Cerenkov, 0=other/unknown.
+static G4int CreatorCode(const G4String& name)
+{
+    if (name == "OpWLS")         return 1;
+    if (name == "Scintillation") return 2;
+    if (name == "Cerenkov")      return 3;
+    return 0;
+}
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
@@ -172,7 +186,9 @@ G4bool MuonScintSiPMSD::ProcessHits(G4Step* step, G4TouchableHistory*)
     const G4double lam_nm =
         (E > 0.) ? (CLHEP::h_Planck * CLHEP::c_light / E) / CLHEP::nanometer : 0.;
 
-    hit->AddDetected(post->GetGlobalTime(), lam_nm, post->GetPosition());
+    const G4VProcess* proc = track->GetCreatorProcess();
+    const G4int creator = proc ? CreatorCode(proc->GetProcessName()) : 0;
+    hit->AddDetected(post->GetGlobalTime(), lam_nm, post->GetPosition(), creator);
 
     // SiPM is opaque: kill the photon regardless.
     track->SetTrackStatus(fStopAndKill);
@@ -226,6 +242,7 @@ void MuonScintSiPMSD::EndOfEvent(G4HCofThisEvent*)
             analysis->FillNtupleIColumn(idx, 10, 0);
             gDetectedTimes       = h->GetTimes();
             gDetectedWavelengths = h->GetWavelengths();
+            gDetectedCreator     = h->GetCreators();
             analysis->AddNtupleRow(idx);
         }
         return;
@@ -272,9 +289,11 @@ void MuonScintSiPMSD::EndOfEvent(G4HCofThisEvent*)
             if (h) {
                 gDetectedTimes       = h->GetTimes();
                 gDetectedWavelengths = h->GetWavelengths();
+                gDetectedCreator     = h->GetCreators();
             } else {
                 gDetectedTimes.clear();
                 gDetectedWavelengths.clear();
+                gDetectedCreator.clear();
             }
             analysis->AddNtupleRow(idx);
         }

@@ -211,11 +211,11 @@ DetectorMessenger::DetectorMessenger(DetectorConstruction* Det) : fDetector(Det)
     fApplyMuonScintPresetCmd->SetGuidance("Apply a preset SiPM layout (Configs from Rao 2025):");
     fApplyMuonScintPresetCmd->SetGuidance("  1 = Config 1: 8 SiPMs (2 per side, all 4 sides)");
     fApplyMuonScintPresetCmd->SetGuidance("  2 = Config 2: 4 SiPMs (1 per side, all 4 sides)");
-    fApplyMuonScintPresetCmd->SetGuidance("  3 = Config 3: 2 SiPMs (both on the +X side)");
+    fApplyMuonScintPresetCmd->SetGuidance("  3 = Config 3: 2 SiPMs (both on the -X side)");
     fApplyMuonScintPresetCmd->SetGuidance("  4 = Corners:  4 SiPMs (one at each corner of +X/-X edges)");
-    fApplyMuonScintPresetCmd->SetGuidance("  5 = Config 4: single SiPM + WLS fibre clamp (Y-11, round)");
-    fApplyMuonScintPresetCmd->SetGuidance("  6 = Config 4b: as 5 but square (box) fibre cross-section");
-    fApplyMuonScintPresetCmd->SetGuidance("  7 = Config 4c: as 5 but analytic G4CutTubs fibres/grooves");
+    fApplyMuonScintPresetCmd->SetGuidance("  5 = Config 4: single SiPM + WLS fibre clamp (Y-11, round; legacy G4TessellatedSolid, vis only)");
+    fApplyMuonScintPresetCmd->SetGuidance("  6 = Config 4b: as 5 but square (box) fibre cross-section (A/B only)");
+    fApplyMuonScintPresetCmd->SetGuidance("  7 = Config 4c: analytic G4CutTubs fibres/grooves (production)");
     fApplyMuonScintPresetCmd->SetParameterName("preset", false);
     fApplyMuonScintPresetCmd->SetRange("preset >= 1 && preset <= 7");
     fApplyMuonScintPresetCmd->AvailableForStates(G4State_PreInit);
@@ -227,6 +227,30 @@ DetectorMessenger::DetectorMessenger(DetectorConstruction* Det) : fDetector(Det)
     fSetMuonScintLightYieldScaleCmd->SetParameterName("scale", false);
     fSetMuonScintLightYieldScaleCmd->SetRange("scale > 0.");
     fSetMuonScintLightYieldScaleCmd->AvailableForStates(G4State_PreInit);
+
+    fSetMuonScintWLSAbsLengthCmd = new G4UIcmdWithADoubleAndUnit("/dcs-monitor/det/muonScint/setWLSAbsLength", this);
+    fSetMuonScintWLSAbsLengthCmd->SetGuidance("Y-11 WLS absorption length at the 430 nm peak (Config 4 only).");
+    fSetMuonScintWLSAbsLengthCmd->SetGuidance("The spectral shape is the digitized Kuraray Y-11 curve; this sets its");
+    fSetMuonScintWLSAbsLengthCmd->SetGuidance("absolute scale. Default 1.0 mm (systematic band 0.3-3 mm).");
+    fSetMuonScintWLSAbsLengthCmd->SetParameterName("length", false);
+    fSetMuonScintWLSAbsLengthCmd->SetDefaultUnit("mm");
+    fSetMuonScintWLSAbsLengthCmd->SetRange("length > 0.");
+    fSetMuonScintWLSAbsLengthCmd->AvailableForStates(G4State_PreInit);
+
+    fSetMuonScintClampSurfaceCmd = new G4UIcmdWithAString("/dcs-monitor/det/muonScint/setClampSurface", this);
+    fSetMuonScintClampSurfaceCmd->SetGuidance("Config-4 WLS clamp body surface (a skin covers EVERY clamp face):");
+    fSetMuonScintClampSurfaceCmd->SetGuidance("  white  = white 3D-printed plastic, Lambertian R=0.85 (default)");
+    fSetMuonScintClampSurfaceCmd->SetGuidance("  black  = no skin; the n=1.55 bulk with 1 um ABSLENGTH absorbs");
+    fSetMuonScintClampSurfaceCmd->SetGuidance("  mirror = legacy 95% specular dielectric_metal");
+    fSetMuonScintClampSurfaceCmd->SetParameterName("surface", false);
+    fSetMuonScintClampSurfaceCmd->SetCandidates("white black mirror");
+    fSetMuonScintClampSurfaceCmd->AvailableForStates(G4State_PreInit);
+
+    fSetMuonScintFibreMultiCladCmd = new G4UIcmdWithABool("/dcs-monitor/det/muonScint/setFibreMultiClad", this);
+    fSetMuonScintFibreMultiCladCmd->SetGuidance("Config-4 fibres: nest an outer n=1.42 fluoropolymer sheath");
+    fSetMuonScintFibreMultiCladCmd->SetGuidance("over the n=1.49 PMMA clad (real Y-11 is multi-clad). Default true.");
+    fSetMuonScintFibreMultiCladCmd->SetParameterName("on", false);
+    fSetMuonScintFibreMultiCladCmd->AvailableForStates(G4State_PreInit);
 
 
 }
@@ -296,6 +320,9 @@ DetectorMessenger::~DetectorMessenger()
     delete fClearMuonScintSiPMsCmd;
     delete fApplyMuonScintPresetCmd;
     delete fSetMuonScintLightYieldScaleCmd;
+    delete fSetMuonScintWLSAbsLengthCmd;
+    delete fSetMuonScintClampSurfaceCmd;
+    delete fSetMuonScintFibreMultiCladCmd;
 
 }
 
@@ -374,6 +401,15 @@ void DetectorMessenger::SetNewValue(G4UIcommand* command, G4String value)
     if (command == fClearMuonScintSiPMsCmd)      fDetector->ClearMuonScintSiPMs();
     if (command == fApplyMuonScintPresetCmd)     fDetector->ApplyMuonScintPreset(fApplyMuonScintPresetCmd->GetNewIntValue(value));
     if (command == fSetMuonScintLightYieldScaleCmd) fDetector->SetMuonScintLightYieldScale(fSetMuonScintLightYieldScaleCmd->GetNewDoubleValue(value));
+    if (command == fSetMuonScintWLSAbsLengthCmd) fDetector->SetMuonScintWLSAbsLength(fSetMuonScintWLSAbsLengthCmd->GetNewDoubleValue(value));
+    if (command == fSetMuonScintClampSurfaceCmd) {
+        if (value == "white")       fDetector->SetMuonScintClampSurface(kClampWhite);
+        else if (value == "black")  fDetector->SetMuonScintClampSurface(kClampBlack);
+        else if (value == "mirror") fDetector->SetMuonScintClampSurface(kClampMirror);
+        else G4cerr << " [DetectorMessenger] setClampSurface: unknown '" << value
+                    << "' (use white|black|mirror)" << G4endl;
+    }
+    if (command == fSetMuonScintFibreMultiCladCmd) fDetector->SetMuonScintFibreMultiClad(fSetMuonScintFibreMultiCladCmd->GetNewBoolValue(value));
 
 
 }

@@ -12,7 +12,7 @@
 #     matrix : centre/edge/corner scan  -> <DATAROOT>/data_output<SUFFIX>/
 #     whole  : full 250x250 mm^2 plate  -> <DATAROOT>/data_output_whole<SUFFIX>/
 #
-#   CFGS   (default "1 2 3 4")  selects configs (4 -> preset 5).
+#   CFGS   (default "1 2 3 4")  selects configs (4 -> preset 7, analytic round).
 #   REFLS  (default "0 1 2 3")  selects reflectors.
 #   MATRIX_EVENTS / WHOLE_EVENTS override the positional NEVENTS per stage
 #                               (e.g. MATRIX_EVENTS=500 WHOLE_EVENTS=10000).
@@ -60,7 +60,7 @@ gen_and_run() {
     mkdir -p "${outdir}" "${datadir}"
     local running=0
     for cfg in ${CFGS}; do
-        if [[ "${cfg}" == "4" ]]; then preset=5; else preset="${cfg}"; fi
+        if [[ "${cfg}" == "4" ]]; then preset=7; else preset="${cfg}"; fi
         for refl in ${REFLS}; do
             local out="${outdir}/${stem}_c${cfg}_r${refl}.mac"
             sed -e "s/@CONFIG@/${cfg}/g"    \

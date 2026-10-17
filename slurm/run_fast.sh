@@ -131,7 +131,7 @@ echo "--- generating FAST matrix macros (${MATRIX_EVENTS} ev/position) ---"
 : > "${MATRIX_OUT}/manifest.txt"
 i=0
 for cfg in 1 2 3 4; do
-    if [[ "${cfg}" == "4" ]]; then preset=5; else preset="${cfg}"; fi
+    if [[ "${cfg}" == "4" ]]; then preset=7; else preset="${cfg}"; fi
     for refl in 0 1 2 3; do
         out="scan_c${cfg}_r${refl}.mac"
         sed -e "s/@CONFIG@/${cfg}/g"    \
@@ -153,7 +153,7 @@ echo "--- generating FAST whole-slab macros (${WHOLE_EVENTS} ev) ---"
 : > "${WHOLE_OUT}/manifest.txt"
 i=0
 for cfg in 1 2 3 4; do
-    if [[ "${cfg}" == "4" ]]; then preset=5; else preset="${cfg}"; fi
+    if [[ "${cfg}" == "4" ]]; then preset=7; else preset="${cfg}"; fi
     for refl in 0 1 2 3; do
         out="whole_c${cfg}_r${refl}.mac"
         sed -e "s/@CONFIG@/${cfg}/g"    \

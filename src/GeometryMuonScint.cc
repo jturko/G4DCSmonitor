@@ -41,28 +41,6 @@
 namespace {
 const G4double kStudyBulkAbsScale  = 1.0;   // multiplies scintillator ABSLENGTH
 const G4double kStudyBareRoughness = 0.0;   // bare-face sigma_alpha (unified)
-
-// TEMPORARY Config-4 study knobs (environment variables, read at geometry
-// construction; unset = current production behaviour). Used only to quantify
-// candidate physics changes before they are made permanent.
-//   DCS_WLS_PEAKABS_MM = L0 > 0 : replace the Y-11 WLSABSLENGTH table by a
-//       Kuraray-shaped absorption band (peak 430 nm) with absorption length
-//       L0 [mm] at the peak.
-//   DCS_CLAMP_SURFACE = mirror | black | white : clamp LV skin. mirror = the
-//       current 95 % specular dielectric_metal skin (applies to EVERY clamp
-//       face, incl. channel walls and the grease-facing front); black = no
-//       skin (the n=1.55, 1 um ABSLENGTH bulk absorbs); white = Lambertian
-//       groundfrontpainted R = 0.85 (white 3D-printed plastic).
-G4double EnvDouble(const char* name, G4double def)
-{
-    const char* v = std::getenv(name);
-    return (v && *v) ? std::atof(v) : def;
-}
-std::string EnvString(const char* name, const std::string& def)
-{
-    const char* v = std::getenv(name);
-    return (v && *v) ? std::string(v) : def;
-}
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -405,13 +383,25 @@ void GeometryMuonScint::BuildOpticalSurfaces()
     fSiPMSurface->SetType(dielectric_metal);
     fSiPMSurface->SetFinish(polished);
 
-    const G4int Np = 11;
-    G4double ep[Np]    = { 2.067*eV, 2.156*eV, 2.250*eV, 2.339*eV, 2.450*eV,
-                           2.594*eV, 2.755*eV, 2.917*eV, 3.100*eV, 3.300*eV, 3.543*eV };
-    // ASD-NUV4S-P-40: PDE peaks ~43% near 420 nm (blue/UV-enhanced).
-    G4double pde[Np]   = { 0.20, 0.23, 0.27, 0.31, 0.35,
-                           0.40, 0.43, 0.43, 0.40, 0.30, 0.18 };
-    G4double rZero[Np] = { 0.,0.,0.,0.,0., 0.,0.,0.,0.,0.,0. };
+    const G4int Np = 25;
+    // ASD-NUV4S-P-40 PDE(lambda), digitized from the AdvanSiD datasheet
+    // (report/refs/AdvanSiD_NUV.pdf, Fig. 8; 6 V overvoltage, 20 C), ascending
+    // photon energy. Peak ~43% near 410-420 nm; ~30% at 490 nm (Rao's
+    // "~30% for converted photons"); falls to 8.6% at 750 nm. Since this drives
+    // the detection of WLS-shifted (green) light it lowers Config-4 yields.
+    G4double ep[Np]  = { 1.653*eV, 1.771*eV, 1.907*eV, 2.066*eV, 2.156*eV,
+                         2.254*eV, 2.362*eV, 2.431*eV, 2.480*eV, 2.530*eV,
+                         2.583*eV, 2.638*eV, 2.695*eV, 2.755*eV, 2.818*eV,
+                         2.883*eV, 2.952*eV, 3.024*eV, 3.100*eV, 3.139*eV,
+                         3.179*eV, 3.220*eV, 3.263*eV, 3.306*eV, 3.443*eV };
+    G4double pde[Np] = { 0.086, 0.110, 0.146, 0.178, 0.197,
+                         0.224, 0.247, 0.266, 0.284, 0.300,
+                         0.317, 0.330, 0.343, 0.360, 0.385,
+                         0.408, 0.426, 0.431, 0.418, 0.380,
+                         0.345, 0.280, 0.210, 0.150, 0.080 };
+    G4double rZero[Np] = { 0.,0.,0.,0.,0., 0.,0.,0.,0.,0.,
+                           0.,0.,0.,0.,0., 0.,0.,0.,0.,0.,
+                           0.,0.,0.,0.,0. };
     auto* sipmMPT = new G4MaterialPropertiesTable();
     sipmMPT->AddProperty("EFFICIENCY",   ep, pde,   Np);
     sipmMPT->AddProperty("REFLECTIVITY", ep, rZero, Np);
@@ -988,75 +978,56 @@ void GeometryMuonScint::BuildWLSFibres()
         G4double absBulk[N] = {
             5.0*m, 5.0*m, 5.0*m, 5.0*m, 5.0*m, 5.0*m, 5.0*m,
             5.0*m, 5.0*m, 5.0*m, 5.0*m, 5.0*m, 5.0*m };
-        // WLS (Y-11) absorption length. CRITICAL: it MUST be effectively
-        // transparent (huge) at and below the bottom of the emission band.
-        // G4OpWLS samples the secondary from WLSCOMPONENT and requires it to be
-        // <= the absorbed photon energy; if a green/red photon (e.g. a Cerenkov
-        // photon at ~700 nm, 1.78 eV) is absorbed where the emission spectrum has
-        // no weight below it, no secondary can be sampled and Geant4 raises the
-        // fatal WSL01 exception (abort). The onset is kept for the ~480-460 nm
-        // blue that Y-11 really absorbs, which is the scintillation band.
-        G4double wlsAbs[N] = {
-            1e6*m, 1e6*m, 1e6*m, 1e6*m, 1e6*m,    // 650-541 nm: no WLS absorption
-            1e6*m, 1e6*m,                          // 520-500 nm: none
-            0.60*m, 0.20*m,                        // 480, 460 nm: Y-11 onset
-            0.05*m, 0.005*m, 0.0005*m, 0.00005*m }; // 440-380 nm: strong
-        // Y-11 emission (peak ~476 nm / 2.605 eV). Zero at and above the
-        // absorption onset so the sampled secondary always has E <= the absorbed
-        // photon (keeps G4OpWLS's energy check satisfiable).
-        G4double wlsComp[N] = {
-            0.00, 0.03, 0.08, 0.18, 0.40,
-            0.70, 0.95, 1.00, 0.55, 0.00,
-            0.00, 0.00, 0.00 };
         auto* mptW = new G4MaterialPropertiesTable();
         mptW->AddProperty("RINDEX",       e, rindexW, N);
         mptW->AddProperty("ABSLENGTH",    e, absBulk, N);   // non-WLS loss
-        const G4double L0 = EnvDouble("DCS_WLS_PEAKABS_MM", -1.) * mm;
-        if (L0 > 0.) {
-            // STUDY: Kuraray Y-11(200) absorption AND emission spectra, digitized
-            // from report/refs/KurarayPSF.pdf (catalogue p. 9, "Absorption and
-            // Emission Spectra", thickest curve = Y-11), both normalised to 1 at
-            // their peaks (absorption 430 nm, emission 476 nm). The catalogue
-            // gives only the SHAPE; L0 = absolute absorption length at 430 nm.
-            // Tables are in wavelength-descending order (= energy ascending).
-            const G4double hc = 1239.84193;   // eV*nm
-            const G4int Na = 37;
-            const G4double lamA[Na] = { 650, 500, 488, 486, 483, 478, 474, 472, 470,
-                                        467, 465, 462, 459, 457, 453, 450, 448, 444,
-                                        442, 440, 437, 435, 430, 427, 423, 420, 415,
-                                        410, 405, 400, 396, 390, 386, 380, 370, 360,
-                                        350 };
-            const G4double relA[Na] = { 0.0, 0.0, 0.0, 0.005, 0.015, 0.054, 0.11, 0.20,
-                                        0.31, 0.45, 0.59, 0.71, 0.80, 0.85, 0.88, 0.85,
-                                        0.81, 0.77, 0.79, 0.84, 0.90, 0.96, 1.00, 0.93,
-                                        0.84, 0.75, 0.64, 0.59, 0.51, 0.44, 0.37, 0.29,
-                                        0.24, 0.15, 0.075, 0.045, 0.03 };
-            G4double ea[Na], la[Na];
-            for (G4int i = 0; i < Na; ++i) {
-                ea[i] = hc/lamA[i] * eV;
-                la[i] = (relA[i] > 0.) ? L0/relA[i] : 1e6*m;
-            }
-            mptW->AddProperty("WLSABSLENGTH", ea, la, Na);
 
-            const G4int Ne = 36;
-            const G4double lamE[Ne] = { 650, 640, 620, 600, 590, 580, 570, 560, 550,
-                                        540, 531, 526, 520, 516, 512, 507, 503, 500,
-                                        495, 490, 487, 485, 482, 479, 476, 473, 471,
-                                        469, 466, 463, 461, 458, 456, 452, 449, 444 };
-            const G4double relE[Ne] = { 0.0, 0.0, 0.005, 0.02, 0.03, 0.05, 0.085, 0.13,
-                                        0.19, 0.25, 0.31, 0.43, 0.55, 0.63, 0.71, 0.77,
-                                        0.76, 0.73, 0.69, 0.73, 0.80, 0.85, 0.92, 0.98,
-                                        1.00, 0.92, 0.82, 0.67, 0.50, 0.32, 0.21, 0.14,
-                                        0.09, 0.04, 0.01, 0.0 };
-            G4double ee[Ne], we[Ne];
-            for (G4int i = 0; i < Ne; ++i) { ee[i] = hc/lamE[i] * eV; we[i] = relE[i]; }
-            mptW->AddProperty("WLSCOMPONENT", ee, we, Ne);
-            G4cout << " [MuonScint] STUDY: Y-11 Kuraray absorption+emission spectra, "
-                   << "WLSABSLENGTH = " << L0/mm << " mm at 430 nm" << G4endl;
-        } else {
-            mptW->AddProperty("WLSABSLENGTH", e, wlsAbs, N); // WLS absorption length
-            mptW->AddProperty("WLSCOMPONENT", e, wlsComp, N);
+        // WLS (Y-11) absorption AND emission spectra, digitized from
+        // report/refs/KurarayPSF.pdf (catalogue p. 9, "Absorption and Emission
+        // Spectra", thickest curve = Y-11), each normalised to 1 at its peak
+        // (absorption 430 nm, emission 476 nm). The catalogue gives only the
+        // SHAPE; fWLSAbsLength430 is the absolute absorption length at the 430 nm
+        // peak (default 1.0 mm; 0.3-3 mm is the systematic band). Tables are in
+        // wavelength-descending order (= energy ascending).
+        //
+        // G4OpWLS samples the secondary from WLSCOMPONENT and requires its energy
+        // to be <= the absorbed photon's; the emission is zero at and above the
+        // 488 nm absorption cutoff, which keeps that energy check satisfiable.
+        const G4double hc = 1239.84193;   // eV*nm
+        const G4double L0 = fWLSAbsLength430;
+        const G4int Na = 37;
+        const G4double lamA[Na] = { 650, 500, 488, 486, 483, 478, 474, 472, 470,
+                                    467, 465, 462, 459, 457, 453, 450, 448, 444,
+                                    442, 440, 437, 435, 430, 427, 423, 420, 415,
+                                    410, 405, 400, 396, 390, 386, 380, 370, 360,
+                                    350 };
+        const G4double relA[Na] = { 0.0, 0.0, 0.0, 0.005, 0.015, 0.054, 0.11, 0.20,
+                                    0.31, 0.45, 0.59, 0.71, 0.80, 0.85, 0.88, 0.85,
+                                    0.81, 0.77, 0.79, 0.84, 0.90, 0.96, 1.00, 0.93,
+                                    0.84, 0.75, 0.64, 0.59, 0.51, 0.44, 0.37, 0.29,
+                                    0.24, 0.15, 0.075, 0.045, 0.03 };
+        G4double ea[Na], la[Na];
+        for (G4int i = 0; i < Na; ++i) {
+            ea[i] = hc/lamA[i] * eV;
+            la[i] = (relA[i] > 0.) ? L0/relA[i] : 1e6*m;
         }
+        mptW->AddProperty("WLSABSLENGTH", ea, la, Na);
+
+        const G4int Ne = 36;
+        const G4double lamE[Ne] = { 650, 640, 620, 600, 590, 580, 570, 560, 550,
+                                    540, 531, 526, 520, 516, 512, 507, 503, 500,
+                                    495, 490, 487, 485, 482, 479, 476, 473, 471,
+                                    469, 466, 463, 461, 458, 456, 452, 449, 444 };
+        const G4double relE[Ne] = { 0.0, 0.0, 0.005, 0.02, 0.03, 0.05, 0.085, 0.13,
+                                    0.19, 0.25, 0.31, 0.43, 0.55, 0.63, 0.71, 0.77,
+                                    0.76, 0.73, 0.69, 0.73, 0.80, 0.85, 0.92, 0.98,
+                                    1.00, 0.92, 0.82, 0.67, 0.50, 0.32, 0.21, 0.14,
+                                    0.09, 0.04, 0.01, 0.0 };
+        G4double ee[Ne], we[Ne];
+        for (G4int i = 0; i < Ne; ++i) { ee[i] = hc/lamE[i] * eV; we[i] = relE[i]; }
+        mptW->AddProperty("WLSCOMPONENT", ee, we, Ne);
+        G4cout << " [MuonScint] Y-11 Kuraray absorption+emission spectra, "
+               << "WLSABSLENGTH = " << L0/mm << " mm at 430 nm" << G4endl;
         mptW->AddConstProperty("WLSTIMECONSTANT", 7.0*ns);  // Y-11 decay
         coreMat->SetMaterialPropertiesTable(mptW);
     }
@@ -1079,6 +1050,30 @@ void GeometryMuonScint::BuildWLSFibres()
         cladMat->SetMaterialPropertiesTable(mptC);
     }
 
+    // ---------- Optional multi-clad: outer fluoropolymer sheath --------------
+    // The real Y-11(200) is multi-clad; the outer low-index (n=1.42)
+    // fluoropolymer layer is what sustains TIR when the fibre sits in a channel
+    // cut in a higher-index clamp. Only built when fFibreMultiClad is set.
+    G4Material* outerCladMat = cladMat;
+    if (fFibreMultiClad) {
+        outerCladMat = G4Material::GetMaterial("WLSFiberCladOuter", false);
+        if (!outerCladMat) {
+            outerCladMat = new G4Material("WLSFiberCladOuter", 1.43*g/cm3, 3);
+            outerCladMat->AddElement(nist->FindOrBuildElement("C"), 2);
+            outerCladMat->AddElement(nist->FindOrBuildElement("H"), 2);
+            outerCladMat->AddElement(nist->FindOrBuildElement("F"), 2);
+
+            const G4int No = 2;
+            G4double eo[No]   = { 1.5*eV, 6.0*eV };
+            G4double no[No]   = { 1.42, 1.42 };
+            G4double abso[No] = { 20.*m, 20.*m };
+            auto* mptO = new G4MaterialPropertiesTable();
+            mptO->AddProperty("RINDEX",    eo, no,   No);
+            mptO->AddProperty("ABSLENGTH", eo, abso, No);
+            outerCladMat->SetMaterialPropertiesTable(mptO);
+        }
+    }
+
     // ---------- Bent fibre core + cladding solids (one pair per fibre) ------
     // Each fibre runs straight at the straight-section pitch (fFibrePitch) for
     // most of the plate, then converges over fFibreConvergeLen to a TOUCHING
@@ -1087,7 +1082,13 @@ void GeometryMuonScint::BuildWLSFibres()
     // watertight through the kinks; each fibre needs its own clad+core solids
     // because the transverse bend offset differs per fibre.
     const G4double rFibre = fFibreRadius;
-    const G4double rCore  = rFibre * (1.0 - fFibreCladFrac);
+    // Multi-clad: two 2%-of-D layers (0.02 mm each) -> inner clad r=0.48,
+    // core r=0.46. Single clad: the legacy 3%-of-radius PMMA clad -> core
+    // r=0.485.
+    const G4double cladThick = 0.02 * (2.0 * rFibre);          // 2 % of diameter
+    const G4double rInner = rFibre - cladThick;                // PMMA inner clad O/D
+    const G4double rCore  = fFibreMultiClad ? (rFibre - 2.0*cladThick)
+                                            : (rFibre * (1.0 - fFibreCladFrac));
     // At the touching bundle the centre pitch equals 2*rFibre, so square
     // cross-sections would share fully coincident flat faces and the mitered
     // ramp rings interpenetrate by ~0.1 um (GeomVol1002). Round fibres dodge
@@ -1171,19 +1172,34 @@ void GeometryMuonScint::BuildWLSFibres()
         const auto tag = std::to_string(k);
         const auto path = BentPath(fFibreAxisX, zSpread[k], zBundle[k],
                                    halfL, conv, resL, 0.);
-        auto cladLegs = MakeCutTubeLegs("WLSFibreCladSolid_" + tag, rFibre, path);
-        auto coreLegs = MakeCutTubeLegs("WLSFibreCoreSolid_" + tag, rCore,  path);
+        auto cladLegs  = MakeCutTubeLegs("WLSFibreCladSolid_" + tag, rFibre, path);
+        auto innerLegs = fFibreMultiClad
+            ? MakeCutTubeLegs("WLSFibreInnerSolid_" + tag, rInner, path)
+            : std::vector<CutTubeLeg>();
+        auto coreLegs  = MakeCutTubeLegs("WLSFibreCoreSolid_" + tag, rCore,  path);
         for (std::size_t s = 0; s < cladLegs.size(); ++s) {
             const auto stag = tag + "_" + std::to_string(s);
-            auto* cladLV = new G4LogicalVolume(cladLegs[s].solid, cladMat,
+            auto* cladLV = new G4LogicalVolume(cladLegs[s].solid, outerCladMat,
                                                "WLSFibreCladLV_" + stag);
             cladLV->SetVisAttributes(new G4VisAttributes(true, G4Colour(0.2, 0.9, 0.5, 0.6)));
+            // Innermost layer carrying the core: the extra PMMA clad when
+            // multi-clad, otherwise the outer clad itself.
+            G4LogicalVolume* coreMother = cladLV;
+            if (fFibreMultiClad) {
+                auto* innerLV = new G4LogicalVolume(innerLegs[s].solid, cladMat,
+                                                    "WLSFibreInnerLV_" + stag);
+                innerLV->SetVisAttributes(new G4VisAttributes(true, G4Colour(0.2, 0.9, 0.5, 0.6)));
+                new G4PVPlacement(nullptr, G4ThreeVector(), innerLV,
+                                  "WLSFibreInnerPhys_" + stag, cladLV, false, k, false);
+                fFibreCladLVs.push_back(innerLV);   // for IsFibreLV only
+                coreMother = innerLV;
+            }
             auto* coreLV = new G4LogicalVolume(coreLegs[s].solid, coreMat,
                                                "WLSFibreCoreLV_" + stag);
             coreLV->SetVisAttributes(new G4VisAttributes(true, G4Colour(0.7, 1.0, 0.9, 0.95)));
             coreLV->SetUserLimits(new G4UserLimits(DBL_MAX, DBL_MAX, 10.*ms));
             new G4PVPlacement(nullptr, G4ThreeVector(), coreLV,
-                              "WLSFibreCorePhys_" + stag, cladLV, false, k, false);
+                              "WLSFibreCorePhys_" + stag, coreMother, false, k, false);
             fFibreSegs[k].push_back({cladLV, cladLegs[s].rot, cladLegs[s].pos});
             fFibreCladLVs.push_back(cladLV);   // for IsFibreLV only
             fFibreCoreLVs.push_back(coreLV);
@@ -1197,9 +1213,25 @@ void GeometryMuonScint::BuildWLSFibres()
         auto* cladSolid = (squareCross && fFibreUseExtruded)
             ? MakeExtrudedFibre("WLSFibreCladSolid_" + tag, path, cladSize)
             : swept("WLSFibreCladSolid_" + tag, cladSize, path);
-        auto* cladLV = new G4LogicalVolume(cladSolid, cladMat,
+        auto* cladLV = new G4LogicalVolume(cladSolid, outerCladMat,
                                            "WLSFibreCladLV_" + tag);
         cladLV->SetVisAttributes(new G4VisAttributes(true, G4Colour(0.2, 0.9, 0.5, 0.6)));
+
+        // Optional PMMA inner clad (multi-clad only).
+        G4LogicalVolume* coreMother = cladLV;
+        if (fFibreMultiClad) {
+            const G4double innerSize = rInner * sqShrink;
+            auto* innerSolid = (squareCross && fFibreUseExtruded)
+                ? MakeExtrudedFibre("WLSFibreInnerSolid_" + tag, path, innerSize)
+                : swept("WLSFibreInnerSolid_" + tag, innerSize, path);
+            auto* innerLV = new G4LogicalVolume(innerSolid, cladMat,
+                                                "WLSFibreInnerLV_" + tag);
+            innerLV->SetVisAttributes(new G4VisAttributes(true, G4Colour(0.2, 0.9, 0.5, 0.6)));
+            new G4PVPlacement(nullptr, G4ThreeVector(0., 0., 0.), innerLV,
+                              "WLSFibreInnerPhys_" + tag, cladLV, false, k, false);
+            fFibreCladLVs.push_back(innerLV);
+            coreMother = innerLV;
+        }
 
         auto* coreSolid = (squareCross && fFibreUseExtruded)
             ? MakeExtrudedFibre("WLSFibreCoreSolid_" + tag, path, coreSize)
@@ -1211,7 +1243,7 @@ void GeometryMuonScint::BuildWLSFibres()
         // Core shares the clad's slab-local frame, so it is placed at the clad
         // origin; every clad placement then carries its own core copy.
         new G4PVPlacement(nullptr, G4ThreeVector(0., 0., 0.), coreLV,
-                          "WLSFibreCorePhys_" + tag, cladLV, false, k, false);
+                          "WLSFibreCorePhys_" + tag, coreMother, false, k, false);
 
         fFibreCladLVs.push_back(cladLV);
         fFibreCoreLVs.push_back(coreLV);
@@ -1229,9 +1261,10 @@ void GeometryMuonScint::BuildWLSFibres()
     // fibres (same dOff), so the grease<->cladding interface stays continuous
     // along the whole length (no air gap, no overlap). The groove is a through
     // bore; the fibre only dips fFibreProtrusion into the film, so a continuous
-    // grease layer remains against the scintillator. The clad index (1.49) still
-    // exceeds the grease index (1.46), so the fibre core/clad TIR guide is
-    // preserved.
+    // grease layer remains against the scintillator. The grease (n=1.46) now
+    // wets the outer fluoropolymer sheath (n=1.42, multi-clad) rather than the
+    // PMMA clad (n=1.49, single-clad); the core/inner-clad guide is unaffected
+    // because the sheath is only 0.02 mm thick.
     auto* filmBox = new G4Box("WLSCoupleFilmBox",
                               filmHalfX, fHalfSize.y(), fHalfSize.z());
     G4Material* greaseMat = G4Material::GetMaterial("OpticalGrease", false);
@@ -1265,8 +1298,11 @@ void GeometryMuonScint::BuildWLSFibres()
     }
     fGrease4LV->SetVisAttributes(new G4VisAttributes(true, G4Colour(1.0, 0.85, 0.2, 0.6)));
 
-    // ---------- Black clamp body with milled fibre channels ----------
-    // The clamp carries one full-length channel per fibre, each of radius
+    // ---------- Clamp body with milled fibre channels ----------
+    // The clamp body is white 3D-printed plastic by default (see
+    // fClampSurfaceMode); the material below is the n=1.55 bulk whose 1 um
+    // ABSLENGTH makes it fully absorbing in kClampBlack mode. The clamp carries
+    // one full-length channel per fibre, each of radius
     // fChannelRadius, cut with the SAME bent-tube tool as the fibre so the
     // channel follows the fibre through the straight run, the ramp and the
     // bundle. Channels are separated by fFibrePitch > 2*fChannelRadius in the
@@ -1276,9 +1312,10 @@ void GeometryMuonScint::BuildWLSFibres()
     // exactly the real holder: a narrow groove for the bundle feeding the SiPM.
     //
     // The channel is a hair wider than the fibre (Ø1.1 vs Ø1.0), leaving a thin
-    // air annulus. The real Y-11(200) is multi-clad (outer fluoropolymer
-    // n~1.42); our simplified single clad is n=1.49, so if it touched the
-    // n=1.55 black absorber the low-index gap sustaining TIR would vanish. The
+    // air annulus. The Y-11(200) is multi-clad (outer fluoropolymer n~1.42,
+    // fFibreMultiClad default on); without that outer sheath the single PMMA
+    // clad is n=1.49, so if it touched the n=1.55 clamp bulk the low-index gap
+    // sustaining TIR would vanish. The clearance is kept regardless. The
     // paper only specifies grease in the plate<->clamp gap, not around the
     // fibres, so the clearance is consistent with it.
     const G4double clampHalfX = 0.5 * fClampWallZ;
@@ -1340,6 +1377,23 @@ void GeometryMuonScint::BuildWLSFibres()
         mptM->AddProperty("REFLECTIVITY", em, reflm, Nm);
         mptM->AddProperty("EFFICIENCY",   em, effm,  Nm);
         fClampMirror->SetMaterialPropertiesTable(mptM);
+    }
+
+    // White 3D-printed-plastic clamp body (default): Lambertian, R = 0.85
+    // (absorbs 15 %). groundfrontpainted => no TIR. A skin applies to EVERY
+    // clamp face, so this models the whole printed bar, not just its outboard
+    // side. See ClampSurfaceMode / setClampSurface.
+    fClampWhite = new G4OpticalSurface("MuonScintClampWhite");
+    fClampWhite->SetModel(unified);
+    fClampWhite->SetType(dielectric_dielectric);
+    fClampWhite->SetFinish(groundfrontpainted);   // Lambertian, no TIR
+    {
+        const G4int Nw = 2;
+        G4double ew[Nw] = { 1.5*eV, 6.0*eV };
+        G4double rw[Nw] = { 0.85, 0.85 };
+        auto* mptWh = new G4MaterialPropertiesTable();
+        mptWh->AddProperty("REFLECTIVITY", ew, rw, Nw);
+        fClampWhite->SetMaterialPropertiesTable(mptWh);
     }
 
     // ---------- Far-end mirror cap (full disc at the fibre's far end) --------
@@ -1434,30 +1488,24 @@ void GeometryMuonScint::PlaceWLSFibres(G4LogicalVolume* worldLV,
                                      fGrease4LV, "WLSCoupleFilmPhys",
                                      worldLV, false, 0, true);
 
-    // ---- Black clamp body (outboard of the fibres) ----
+    // ---- Clamp body (outboard of the fibres) ----
     new G4PVPlacement(rotCopy(flipRot),
                       mapPos(G4ThreeVector(clampCx, 0., 0.)),
                       fClampLV, "WLSClampPhys", worldLV, false, 0, true);
     // NOTE: a skin surface applies to EVERY face of the LV (channel walls and
     // the grease-facing front included), not just the outboard face.
-    const std::string clampMode = EnvString("DCS_CLAMP_SURFACE", "mirror");
-    if (clampMode == "black") {
-        G4cout << " [MuonScint] STUDY: clamp skin = none (black absorbing bulk)" << G4endl;
-    } else if (clampMode == "white") {
-        auto* white = new G4OpticalSurface("MuonScintClampWhite");
-        white->SetModel(unified);
-        white->SetType(dielectric_dielectric);
-        white->SetFinish(groundfrontpainted);   // Lambertian, no TIR
-        const G4int Nw = 2;
-        G4double ew[Nw] = { 1.5*eV, 6.0*eV };
-        G4double rw[Nw] = { 0.85, 0.85 };
-        auto* mptWh = new G4MaterialPropertiesTable();
-        mptWh->AddProperty("REFLECTIVITY", ew, rw, Nw);
-        white->SetMaterialPropertiesTable(mptWh);
-        new G4LogicalSkinSurface("WLSClampWhiteSkin", fClampLV, white);
-        G4cout << " [MuonScint] STUDY: clamp skin = white Lambertian R=0.85" << G4endl;
-    } else if (fClampMirror) {
-        new G4LogicalSkinSurface("WLSClampMirrorSkin", fClampLV, fClampMirror);
+    switch (fClampSurfaceMode) {
+        case kClampBlack:
+            G4cout << " [MuonScint] clamp skin = none (black absorbing bulk)" << G4endl;
+            break;
+        case kClampMirror:
+            new G4LogicalSkinSurface("WLSClampMirrorSkin", fClampLV, fClampMirror);
+            break;
+        case kClampWhite:
+        default:
+            new G4LogicalSkinSurface("WLSClampWhiteSkin", fClampLV, fClampWhite);
+            G4cout << " [MuonScint] clamp skin = white Lambertian R=0.85" << G4endl;
+            break;
     }
 
     // ---- Fibres (clad + core), seated in the clamp channels --------------
@@ -1569,6 +1617,30 @@ void GeometryMuonScint::PlaceWLSFibres(G4LogicalVolume* worldLV,
         new G4LogicalBorderSurface("MuonScint_FilmSlab", filmPV, fScintPV,
                                    fCouplingSurface);
     }
+    // ---- Bare direct-path fix (P4a) ----
+    // The read-out grease pad overshoots onto the slab's -Y face (x in
+    // [-125.0,-123.55], z in [-2,2]).  With a wrap the slab skin reflects
+    // there, but for bare (kNoReflector) the slab has NO skin, so scintillation
+    // light crossed the real air gap straight into the pad and was detected
+    // (bare cfg4 centre: 21.8 % of p.e. at lambda<440 nm, reading higher than
+    // glossy).  Model that gap explicitly for bare only: Fresnel/TIR into an
+    // n=1.0003 air backing, then absorb whatever is transmitted (REFLECTIVITY=0).
+    if (fReflectorType == kNoReflector && fScintPV && padPV) {
+        auto* gap = new G4OpticalSurface("MuonScintPadAirGap");
+        gap->SetModel(unified);
+        gap->SetType(dielectric_dielectric);
+        gap->SetFinish(polishedbackpainted);   // Fresnel/TIR vs the air backing
+        auto* m = new G4MaterialPropertiesTable();
+        const G4int ng = 2;
+        G4double eg[ng]   = { 1.5*eV, 6.0*eV };
+        G4double nAir[ng] = { 1.0003, 1.0003 };
+        G4double r0[ng]   = { 0., 0. };
+        m->AddProperty("RINDEX", eg, nAir, ng);         // surface backing index
+        m->AddProperty("REFLECTIVITY", eg, r0, ng);     // transmitted light absorbed
+        gap->SetMaterialPropertiesTable(m);
+        new G4LogicalBorderSurface("MuonScint_SlabPadGap", fScintPV, padPV, gap);
+        new G4LogicalBorderSurface("MuonScint_PadSlabGap", padPV, fScintPV, gap);
+    }
     // far-end mirror cap: specular Al reflector.
     // A skin on the cap LV covers *every* face the borders below do not, in
     // particular the CORE<->cap crossing.  Without it that crossing has no
@@ -1589,10 +1661,10 @@ void GeometryMuonScint::PlaceWLSFibres(G4LogicalVolume* worldLV,
     // fibre read-out end (-y after the placement flip) -> read-out pad:
     // transparent (couples guided light out).
     // The single SiPM views ALL FOUR fibre end faces simultaneously (Rao et al.
-    // Fig. 4a), so every fibre's read-out end must carry the coupling border into the
-    // shared read-out pad. Without this the three un-listed fibres have no
-    // surface at their end face, so the default lossless-TIR rule traps their
-    // light instead of delivering it to the SiPM.
+    // Fig. 4a), so every fibre's read-out end carries the coupling border into the
+    // shared read-out pad. Without it the un-listed fibres fall back to the default
+    // polished Fresnel boundary, which for core->pad is optically similar to
+    // fCouplingSurface; the borders are therefore belt-and-braces, not load-bearing.
     if (fCouplingSurface && padPV) {
         for (std::size_t k = 0; k < padSidePVs.size(); ++k) {
             new G4LogicalBorderSurface("MuonScint_FibrePad_" + std::to_string(k),

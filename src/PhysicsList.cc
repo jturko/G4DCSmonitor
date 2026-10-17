@@ -150,8 +150,10 @@ PhysicsList::PhysicsList(G4bool useImportanceBiasing, G4bool useOpticalPhysics) 
         optParams->SetCerenkovMaxPhotonsPerStep(100);
         optParams->SetCerenkovMaxBetaChange(10.0);
     
-        // WLS timing profile - look into later for config 4 from Rao et al
-        optParams->SetWLSTimeProfile("delta");
+        // WLS re-emission timing: exponential decay (Kuraray Y-11 ~7 ns, the
+        // G4WLSTimeGeneratorProfileExponential default tau), instead of the
+        // "delta" profile that delayed every re-emission by exactly 7 ns.
+        optParams->SetWLSTimeProfile("exponential");
 
         // Let G4OpBoundaryProcess invoke the sensitive detector on Detection
         // (used by the grease<->SiPM dielectric_metal surface with EFFICIENCY=PDE).

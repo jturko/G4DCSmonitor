@@ -26,6 +26,15 @@ enum ReflectorType {
     kTeflon       = 4
 };
 
+// Config-4 WLS clamp surface. A G4LogicalSkinSurface covers EVERY face of the
+// clamp LV (channel walls and the grease-facing front included), so this is the
+// single knob for the whole clamp body.
+enum ClampSurfaceMode {
+    kClampWhite  = 0,   // white 3D-printed plastic: Lambertian R = 0.85, absorbs 15 %
+    kClampBlack  = 1,   // black plastic: no skin; the n=1.55 bulk with 1 um ABSLENGTH
+    kClampMirror = 2    // legacy 95 % specular dielectric_metal
+};
+
 class GeometryMuonScint
 {
   public:
@@ -59,7 +68,8 @@ class GeometryMuonScint
 
     // Config 4 (Rao et al.): single SiPM read out through a WLS fibre clamp.
     // When enabled the four surges over the +X narrow face are replaced by a
-    // black clamp bar holding four Y-11(200) WLS fibres read out by one SiPM.
+    // clamp bar (white printed plastic by default) holding four Y-11(200) WLS
+    // fibres read out by one SiPM.
     void SetUseWLSFibres(G4bool on)      { fUseWLSFibres = on; }
     G4bool UsesWLSFibres() const         { return fUseWLSFibres; }
     void SetNumWLSFibres(G4int n)        { fNFibres = n; }
@@ -85,6 +95,19 @@ class GeometryMuonScint
     // tessellated model sits on a facet edge (24-gon vertex line or miter ring).
     void SetFibreAnalytic(G4bool on)     { fFibreAnalytic = on; }
     G4bool FibreAnalytic() const         { return fFibreAnalytic; }
+    // Multi-clad fibre: outer fluoropolymer (n=1.42) sheath over the PMMA
+    // (n=1.49) inner clad, as in the real Kuraray multi-clad specification.
+    // false = the legacy single PMMA clad (production before this change).
+    void SetFibreMultiClad(G4bool on)    { fFibreMultiClad = on; }
+    G4bool FibreMultiClad() const        { return fFibreMultiClad; }
+    // Y-11 WLS absorption length at the 430 nm absorption peak. The shape is the
+    // digitized Kuraray spectrum; this sets the absolute scale (default 1.0 mm,
+    // systematic band 0.3-3 mm).
+    void SetWLSAbsLength430(G4double l)  { fWLSAbsLength430 = l; }
+    G4double WLSAbsLength430() const     { return fWLSAbsLength430; }
+    // Config-4 clamp body surface (white / black / mirror).
+    void SetClampSurfaceMode(ClampSurfaceMode m) { fClampSurfaceMode = m; }
+    ClampSurfaceMode ClampSurfaceMode_() const   { return fClampSurfaceMode; }
 
     // Presets
     void PresetConfig_8SiPM_AllSides();
@@ -174,7 +197,8 @@ class GeometryMuonScint
     G4double fHolderWall     = 2.0 * CLHEP::mm;  // holder wall thickness
 
     // ---- Config 4: WLS fibre clamp ----------------------------------------
-    // A black 3D-printed/milled bar clamp sits on the -X narrow face (the side
+    // A 3D-printed/milled bar clamp (white by default; see fClampSurfaceMode)
+    // sits on the -X narrow face (the side
     // opposite the edge/corner MCD regions). Its slab-facing face carries one
     // full-length channel per fibre. Four Y-11(200) fibres run the full 250 mm
     // plate length seated in those channels; a thin optical-grease film fills
@@ -190,6 +214,9 @@ class GeometryMuonScint
     G4bool fFibreSquareCross = false;         // false = round Ø1.0 mm, true = square
     G4bool fFibreUseExtruded = false;         // square fibre via G4ExtrudedSolid (experimental)
     G4bool fFibreAnalytic    = false;         // round fibre from G4CutTubs segments
+    G4bool fFibreMultiClad   = true;          // outer n=1.42 sheath over the n=1.49 clad
+    G4double fWLSAbsLength430 = 1.0 * CLHEP::mm; // Y-11 WLS absorption length at 430 nm
+    ClampSurfaceMode fClampSurfaceMode = kClampWhite; // clamp body surface (white default)
     G4double fFibreRadius   = 0.5 * CLHEP::mm; // Ø1.0 mm core+clad
     G4double fFibreCladFrac = 0.03;            // cladding thickness fraction
     G4double fClampGap      = 0.10 * CLHEP::mm;// thin grease film slab<->clamp
@@ -232,6 +259,7 @@ class GeometryMuonScint
     G4OpticalSurface*  fSiPMSurface     = nullptr;  // grease<->SiPM detector boundary
     G4OpticalSurface*  fHolderSurface   = nullptr;  // slab<->black holder (absorber)
     G4OpticalSurface*  fClampMirror     = nullptr;  // clamp backing (specular)
+    G4OpticalSurface*  fClampWhite      = nullptr;  // clamp body (white Lambertian, R=0.85)
     G4OpticalSurface*  fFibreEndMirror  = nullptr;  // far fibre ends (mirror)
 
     static G4bool sHasWLSFibres;   // set true when WLS geometry is built

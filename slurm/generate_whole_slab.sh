@@ -7,8 +7,9 @@
 #   REFLECTOR in {0,1,2,3}   (none/TiO2/Al/glossy)
 # giving 4 * 4 = 16 macros, written to slurm/muon_whole/.
 #
-# CONFIG 4 maps onto geometry preset 5 (the WLS clamp); presets 1-3 stay
-# Configs 1-3 (preset 4 is the legacy 4-corner layout and is unused).
+# CONFIG 4 maps onto geometry preset 7 (the analytic G4CutTubs round fibres);
+# presets 1-3 stay Configs 1-3, preset 5 is the tessellated round vis variant,
+# preset 6 the square-fibre A/B.
 #
 # Each macro irradiates the full 250 x 250 mm^2 plate and requests @THREADS@
 # Geant4 threads (must match the SLURM --cpus-per-task). The collection-
@@ -44,8 +45,8 @@ MANIFEST="${OUTDIR}/manifest.txt"
 : > "${MANIFEST}"
 i=0
 for cfg in 1 2 3 4; do
-    # preset: cfg 1-3 -> 1-3, cfg 4 (WLS) -> preset 5
-    if [[ "${cfg}" == "4" ]]; then preset=5; else preset="${cfg}"; fi
+    # preset: cfg 1-3 -> 1-3, cfg 4 (WLS) -> preset 7 (analytic round)
+    if [[ "${cfg}" == "4" ]]; then preset=7; else preset="${cfg}"; fi
     for refl in 0 1 2 3; do
         out="whole_c${cfg}_r${refl}.mac"
         sed -e "s/@CONFIG@/${cfg}/g"    \

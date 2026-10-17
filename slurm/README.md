@@ -11,7 +11,8 @@ J. Appl. Phys. 138, 114504). Two arrays are submitted:
    plate. The light-collection-efficiency map (vs muon interaction x-y) is
    reconstructed offline from the `sipmHits` tree.
 
-Config 4 is the single-SiPM + WLS-fibre clamp layout (geometry preset 5);
+Config 4 is the single-SiPM + WLS-fibre clamp layout (geometry preset 7, the
+analytic G4CutTubs variant; preset 5 is the legacy tessellated vis-only variant);
 configs 1-3 stay presets 1-3.
 
 Both arrays request `--cpus-per-task=32`; this **must** match `THREADS` passed

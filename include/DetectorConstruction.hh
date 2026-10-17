@@ -5,6 +5,7 @@
 #include "globals.hh"
 #include "G4ThreeVector.hh"
 #include "G4RotationMatrix.hh"
+#include "GeometryMuonScint.hh"   // ClampSurfaceMode
 
 class G4LogicalVolume;
 class G4Material;
@@ -12,7 +13,6 @@ class G4Material;
 class DetectorMessenger;
 class GeometryCLYC;
 class GeometryCASTOR440;
-class GeometryMuonScint;
 
 class DetectorConstruction : public G4VUserDetectorConstruction
 {
@@ -124,8 +124,11 @@ class DetectorConstruction : public G4VUserDetectorConstruction
         void SetMuonScintSiPMSize(G4double sx, G4double sy);
         void AddMuonScintSiPM    (G4int edge, G4double u, G4double v);
         void ClearMuonScintSiPMs ();
-        void ApplyMuonScintPreset(G4int presetId);    // 1..4 (Configs)
+        void ApplyMuonScintPreset(G4int presetId);    // 1..7 (Configs)
         void SetMuonScintLightYieldScale(G4double s); // viz-only; 1.0 = physical
+        void SetMuonScintWLSAbsLength(G4double l);    // Y-11 WLS abs. length at 430 nm
+        void SetMuonScintClampSurface(ClampSurfaceMode m); // Config-4 clamp body surface
+        void SetMuonScintFibreMultiClad(G4bool on);       // Config-4 WLS fibre multi-clad
 
     private:
         DetectorMessenger* fDetectorMessenger = nullptr;
