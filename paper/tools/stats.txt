@@ -1,0 +1,68 @@
+
+Processing paper/tools/compute_stats.C...
+=== MATRIX (2500 events/file) ===
+c1 r0 centre               Nev= 2500  D=   763191  G=   49286521  eps=1.548478e-02  se=1.81e-05  pois=1.77e-05  mean=1.550141e-02
+c1 r0 edge                 Nev= 2500  D=   726116  G=   48797186  eps=1.488028e-02  se=1.90e-05  pois=1.75e-05  mean=1.489528e-02
+c1 r0 corner               Nev= 2500  D=   717604  G=   48833749  eps=1.469484e-02  se=2.58e-05  pois=1.73e-05  mean=1.470304e-02
+c1 r1 centre               Nev= 2500  D=   308828  G=   48491876  eps=6.368654e-03  se=1.19e-05  pois=1.15e-05  mean=6.368637e-03
+c1 r1 edge                 Nev= 2500  D=   391881  G=   48851289  eps=8.021917e-03  se=1.45e-05  pois=1.28e-05  mean=8.021974e-03
+c1 r1 corner               Nev= 2500  D=   544100  G=   48499127  eps=1.121876e-02  se=2.67e-05  pois=1.52e-05  mean=1.121075e-02
+c1 r2 centre               Nev= 2500  D=   495670  G=   48356873  eps=1.025025e-02  se=1.49e-05  pois=1.46e-05  mean=1.024401e-02
+c1 r2 edge                 Nev= 2500  D=   472513  G=   48452695  eps=9.752048e-03  se=1.57e-05  pois=1.42e-05  mean=9.743070e-03
+c1 r2 corner               Nev= 2500  D=   476112  G=   48425443  eps=9.831856e-03  se=2.44e-05  pois=1.42e-05  mean=9.824311e-03
+c1 r3 centre               Nev= 2500  D=  1292066  G=   48819929  eps=2.646595e-02  se=2.36e-05  pois=2.33e-05  mean=2.646535e-02
+c1 r3 edge                 Nev= 2500  D=  1267230  G=   49083476  eps=2.581785e-02  se=2.49e-05  pois=2.29e-05  mean=2.582036e-02
+c1 r3 corner               Nev= 2500  D=  1247645  G=   48560413  eps=2.569264e-02  se=2.99e-05  pois=2.30e-05  mean=2.569387e-02
+c2 r0 centre               Nev= 2500  D=   403242  G=   49325943  eps=8.175049e-03  se=1.33e-05  pois=1.29e-05  mean=8.185111e-03
+c2 r0 edge                 Nev= 2500  D=   385733  G=   49064293  eps=7.861787e-03  se=1.33e-05  pois=1.27e-05  mean=7.864073e-03
+c2 r0 corner               Nev= 2500  D=   381911  G=   49027591  eps=7.789716e-03  se=1.72e-05  pois=1.26e-05  mean=7.786283e-03
+c2 r1 centre               Nev= 2500  D=   158619  G=   49009162  eps=3.236517e-03  se=8.20e-06  pois=8.13e-06  mean=3.237053e-03
+c2 r1 edge                 Nev= 2500  D=   197610  G=   48446158  eps=4.078961e-03  se=1.22e-05  pois=9.18e-06  mean=4.076517e-03
+c2 r1 corner               Nev= 2500  D=   272956  G=   48219707  eps=5.660673e-03  se=2.41e-05  pois=1.08e-05  mean=5.660171e-03
+c2 r2 centre               Nev= 2500  D=   256596  G=   48597045  eps=5.280074e-03  se=1.05e-05  pois=1.04e-05  mean=5.275247e-03
+c2 r2 edge                 Nev= 2500  D=   242966  G=   48499031  eps=5.009708e-03  se=1.09e-05  pois=1.02e-05  mean=5.007830e-03
+c2 r2 corner               Nev= 2500  D=   243284  G=   48307777  eps=5.036125e-03  se=1.52e-05  pois=1.02e-05  mean=5.037693e-03
+c2 r3 centre               Nev= 2500  D=   683963  G=   49087542  eps=1.393354e-02  se=1.76e-05  pois=1.68e-05  mean=1.393448e-02
+c2 r3 edge                 Nev= 2500  D=   666008  G=   49093797  eps=1.356603e-02  se=1.78e-05  pois=1.66e-05  mean=1.356558e-02
+c2 r3 corner               Nev= 2500  D=   664432  G=   49048518  eps=1.354642e-02  se=2.08e-05  pois=1.66e-05  mean=1.354257e-02
+c3 r0 centre               Nev= 2500  D=   207594  G=   49403459  eps=4.202013e-03  se=9.38e-06  pois=9.22e-06  mean=4.206690e-03
+c3 r0 edge                 Nev= 2500  D=   203339  G=   49048165  eps=4.145700e-03  se=9.60e-06  pois=9.19e-06  mean=4.146896e-03
+c3 r0 corner               Nev= 2500  D=   204364  G=   49241356  eps=4.150251e-03  se=9.52e-06  pois=9.18e-06  mean=4.153612e-03
+c3 r1 centre               Nev= 2500  D=    78967  G=   48514253  eps=1.627707e-03  se=7.56e-06  pois=5.79e-06  mean=1.629581e-03
+c3 r1 edge                 Nev= 2500  D=    44114  G=   48717958  eps=9.054977e-04  se=4.34e-06  pois=4.31e-06  mean=9.046853e-04
+c3 r1 corner               Nev= 2500  D=    43794  G=   48726796  eps=8.987663e-04  se=4.48e-06  pois=4.29e-06  mean=8.998542e-04
+c3 r2 centre               Nev= 2500  D=   129891  G=   48969325  eps=2.652497e-03  se=7.64e-06  pois=7.36e-06  mean=2.648770e-03
+c3 r2 edge                 Nev= 2500  D=   123798  G=   48694707  eps=2.542330e-03  se=7.19e-06  pois=7.23e-06  mean=2.540347e-03
+c3 r2 corner               Nev= 2500  D=   124123  G=   48716403  eps=2.547869e-03  se=7.47e-06  pois=7.23e-06  mean=2.546109e-03
+c3 r3 centre               Nev= 2500  D=   349269  G=   49191068  eps=7.100252e-03  se=1.26e-05  pois=1.20e-05  mean=7.100671e-03
+c3 r3 edge                 Nev= 2500  D=   345108  G=   48936728  eps=7.052127e-03  se=1.27e-05  pois=1.20e-05  mean=7.052750e-03
+c3 r3 corner               Nev= 2500  D=   347411  G=   49065496  eps=7.080556e-03  se=1.22e-05  pois=1.20e-05  mean=7.084011e-03
+c4 r0 centre               Nev= 2500  D=    81678  G=   48614348  eps=1.680121e-03  se=6.05e-06  pois=5.88e-06  mean=1.679594e-03
+c4 r0 edge                 Nev= 2500  D=    78852  G=   48471558  eps=1.626768e-03  se=5.91e-06  pois=5.79e-06  mean=1.626438e-03
+c4 r0 corner               Nev= 2500  D=    81389  G=   48118691  eps=1.691422e-03  se=5.91e-06  pois=5.93e-06  mean=1.691517e-03
+c4 r1 centre               Nev= 2500  D=    51849  G=   49287005  eps=1.051981e-03  se=5.79e-06  pois=4.62e-06  mean=1.050174e-03
+c4 r1 edge                 Nev= 2500  D=    28087  G=   48943409  eps=5.738669e-04  se=3.53e-06  pois=3.42e-06  mean=5.741606e-04
+c4 r1 corner               Nev= 2500  D=    27351  G=   48484312  eps=5.641206e-04  se=3.48e-06  pois=3.41e-06  mean=5.645447e-04
+c4 r2 centre               Nev= 2500  D=    70764  G=   48987767  eps=1.444524e-03  se=5.52e-06  pois=5.43e-06  mean=1.442073e-03
+c4 r2 edge                 Nev= 2500  D=    64364  G=   48655025  eps=1.322864e-03  se=5.24e-06  pois=5.21e-06  mean=1.322912e-03
+c4 r2 corner               Nev= 2500  D=    63829  G=   48303315  eps=1.321421e-03  se=5.32e-06  pois=5.23e-06  mean=1.320482e-03
+c4 r3 centre               Nev= 2500  D=   170667  G=   49373990  eps=3.456618e-03  se=8.26e-06  pois=8.37e-06  mean=3.455012e-03
+c4 r3 edge                 Nev= 2500  D=   167570  G=   49215719  eps=3.404807e-03  se=8.47e-06  pois=8.32e-06  mean=3.404939e-03
+c4 r3 corner               Nev= 2500  D=   164757  G=   48500057  eps=3.397048e-03  se=8.58e-06  pois=8.37e-06  mean=3.396626e-03
+=== WHOLE PLATE (25000 events/file) ===
+c1 r0                      Nev=25000  D=  7634524  G=  491218802  eps=1.554200e-02  se=1.15e-05  pois=5.62e-06  mean=1.555268e-02
+c1 r1                      Nev=25000  D=  4637247  G=  486501291  eps=9.531829e-03  se=2.16e-05  pois=4.43e-06  mean=9.533382e-03
+c1 r2                      Nev=25000  D=  5081434  G=  484259696  eps=1.049320e-02  se=1.20e-05  pois=4.65e-06  mean=1.048515e-02
+c1 r3                      Nev=25000  D= 12992605  G=  490666119  eps=2.647952e-02  se=1.21e-05  pois=7.35e-06  mean=2.648061e-02
+c2 r0                      Nev=25000  D=  4061576  G=  491838581  eps=8.257945e-03  se=8.48e-06  pois=4.10e-06  mean=8.265204e-03
+c2 r1                      Nev=25000  D=  2362664  G=  486180454  eps=4.859644e-03  se=1.57e-05  pois=3.16e-06  mean=4.857051e-03
+c2 r2                      Nev=25000  D=  2625801  G=  485749271  eps=5.405672e-03  se=8.54e-06  pois=3.34e-06  mean=5.403244e-03
+c2 r3                      Nev=25000  D=  6882432  G=  492078703  eps=1.398645e-02  se=9.20e-06  pois=5.33e-06  mean=1.398812e-02
+c3 r0                      Nev=25000  D=  2083023  G=  490836686  eps=4.243821e-03  se=5.82e-06  pois=2.94e-06  mean=4.245022e-03
+c3 r1                      Nev=25000  D=  1195659  G=  486986969  eps=2.455218e-03  se=1.52e-05  pois=2.25e-06  mean=2.458863e-03
+c3 r2                      Nev=25000  D=  1327922  G=  487245972  eps=2.725363e-03  se=6.54e-06  pois=2.37e-06  mean=2.723066e-03
+c3 r3                      Nev=25000  D=  3516695  G=  491408285  eps=7.156361e-03  se=6.91e-06  pois=3.82e-06  mean=7.155289e-03
+c4 r0                      Nev=25000  D=   838730  G=  485806947  eps=1.726468e-03  se=2.14e-06  pois=1.89e-06  mean=1.726752e-03
+c4 r1                      Nev=25000  D=   771892  G=  485750541  eps=1.589071e-03  se=8.34e-06  pois=1.81e-06  mean=1.589877e-03
+c4 r2                      Nev=25000  D=   736508  G=  486298717  eps=1.514518e-03  se=2.25e-06  pois=1.76e-06  mean=1.513768e-03
+c4 r3                      Nev=25000  D=  1698757  G=  489583256  eps=3.469802e-03  se=2.83e-06  pois=2.66e-06  mean=3.469100e-03

@@ -121,6 +121,8 @@ class DetectorConstruction : public G4VUserDetectorConstruction
         void SetMuonScintSize(G4ThreeVector half_mm);
         void SetMuonScintReflector(G4int  type);      // 0..4 (enum mirror)
         void SetMuonScintWrap    (G4bool on);
+        void SetMuonScintBareContactFraction(G4double f); // 0 = air gap, 1 = full contact
+        void SetMuonScintAlBacking(AlBackingMode m);       // Al foil: grease or air
         void SetMuonScintSiPMSize(G4double sx, G4double sy);
         void AddMuonScintSiPM    (G4int edge, G4double u, G4double v);
         void ClearMuonScintSiPMs ();

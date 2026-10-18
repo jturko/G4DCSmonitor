@@ -1,0 +1,27 @@
+[12] S. Gundacker, A. Heering, The silicon photomultiplier: fundamentals and
+applications of a modern solid-state photon detector, Physics in Medicine
+and Biology 65 (2020) 17TR01. doi:10.1088/1361-6560/ab7b2d.
+[13] AdvanSiD (Cefla), NUV SiPM datasheet: ASD-NUV P-on-N silicon
+photomultipliers, Vendor datasheet (n.d.).
+URL
+https://indico.cern.ch/event/566138/contributions/
+2287560/attachments/1400219/2139198/Advansid_datasheet_NUV.
+pdf
+[14] K. M. McPeak, S. V. Jayanti, S. J. P. Kress, S. Meyer, S. Iotti,
+A. Rossinelli, G. C. Beckett, J. M. Fabbri, C. A. Fontana, B. A. Wisser,
+et al., Plasmonic films can easily be better: rules and recipes, ACS
+Photonics 2 (2015) 326–333. doi:10.1021/ph5004237.
+[15] Kuraray Co., Ltd., Plastic scintillating fibers (PSF) product catalogue,
+Y-11 wavelength-shifting grade (n.d.).
+URL
+https://www.kuraray.com/content/dam/methacrylate/en/
+documents/psf.pdf
+[16] I. Alekseev, et al., The performance of a new Kuraray wavelength shifting
+fiber YS-2, Journal of Instrumentation 17 (2022) P01031. doi:10.1088/
+1748-0221/17/01/P01031.
+[17] N. Anfimov, D. Fedoseev, A. Rybnikov, A. Selyunin, S. Sokolov, A. Sotnikov, Study of silicon photomultiplier performance at different temperatures, Nuclear Instruments and Methods in Physics Research A 997
+(2021) 165162. doi:10.1016/j.nima.2021.165162.
+
+24
+
+

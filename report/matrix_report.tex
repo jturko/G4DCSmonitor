@@ -599,102 +599,109 @@ Gain / dark-count rate / capacitance & $10^6$ / 50--100 kHz/mm$^2$ / 0.84 nF & -
 \subsection{Optical property tables}
 \label{sec:optprops}
 
-Figure~\ref{fig:spectra_opt} plots the three radiometric input tables actually
-fed to \gfour, over the \SIrange{310}{700}{\nano\meter} range used in the
-transport. The left panel compares the normalised emission spectra: the
-scintillator peaks at \SI{425}{\nano\meter}, while the Y-11 fibre re-emits in
-the green, peaked at \SI{476}{\nano\meter}---the shift that makes the config-4
-read-out spectrum green. The middle panel gives the attenuation lengths on a
-logarithmic scale: the scintillator is transparent across the visible but its
-bulk attenuation collapses in the UV, whereas the digitized Y-11 WLS absorption
-is effectively transparent red-ward of \SI{500}{\nano\meter} and rises to its
+Figure~\ref{fig:spectra_opt} plots the spectral input tables actually fed to
+\gfour, over the \SIrange{310}{700}{\nano\meter} range used in the transport.
+The left panel compares the normalised spectral shapes: the scintillator
+emission peaks at \SI{425}{\nano\meter}, the Y-11 absorption band at
+\SI{430}{\nano\meter}, and the Y-11 re-emission lies in the green at
+\SI{476}{\nano\meter}---the shift that makes the config-4 read-out spectrum
+green. Drawing the WLS absorption and emission on one axis makes their overlap
+explicit, while the absolute WLS absorption strength is carried by the middle
+panel. That panel gives the attenuation lengths on a logarithmic scale: the
+scintillator is transparent across the visible but its bulk attenuation
+collapses in the UV, whereas the digitized Y-11 WLS absorption is effectively
+transparent red-ward of \SI{500}{\nano\meter} and rises to its
 \SI{430}{\nano\meter} peak (absorption length \SI{1}{\milli\meter}); the WLS
 absorption onset is marked by the dashed line near \SI{486}{\nano\meter}. The
 right panel is the SiPM photocathode efficiency $=$ PDE$(\lambda)$, the digitized
 ASD-NUV4S-P-40 curve peaking at \num{0.431} near \SI{410}{\nano\meter}. These
 curves are exactly the tabulated points of \texttt{src/GeometryMuonScint.cc};
 \gfour\ interpolates them linearly, so the drawn segments are what the simulation
-uses.
+uses. The left and middle panels together therefore carry the complete WLS
+spectral input (emission and absorption), and no separate WLS-spectrum figure
+is needed.
 
 The remaining input data are shown in
-Figs.~\ref{fig:wlsprocess}--\ref{fig:scinttiming}, all plotted directly from the
-same source arrays: the Y-11 absorption and emission overlap and the exponential
-re-emission delay (Fig.~\ref{fig:wlsprocess}); the tabulated reflectivity
-$R(\lambda)$ of the three reflective wrappers (Fig.~\ref{fig:reflR}); the
-refractive indices of every optical material, including the multi-clad fibre's
-radial index staircase (Fig.~\ref{fig:nidx}); and the scintillation light-pulse
-shape (Fig.~\ref{fig:scinttiming}).
+Figs.~\ref{fig:opticaltiming}--\ref{fig:nidx}, all plotted directly from the
+same source arrays: the time structure of the two optical sources---the
+scintillation pulse on linear and logarithmic scales, and the exponential Y-11
+re-emission delay (Fig.~\ref{fig:opticaltiming}); the tabulated reflectivity
+$R(\lambda)$ of the three reflective wrappers, also read out at the
+scintillation and WLS emission peaks (Fig.~\ref{fig:reflR}); and the
+refractive-index ladder, the multi-clad fibre's radial index staircase, and the
+critical angles implied by it (Fig.~\ref{fig:nidx}).
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{figures/optical_spectra.pdf}
 \caption{Optical property tables used by the simulation. \emph{Left:}
-normalised emission spectra of the PVT scintillator (peaking at
-\SI{425}{\nano\meter}) and of the Y-11 WLS fibre (peaking at
-\SI{476}{\nano\meter}). \emph{Middle:} attenuation lengths on a logarithmic
-scale---the scintillator bulk absorption and the fiber WLS absorption (absolute
-scale set to \SI{1}{\milli\meter} at the \SI{430}{\nano\meter} peak). \emph{Right:}
-SiPM photocathode PDE$(\lambda)$, the digitized curve peaking at
-\SI{410}{\nano\meter}. The vertical dashed line in each panel marks the
-characteristic wavelength of that panel's process---scintillator emission peak
-at \SI{425}{\nano\meter} (left), WLS absorption onset at \SI{486}{\nano\meter}
-(middle), and SiPM PDE peak at \SI{410}{\nano\meter} (right); the left and right
-lines therefore nearly coincide, whereas the middle line is red-shifted to the
-WLS band. Markers are the tabulated points; segments are the linear
-interpolation \gfour\ applies.}
+normalised spectral shapes of the PVT scintillator emission (peaking at
+\SI{425}{\nano\meter}) and of the digitized Y-11 WLS fibre absorption
+(\SI{430}{\nano\meter}) and re-emission (\SI{476}{\nano\meter}); the
+absorption/emission overlap is the input to the \texttt{G4OpWLS} energy
+constraint $E_\gamma' \le E_\gamma$. \emph{Middle:} attenuation lengths on a
+logarithmic scale---the scintillator bulk absorption and the fibre WLS
+absorption (absolute scale set to \SI{1}{\milli\meter} at the
+\SI{430}{\nano\meter} peak). \emph{Right:} SiPM photocathode PDE$(\lambda)$, the
+digitized curve peaking at \SI{410}{\nano\meter}. The vertical dashed line in
+each panel marks the characteristic wavelength of that panel's process---the
+scintillator emission peak at \SI{425}{\nano\meter} and the Y-11 emission peak
+at \SI{476}{\nano\meter} (left), the WLS absorption onset at
+\SI{486}{\nano\meter} (middle), and the SiPM PDE peak at \SI{410}{\nano\meter}
+(right); the scintillator emission peak and the SiPM PDE peak therefore nearly
+coincide, whereas the WLS absorption onset and the Y-11 emission peak are
+red-shifted into the WLS band. Markers are the tabulated points; segments
+are the linear interpolation \gfour\ applies.}
 \label{fig:spectra_opt}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{figures/wls_process.pdf}
-\caption{Wavelength-shifting input data (digitized Kuraray Y-11).
-\emph{Left:} the absorption band (blue) and the re-emission spectrum (green)
-on a common wavelength axis. The shaded band marks the region where the emitted
-photon energy exceeds the absorbed one; because \texttt{G4OpWLS} samples the
-secondary from \texttt{WLSCOMPONENT} under the constraint $E_\gamma' \le
-E_\gamma$, the emission table is cut off at the absorption onset
-($\approx\SI{486}{\nano\meter}$). \emph{Right:} the exponential re-emission
-delay used in production (solid, $\tau = \SI{7}{\nano\second}$) compared with the
-fixed-delay profile of the earlier model (dashed).}
-\label{fig:wlsprocess}
+\includegraphics[width=\textwidth]{figures/optical_timing.pdf}
+\caption{Time structure of the two optical sources. \emph{Left:} the PVT
+scintillation pulse
+$f(t) \propto \bigl(1-e^{-t/\tau_r}\bigr)e^{-t/\tau_d}$ with rise
+$\tau_r = \SI{0.9}{\nano\second}$ and decay $\tau_d = \SI{2.1}{\nano\second}$,
+normalised to its peak and shown on a linear scale; the dashed line marks the
+maximum at \SI{1.08}{\nano\second}. \emph{Middle:} the same pulse on a
+logarithmic ordinate, exposing the exponential tail. \emph{Right:} the Y-11 WLS
+re-emission probability density: exponential with $\tau = \SI{7}{\nano\second}$
+used in production (solid), compared with the historical fixed-delay profile at
+\SI{7}{\nano\second} (dashed). The corresponding spectral tables are in
+Fig.~\ref{fig:spectra_opt}.}
+\label{fig:opticaltiming}
 \end{figure}
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{figures/reflector_reflectivity.pdf}
-\caption{Reflector treatments: tabulated reflectivity $R(\lambda)$ of the three
-reflective wrappers (TiO$_2$ paint, aluminium foil, high-gloss paper) on the
-shared 10-point grid, with the bare plate's lossless total-internal-reflection
-guide line. \emph{Right:} $R$ at the scintillator emission peak
-(\SI{425}{\nano\meter}); the bare plate is shown at unity as the TIR ceiling.}
+\caption{Reflector treatments. \emph{Left:} tabulated reflectivity
+$R(\lambda)$ of the three reflective wrappers (TiO$_2$ paint, aluminium foil,
+high-gloss paper) on the shared 10-point grid, with the bare plate's lossless
+total-internal-reflection guide line. \emph{Middle:} $R$ at the scintillation
+emission peak (\SI{425}{\nano\meter}). \emph{Right:} $R$ at the Y-11 emission
+peak (\SI{476}{\nano\meter}), the wavelength of the config-4 re-emitted light.
+In both bar panels the bare plate is shown at unity as the TIR ceiling, not as
+a reflector.}
 \label{fig:reflR}
 \end{figure}
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{figures/refractive_index.pdf}
-\caption{Refractive indices used in the transport. \emph{Left:} the (flat)
-indices of every optical medium---scintillator, coupling grease, SiPM epoxy,
-clamp/holder, and the fibre's core, PMMA inner cladding and fluoropolymer outer
-sheath. \emph{Right:} the resulting radial index profile of the multi-clad Y-11
-fibre from the core axis outward: core ($n=1.59$), PMMA cladding
-($n=1.49$), fluoropolymer sheath ($n=1.42$), the deliberate \SI{0.05}{\milli\meter}
-air annulus, and the surrounding clamp ($n=1.55$). The stepped low-index
-cladding is what sustains core--cladding total internal reflection.}
+\caption{Refractive-index structure of the optical model. \emph{Left:} the
+index ladder of the bulk media, all wavelength-flat across the visible---fibre
+core, scintillator, clamp/holder/epoxy, PMMA inner cladding, optical grease and
+fluoropolymer sheath. \emph{Middle:} the radial index profile of the multi-clad
+Y-11 fibre from the core axis outward: core ($n=1.59$), PMMA cladding
+($n=1.49$), fluoropolymer sheath ($n=1.42$), the deliberate
+\SI{0.05}{\milli\meter} air annulus, and the surrounding clamp ($n=1.55$).
+\emph{Right:} the critical angles
+$\theta_c = \sin^{-1}(n_2/n_1)$ of the successive layer pairs, measured from
+the interface normal. The large thresholds at the core--clad and clad--sheath
+boundaries are what sustain core--cladding total internal reflection, while the
+plate's air interface sets the usual escape cone.}
 \label{fig:nidx}
-\end{figure}
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=\textwidth]{figures/scint_timing.pdf}
-\caption{Scintillation light-pulse shape,
-$f(t) \propto \bigl(1-e^{-t/\tau_r}\bigr)e^{-t/\tau_d}$ with rise
-$\tau_r = \SI{0.9}{\nano\second}$ and decay $\tau_d = \SI{2.1}{\nano\second}$,
-which sets the emission-time distribution used by the
-scintillation process. \emph{Left:} linear scale; \emph{right:} logarithmic
-scale, showing the exponential tail.}
-\label{fig:scinttiming}
 \end{figure}
 
 \subsection{Optical physics implementation}
@@ -804,7 +811,7 @@ which is configured through the fibre material's \texttt{WLSABSLENGTH},
 \texttt{WLSCOMPONENT} and \texttt{WLSTIMECONSTANT} properties. Both spectra are
 the digitized Kuraray Y-11(200) curves: the absorption band peaks at
 \SI{430}{\nano\meter} (onset $\approx\SI{486}{\nano\meter}$) and the re-emission
-peak is \SI{476}{\nano\meter} (Fig.~\ref{fig:wlsprocess}). The absolute
+peak is \SI{476}{\nano\meter} (Fig.~\ref{fig:spectra_opt}). The absolute
 absorption strength is set by the \SI{430}{\nano\meter} absorption length,
 \SI{1.0}{\milli\meter} in production (with a systematic band of
 \SIrange{0.3}{3}{\milli\meter} available through the

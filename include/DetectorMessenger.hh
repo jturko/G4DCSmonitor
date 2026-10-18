@@ -116,6 +116,8 @@ class DetectorMessenger : public G4UImessenger
     G4UIcmdWith3VectorAndUnit* fSetMuonScintSizeCmd           = nullptr;     // half-lengths (Lx/2, Ly/2, Lz/2)
     G4UIcmdWithAnInteger*      fSetMuonScintReflectorCmd      = nullptr;    // 0=none,1=TiO2 paint,2=Al foil,3=glossy paper,4=PTFE
     G4UIcmdWithABool*          fSetMuonScintWrapCmd           = nullptr;
+    G4UIcmdWithADouble*        fSetMuonScintBareContactCmd    = nullptr;    // 0 = air gap, 1 = full contact
+    G4UIcmdWithAString*        fSetMuonScintAlBackingCmd      = nullptr;    // air|grease
     G4UIcmdWith3Vector*        fSetMuonScintSiPMSizeCmd       = nullptr;     // (sx, sy, _) in mm; z is fixed in geometry
     G4UIcmdWith3Vector*        fAddMuonScintSiPMCmd           = nullptr;     // (edge, u, v) ; edge=0..3, u/v in [-1,1]
     G4UIcmdWithoutParameter*   fClearMuonScintSiPMsCmd        = nullptr;

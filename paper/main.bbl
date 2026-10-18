@@ -1,0 +1,119 @@
+\begin{thebibliography}{10}
+\expandafter\ifx\csname url\endcsname\relax
+  \def\url#1{\texttt{#1}}\fi
+\expandafter\ifx\csname urlprefix\endcsname\relax\def\urlprefix{URL }\fi
+\expandafter\ifx\csname href\endcsname\relax
+  \def\href#1#2{#2} \def\path#1{#1}\fi
+
+\bibitem{Borozdin2003}
+K.~N. Borozdin, et~al., Radiographic imaging with cosmic-ray muons, Nature 422
+  (2003) 277.
+\newblock \href {https://doi.org/10.1038/422277a} {\path{doi:10.1038/422277a}}.
+
+\bibitem{Bonechi2020}
+L.~Bonechi, R.~D'Alessandro, A.~Giammanco, Atmospheric muons as an imaging
+  tool, Reviews in Physics 5 (2020) 100038.
+\newblock \href {https://doi.org/10.1016/j.revip.2020.100038}
+  {\path{doi:10.1016/j.revip.2020.100038}}.
+
+\bibitem{Agostinelli2003}
+S.~Agostinelli, et~al., {Geant4}---a simulation toolkit, Nuclear Instruments
+  and Methods in Physics Research A 506 (2003) 250--303.
+\newblock \href {https://doi.org/10.1016/S0168-9002(03)01368-8}
+  {\path{doi:10.1016/S0168-9002(03)01368-8}}.
+
+\bibitem{Allison2016}
+J.~Allison, et~al., Recent developments in {Geant4}, Nuclear Instruments and
+  Methods in Physics Research A 835 (2016) 186--225.
+\newblock \href {https://doi.org/10.1016/j.nima.2016.06.125}
+  {\path{doi:10.1016/j.nima.2016.06.125}}.
+
+\bibitem{Korpachev2017}
+S.~Korpachev, M.~Chadeeva, {Geant4} simulation of optical photon transport in
+  scintillator tile with direct readout by silicon photomultiplier, Journal of
+  Physics: Conference Series 798 (2017) 012218.
+\newblock \href {https://doi.org/10.1088/1742-6596/798/1/012218}
+  {\path{doi:10.1088/1742-6596/798/1/012218}}.
+
+\bibitem{Rao2025}
+G.~Rao, A.~Bieberle, U.~Hampel, M.~Wagner, Design studies on large muon trigger
+  detectors using silicon photomultiplier devices, Journal of Applied Physics
+  138 (2025) 114504.
+\newblock \href {https://doi.org/10.1063/5.0288270}
+  {\path{doi:10.1063/5.0288270}}.
+
+\bibitem{EljenEJ200}
+{Eljen Technology},
+  \href{https://eljentechnology.com/images/products/data_sheets/EJ-200_EJ-204_EJ-208_EJ-212.pdf}{{EJ-200,
+  EJ-204, EJ-208, EJ-212} general purpose plastic scintillators}, Data sheet
+  (2024).
+\newline\urlprefix\url{https://eljentechnology.com/images/products/data_sheets/EJ-200_EJ-204_EJ-208_EJ-212.pdf}
+
+\bibitem{Artikov2005}
+A.~Artikov, et~al., Properties of the {Ukraine} polystyrene-based plastic
+  scintillator {UPS 923A}, Nuclear Instruments and Methods in Physics Research
+  A 555 (2005) 125--131.
+\newblock \href {https://doi.org/10.1016/j.nima.2005.09.021}
+  {\path{doi:10.1016/j.nima.2005.09.021}}.
+
+\bibitem{AmcrysPS}
+{Amcrys}, \href{https://www.amcrys.com/pdf/4286_.pdf}{Polystyrene-based plastic
+  scintillators ({UPS-923A} grade)}, Data sheet (n.d.).
+\newline\urlprefix\url{https://www.amcrys.com/pdf/4286_.pdf}
+
+\bibitem{Birks1951}
+J.~B. Birks, Scintillations from organic crystals: specific fluorescence and
+  relative response to different radiations, Proceedings of the Physical
+  Society A 64 (1951) 874--877.
+\newblock \href {https://doi.org/10.1088/0370-1298/64/10/303}
+  {\path{doi:10.1088/0370-1298/64/10/303}}.
+
+\bibitem{Craun1970}
+R.~L. Craun, D.~L. Smith, Analysis of response data for several organic
+  scintillators, Nuclear Instruments and Methods 80 (1970) 239--244.
+\newblock \href {https://doi.org/10.1016/0029-554X(70)90768-8}
+  {\path{doi:10.1016/0029-554X(70)90768-8}}.
+
+\bibitem{Gundacker2020}
+S.~Gundacker, A.~Heering, The silicon photomultiplier: fundamentals and
+  applications of a modern solid-state photon detector, Physics in Medicine and
+  Biology 65 (2020) 17TR01.
+\newblock \href {https://doi.org/10.1088/1361-6560/ab7b2d}
+  {\path{doi:10.1088/1361-6560/ab7b2d}}.
+
+\bibitem{AdvanSiD_NUV}
+{AdvanSiD (Cefla)},
+  \href{https://indico.cern.ch/event/566138/contributions/2287560/attachments/1400219/2139198/Advansid_datasheet_NUV.pdf}{{NUV}
+  {SiPM} datasheet: {ASD-NUV} {P-on-N} silicon photomultipliers}, Vendor
+  datasheet (n.d.).
+\newline\urlprefix\url{https://indico.cern.ch/event/566138/contributions/2287560/attachments/1400219/2139198/Advansid_datasheet_NUV.pdf}
+
+\bibitem{McPeak2015}
+K.~M. McPeak, S.~V. Jayanti, S.~J.~P. Kress, S.~Meyer, S.~Iotti, A.~Rossinelli,
+  G.~C. Beckett, J.~M. Fabbri, C.~A. Fontana, B.~A. Wisser, et~al., Plasmonic
+  films can easily be better: rules and recipes, ACS Photonics 2 (2015)
+  326--333.
+\newblock \href {https://doi.org/10.1021/ph5004237}
+  {\path{doi:10.1021/ph5004237}}.
+
+\bibitem{KurarayPSF}
+{Kuraray Co., Ltd.},
+  \href{https://www.kuraray.com/content/dam/methacrylate/en/documents/psf.pdf}{Plastic
+  scintillating fibers ({PSF}) product catalogue}, Y-11 wavelength-shifting
+  grade (n.d.).
+\newline\urlprefix\url{https://www.kuraray.com/content/dam/methacrylate/en/documents/psf.pdf}
+
+\bibitem{Alekseev2022}
+I.~Alekseev, et~al., The performance of a new {Kuraray} wavelength shifting
+  fiber {YS-2}, Journal of Instrumentation 17 (2022) P01031.
+\newblock \href {https://doi.org/10.1088/1748-0221/17/01/P01031}
+  {\path{doi:10.1088/1748-0221/17/01/P01031}}.
+
+\bibitem{Anfimov2021}
+N.~Anfimov, D.~Fedoseev, A.~Rybnikov, A.~Selyunin, S.~Sokolov, A.~Sotnikov,
+  Study of silicon photomultiplier performance at different temperatures,
+  Nuclear Instruments and Methods in Physics Research A 997 (2021) 165162.
+\newblock \href {https://doi.org/10.1016/j.nima.2021.165162}
+  {\path{doi:10.1016/j.nima.2021.165162}}.
+
+\end{thebibliography}

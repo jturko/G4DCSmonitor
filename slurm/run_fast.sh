@@ -2,12 +2,18 @@
 # =============================================================================
 # MuonScint FAST SLURM driver -- generate + submit the low-latency runs.
 #
-# This is a SELF-CONTAINED companion to run_all.sh; it does not modify or
-# overwrite any of the existing slurm scripts.  It writes its own macro sets
-# (muon_fast/, muon_whole_fast/) and uses two new job arrays.
+# This is a SELF-CONTAINED companion to run_all.sh; it does not modify any
+# existing .sbatch or driver script.  It writes isolated matrix/whole macro
+# sets (muon_fast/, muon_whole_fast/) and regenerates the shared contact/Al
+# sets (muon_contact/, muon_al/), and uses FOUR job arrays:
+#   1. matrix        -- 4 configs x 4 reflectors, centre/edge/corner
+#   2. whole-slab    -- 4 configs x 4 reflectors, full 250 x 250 mm^2 plate
+#   3. contact scan  -- bare plate, effective holder contact f=0..0.03
+#   4. Al backing    -- Al foil with grease (n=1.46) vs air (n=1.0003)
 #
 # Differences vs run_all.sh:
-#   * matrix flux map OFF (3x faster; efficiency comes from the sipmHits tree)
+#   * matrix + characterization flux map OFF (3x faster; efficiency comes from
+#     the sipmHits tree)
 #   * --mem=4G (measured peak RSS ~0.4 GB)
 #   * MATRIX --time=01:00:00 (~24 s/task at 32 cores), WHOLE --time=02:00:00
 #     (~9-11 min/task at 32 cores; the 2h ceiling keeps margin at fewer threads,
@@ -19,7 +25,7 @@
 #   cd /path/to/the/dir/that/should/hold/the/output
 #   /abs/path/to/repo/slurm/run_fast.sh [MATRIX_EVENTS] [WHOLE_EVENTS] \
 #                                       [MATRIX_THREADS] [WHOLE_THREADS]
-#   Output lands in  $PWD/data_<VERSION>/{matrix,whole}
+#   Output lands in  $PWD/data_<VERSION>/{matrix,whole,contact,al}
 #   (DATAROOT defaults to the CURRENT DIRECTORY, so run it from where you want
 #    the data; set DATAROOT=/abs/path to write somewhere else. Logs and the
 #    generated macros stay in slurm/ next to the scripts.)
@@ -33,6 +39,16 @@
 # match --cpus-per-task, which this script also passes to sbatch, so they stay
 # in sync automatically.
 #
+# Characterization arrays (environment):
+#   CONTACT_EVENTS  (default 1000)      events per beam position
+#   CONTACT_THREADS (default MATRIX_THREADS)
+#   CONTACT_FRACTIONS (default "0.000 0.005 0.010 0.015 0.020 0.025 0.030")
+#   CONTACT_CFGS    (default "1 2 3"; Config 4 has no black holder)
+#   AL_EVENTS       (default 1000)
+#   AL_THREADS      (default MATRIX_THREADS)
+#   AL_BACKINGS     (default "grease air")
+#   AL_CFGS         (default "1 2 3"; Config 4 is WLS-dominated)
+#
 # Routing/resource knobs (environment, all optional):
 #   MATRIX_PARTITION (default low)      MATRIX_ACCOUNT (default low)
 #   MATRIX_TIME      (default 01:00:00) MATRIX_ARRAY   (default 0-15)
@@ -40,14 +56,20 @@
 #   WHOLE_PARTITION  (default low)      WHOLE_ACCOUNT (default low)
 #   WHOLE_TIME       (default 02:00:00) WHOLE_ARRAY    (default 0-15)
 #   WHOLE_MEM        (default 4G)       whole  --mem per task
-#   ARRAY_LIMIT      (default empty)    throttle both arrays, e.g. ARRAY_LIMIT=4
+#   CONTACT_PARTITION/ACCOUNT/TIME/ARRAY/MEM (default low/low/01:00:00/auto/4G)
+#   AL_PARTITION/ACCOUNT/TIME/ARRAY/MEM      (default low/low/01:00:00/auto/4G)
+#     (*_ARRAY default is auto-computed from the generated manifest; override
+#      only if you want a subset.)
+#   ARRAY_LIMIT      (default empty)    throttle all arrays, e.g. ARRAY_LIMIT=4
 #   DATAROOT         (default $PWD)     ROOT output root (absolute path)
-#   VERSION          (default v2.2)     data-set tag -> data_<VERSION>/{matrix,whole}
+#   VERSION          (default v2.2)     data-set tag -> data_<VERSION>/{..}
 #   BIN              (default pre-built HZDR binary, else ../build/G4DCSmonitor)
 #
 # Examples:
 #   # 500 matrix / 20000 whole-slab events, 16 threads, 8 GB/task, to CWD:
 #   MATRIX_THREADS=16 WHOLE_THREADS=16 MATRIX_MEM=8G WHOLE_MEM=8G ./run_fast.sh 500 20000
+#   # 2000 events/position for the contact and Al characterization scans:
+#   CONTACT_EVENTS=2000 AL_EVENTS=2000 ./run_fast.sh
 #   # fast whole-slab on the guaranteed default queue (no preemption):
 #   WHOLE_PARTITION=cpu-genoa WHOLE_ACCOUNT=default WHOLE_TIME=02:00:00 ./run_fast.sh
 #   # everything on `short` (15-min partition limit -> keep time <= 00:12:00):
@@ -73,6 +95,28 @@ WHOLE_ACCOUNT="${WHOLE_ACCOUNT:-low}"
 WHOLE_TIME="${WHOLE_TIME:-02:00:00}"
 WHOLE_ARRAY="${WHOLE_ARRAY:-0-15}"
 WHOLE_MEM="${WHOLE_MEM:-4G}"
+
+CONTACT_EVENTS="${CONTACT_EVENTS:-1000}"
+CONTACT_THREADS="${CONTACT_THREADS:-${MATRIX_THREADS}}"
+CONTACT_PARTITION="${CONTACT_PARTITION:-low}"
+CONTACT_ACCOUNT="${CONTACT_ACCOUNT:-low}"
+CONTACT_TIME="${CONTACT_TIME:-01:00:00}"
+CONTACT_ARRAY="${CONTACT_ARRAY:-}"
+CONTACT_MEM="${CONTACT_MEM:-4G}"
+CONTACT_FRACTIONS="${CONTACT_FRACTIONS:-0.000 0.005 0.010 0.015 0.020 0.025 0.030}"
+CONTACT_CFGS="${CONTACT_CFGS:-1 2 3}"
+
+AL_EVENTS="${AL_EVENTS:-1000}"
+AL_THREADS="${AL_THREADS:-${MATRIX_THREADS}}"
+AL_PARTITION="${AL_PARTITION:-low}"
+AL_ACCOUNT="${AL_ACCOUNT:-low}"
+AL_TIME="${AL_TIME:-01:00:00}"
+AL_ARRAY="${AL_ARRAY:-}"
+AL_MEM="${AL_MEM:-4G}"
+AL_BACKINGS="${AL_BACKINGS:-grease air}"
+AL_CFGS="${AL_CFGS:-1 2 3}"
+
+export CONTACT_FRACTIONS CONTACT_CFGS AL_BACKINGS AL_CFGS
 
 ARRAY_LIMIT="${ARRAY_LIMIT:-}"
 
@@ -105,24 +149,34 @@ fi
 echo "=== MuonScint FAST SLURM driver ==="
 echo "  matrix events : ${MATRIX_EVENTS}  (threads ${MATRIX_THREADS})"
 echo "  whole  events : ${WHOLE_EVENTS}  (threads ${WHOLE_THREADS})"
+echo "  contact events: ${CONTACT_EVENTS}  (threads ${CONTACT_THREADS}; f='${CONTACT_FRACTIONS}'; cfg='${CONTACT_CFGS}')"
+echo "  Al events     : ${AL_EVENTS}  (threads ${AL_THREADS}; backings='${AL_BACKINGS}'; cfg='${AL_CFGS}')"
 echo "  matrix route  : -p ${MATRIX_PARTITION} -A ${MATRIX_ACCOUNT} -t ${MATRIX_TIME} --array=${MATRIX_ARRAY} --mem=${MATRIX_MEM}"
 echo "  whole  route  : -p ${WHOLE_PARTITION} -A ${WHOLE_ACCOUNT} -t ${WHOLE_TIME} --array=${WHOLE_ARRAY} --mem=${WHOLE_MEM}"
+echo "  contact route : -p ${CONTACT_PARTITION} -A ${CONTACT_ACCOUNT} -t ${CONTACT_TIME} --array=${CONTACT_ARRAY:-auto} --mem=${CONTACT_MEM}"
+echo "  Al route      : -p ${AL_PARTITION} -A ${AL_ACCOUNT} -t ${AL_TIME} --array=${AL_ARRAY:-auto} --mem=${AL_MEM}"
 echo "  throttle      : ${ARRAY_LIMIT:-<none>}"
 echo "  binary        : ${BIN}"
 echo "  data root     : ${DATAROOT}/data_${VERSION}"
 
 MATRIX_TEMPLATE="${HERE}/muon_scint_template_fast.mac"
 WHOLE_TEMPLATE="${HERE}/whole_slab_template.mac"
+CHARACTERIZATION_TEMPLATE="${HERE}/muon_characterization_template.mac"
 MATRIX_OUT="${HERE}/muon_fast"
 WHOLE_OUT="${HERE}/muon_whole_fast"
+CONTACT_OUT="${HERE}/muon_contact"
+AL_OUT="${HERE}/muon_al"
 MATRIX_DATA="${DATAROOT}/data_${VERSION}/matrix"
 WHOLE_DATA="${DATAROOT}/data_${VERSION}/whole"
+CONTACT_DATA="${DATAROOT}/data_${VERSION}/contact"
+AL_DATA="${DATAROOT}/data_${VERSION}/al"
 
-for f in "${MATRIX_TEMPLATE}" "${WHOLE_TEMPLATE}"; do
+for f in "${MATRIX_TEMPLATE}" "${WHOLE_TEMPLATE}" "${CHARACTERIZATION_TEMPLATE}"; do
     [[ -f "${f}" ]] || { echo "ERROR: template missing: ${f}" >&2; exit 1; }
 done
 
-mkdir -p "${HERE}/logs" "${MATRIX_OUT}" "${WHOLE_OUT}" "${MATRIX_DATA}" "${WHOLE_DATA}"
+mkdir -p "${HERE}/logs" "${MATRIX_OUT}" "${WHOLE_OUT}" "${CONTACT_OUT}" "${AL_OUT}" \
+         "${MATRIX_DATA}" "${WHOLE_DATA}" "${CONTACT_DATA}" "${AL_DATA}"
 cd "${HERE}"
 
 # ---- generate matrix macros (flux map OFF, fast template) -------------------
@@ -169,15 +223,41 @@ for cfg in 1 2 3 4; do
     done
 done
 
-# ---- submit both arrays with routing overrides ------------------------------
+# ---- generate characterization macros (contact + Al backing) ----------------
+echo
+echo "--- generating FAST contact-fraction macros (${CONTACT_EVENTS} ev/position) ---"
+FLUXMAP=off CONTACT_FRACTIONS="${CONTACT_FRACTIONS}" CONTACT_CFGS="${CONTACT_CFGS}" \
+    "${HERE}/generate_contact_scan.sh" "${CONTACT_EVENTS}" "${CONTACT_THREADS}" "${CONTACT_DATA}"
+
+echo
+echo "--- generating FAST Al-backing macros (${AL_EVENTS} ev/position) ---"
+FLUXMAP=off AL_BACKINGS="${AL_BACKINGS}" AL_CFGS="${AL_CFGS}" \
+    "${HERE}/generate_al_backing.sh" "${AL_EVENTS}" "${AL_THREADS}" "${AL_DATA}"
+
+# Auto array bounds unless the user asked for a subset via CONTACT_ARRAY /
+# AL_ARRAY.  The manifest is the single source of truth.
+if [[ -z "${CONTACT_ARRAY}" ]]; then
+    n=$(wc -l < "${CONTACT_OUT}/manifest.txt")
+    CONTACT_ARRAY="0-$((n - 1))"
+fi
+if [[ -z "${AL_ARRAY}" ]]; then
+    n=$(wc -l < "${AL_OUT}/manifest.txt")
+    AL_ARRAY="0-$((n - 1))"
+fi
+
+# ---- submit all four arrays with routing overrides --------------------------
 echo
 echo "--- submitting FAST job arrays ---"
 
 mt_array="${MATRIX_ARRAY}"
 wt_array="${WHOLE_ARRAY}"
+ct_array="${CONTACT_ARRAY}"
+at_array="${AL_ARRAY}"
 if [[ -n "${ARRAY_LIMIT}" ]]; then
     mt_array="${MATRIX_ARRAY%%%*}%${ARRAY_LIMIT}"
     wt_array="${WHOLE_ARRAY%%%*}%${ARRAY_LIMIT}"
+    ct_array="${CONTACT_ARRAY%%%*}%${ARRAY_LIMIT}"
+    at_array="${AL_ARRAY%%%*}%${ARRAY_LIMIT}"
 fi
 
 jid_matrix="$(sbatch --parsable \
@@ -192,6 +272,18 @@ jid_whole="$(sbatch --parsable \
     --cpus-per-task="${WHOLE_THREADS}" --mem="${WHOLE_MEM}" \
     "${HERE}/run_whole_fast.sbatch")"
 
+jid_contact="$(sbatch --parsable \
+    -p "${CONTACT_PARTITION}" -A "${CONTACT_ACCOUNT}" \
+    -t "${CONTACT_TIME}" --array="${ct_array}" \
+    --cpus-per-task="${CONTACT_THREADS}" --mem="${CONTACT_MEM}" \
+    "${HERE}/run_contact.sbatch")"
+
+jid_al="$(sbatch --parsable \
+    -p "${AL_PARTITION}" -A "${AL_ACCOUNT}" \
+    -t "${AL_TIME}" --array="${at_array}" \
+    --cpus-per-task="${AL_THREADS}" --mem="${AL_MEM}" \
+    "${HERE}/run_al.sbatch")"
+
 cat <<EOF
 
 === submitted (FAST) ===
@@ -199,10 +291,16 @@ cat <<EOF
                      output: ${MATRIX_DATA}/
   whole-slab array : job ${jid_whole}   (${WHOLE_EVENTS} ev, ${WHOLE_THREADS} threads, ${WHOLE_MEM}, -p ${WHOLE_PARTITION})
                      output: ${WHOLE_DATA}/
+  contact array    : job ${jid_contact}   (${CONTACT_EVENTS} ev/pos, ${CONTACT_THREADS} threads, ${CONTACT_MEM}, -p ${CONTACT_PARTITION})
+                     output: ${CONTACT_DATA}/
+  Al-backing array : job ${jid_al}   (${AL_EVENTS} ev/pos, ${AL_THREADS} threads, ${AL_MEM}, -p ${AL_PARTITION})
+                     output: ${AL_DATA}/
 
 Watch:   squeue -u \$USER -o "%.10i %.14P %.13j %.2t %.10M %.6D %R"
 Logs:    ${HERE}/logs/muonscanfast_*_*.out
          ${HERE}/logs/muonwholefast_*_*.out
+         ${HERE}/logs/muoncontact_*_*.out
+         ${HERE}/logs/muonal_*_*.out
 Collect: DATAROOT=${DATAROOT} VERSION=${VERSION} ${HERE}/collect.sh
 Analyse: root -l -b -q 'macros/plot_collection_efficiency.C+("${WHOLE_DATA}")'
          root -l -b -q 'macros/plot_muon.C+("${MATRIX_DATA}")'

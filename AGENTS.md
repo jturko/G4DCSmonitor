@@ -88,32 +88,40 @@ below.)
 
 **Reflector model per finish** (`BuildOpticalSurfaces`), one shared 10-pt 360–650 nm
 grid (ascending eV). Reflector and bare-absorber skins are mutually exclusive.
-- `kNoReflector` (bare): the slab gets **no** wrapping skin (the `MuonScintSkin` is only
-  placed when `fWrapWithReflector && (fReflectorType != kNoReflector || kStudyBareRoughness>0)`,
-  `GeometryMuonScint.cc:1275-1277`), so it keeps the plain polished scint↔air Fresnel/TIR
-  boundary across a **real 1.2 mm air gap**. The black holder LV (see *Black holder* below)
+- `kNoReflector` (bare): by default the slab gets **no** wrapping skin (the `MuonScintSkin`
+  is placed only when `fWrapWithReflector && (fReflectorType != kNoReflector ||
+  kStudyBareRoughness>0 || bareContactSkin)`, `GeometryMuonScint.cc:1275-1277`), so it
+  keeps the plain polished scint↔air Fresnel/TIR boundary across a **real 1.2 mm air gap**. The black holder LV (see *Black holder* below)
   carries the `MuonScintHolderAbsorber` skin (`fHolderSurface`, REFLECTIVITY=TRANSMITTANCE=0,
   unified/polished), so light that refracts out of the plate crosses the gap and is killed at
   the wall. The `R=T=0` constants **do** kill it at the surface: `G4OpBoundaryProcess.cc:460-466`
   computes `rand > R + T` for a `polished`/`ground` `dielectric_dielectric` boundary and, with
   R=T=0, absorbs every photon that reaches the holder skin (the Fresnel/TIR branch is only
   reached when `rand <= R`). The holder **bulk** `ABSLENGTH=1 µm` would absorb it too, so the
-  outcome is the same either way. `fReflSurface` is built but unused for bare unless
-  `kStudyBareRoughness>0` — and that roughness branch is currently a **no-op**: it is
-  `ground`+`unified`+`SPECULARSPIKECONSTANT=1`, so `ChooseReflection` always picks
-  `SpikeReflection`, resetting the facet normal to the global one and never applying
-  `SetSigmaAlpha(kStudyBareRoughness)` (dormant while `kStudyBareRoughness=0`).
+  outcome is the same either way. `fReflSurface` is also used for the optional bare-contact
+  model (`setBareContactFraction f>0`): a polished `dielectric_dielectric` skin with
+  `REFLECTIVITY=1-f`, `TRANSMITTANCE=0`, so each surface hit is absorbed with probability
+  `f` (holder contact) and otherwise follows the normal Fresnel/TIR path. `f=0` (default)
+  creates no skin and reproduces the clean air gap exactly. The roughness branch
+  (`kStudyBareRoughness>0`) is now functional: `ground`+`unified` with
+  `SPECULARLOBECONSTANT=1`, `SPECULARSPIKECONSTANT=0`, so `sigma_alpha` is applied (dormant
+  while `kStudyBareRoughness=0`).
 - `kPaintTiO2`: `groundfrontpainted` (Lambertian, **no TIR**), R≈0.955–0.983.
 - `kAluminumFoil`: `polishedbackpainted` (TIR + specular mirror, SPECULARSPIKE=1), backing
-  RINDEX=1.46 (grease), R≈0.904–0.925 (evaporated-Al normal-incidence, McPeak 2015).
+  RINDEX selectable as 1.46 grease (default) or 1.0003 air via `setAlBacking air|grease`;
+  R≈0.904–0.925 (evaporated-Al normal-incidence, McPeak 2015).
 - `kGlossyPaper`: `polishedbackpainted` (lossier mirror, R≈0.900–0.955) — paper reports
   Al ≈ glossy and both highest, so glossy is not a diffuser.
 - `kTeflon`: kept for completeness, not in the paper.
 
-Result (200 evt, cfg1, centre, npe/event): bare=3.4 < TiO₂=139 < Al=513 < glossy=608 —
-matches the paper's reflector ordering. Position ordering at config 1 is **not** uniformly
-centre-dominant: Al/glossy peak at centre, but bare/TiO₂ peak at **corner** (see
-`tab:positions`), reversing the paper's corner-lowest rule.
+Current default (f=0, Al grease; 300 evt cfg1 centre, npe/event): bare=305,
+TiO₂=122, Al=193, glossy=510 — the report's `TiO₂ < Al < bare < glossy` ordering.
+Pilot with `f=0.02` + `setAlBacking air` (300 bare / 100 reflector evt) gives
+bare=114, TiO₂=122, Al=473, glossy=510, recovering the paper's
+`bare < TiO₂ < Al ≈ glossy` ordering; see *Bare-holder contact / Al backing pilot*
+below. Position ordering at config 1 is **not** uniformly centre-dominant: Al/glossy and
+bare peak at centre, but TiO₂ peaks at **corner** (see `tab:positions`), reversing the
+paper's corner-lowest rule.
 
 **SiPM detection via the boundary process**: grease↔SiPM is `dielectric_metal` with
 `EFFICIENCY` = ASD-NUV4S-P-40 PDE(λ), the 25-pt digitized AdvanSiD Fig. 8 curve (6 V OV,
@@ -128,6 +136,36 @@ slab + `fHolderGap` 1.2 mm all faces. `UsesBlackHolder()` = bare (`kNoReflector`
 not WLS, so the Config 4 clamp never overlaps the holder. The absorber skin
 (`MuonScintHolderSkin` → `fHolderSurface`) is applied to the **holder LV**, not the slab
 (`GeometryMuonScint.cc:1287-1290`); there is no `UsesAbsorberSkin()`.
+
+**Bare-holder contact / Al backing pilot (2026-10-18).** Two pre-init knobs bracket the
+as-built surfaces: `/dcs-monitor/det/muonScint/setBareContactFraction <f>` (`0..1`, default
+`0`) and `/dcs-monitor/det/muonScint/setAlBacking air|grease` (default `grease`). The
+contact model is a mean-field per-hit loss on every bare face (`R=1-f`, `T=0`), gated by
+`fWrapWithReflector && UsesBlackHolder() && f>0`; it is ignored for Config 4 bare. Defaults
+reproduce the previous production model exactly (verified event-by-event at `f=0`; `f=1`
+reproduces the old full-absorber value ≈3 pe/evt). A config-1 pilot (GPS, 4 GeV, 300
+bare / 100 reflector evt per point; centre unless noted) gives npe/event:
+
+| case | centre | edge | corner |
+|---|---:|---:|---:|
+| bare f=0 | 305.2 | 288.2 | 278.9 |
+| bare f=0.01 | 154.2 | 141.1 | 137.5 |
+| bare f=0.02 | 113.7 | 99.2 | 101.2 |
+| bare f=0.03 | 94.9 | 83.3 | 78.5 |
+| TiO₂ | 121.9 | 154.4 | 228.2 |
+| Al grease | 193.0 | 177.8 | 191.9 |
+| Al air | 473.0 | 441.1 | 472.1 |
+| glossy | 510.2 | 485.5 | 492.1 |
+
+At `f≈0.017–0.02` the bare plate falls below TiO₂ at all three positions; Al-air lands
+just below glossy. A finer centre scan gives `f=0.0125/0.015/0.0175` → 142/134/120 pe/evt
+(300 evt each) versus TiO₂ 122. This recovers Rao's **reflector** ordering
+`bare < TiO₂ < Al ≈ glossy` without changing the defaults. The contact fraction is an effective area fraction, not a
+measured holder gap: 2 % of the total plate area is only a few contact spots on the bottom
+face. Position ordering remains a separate discrepancy: TiO₂ is corner-highest, and bare
+at `f=0.02` is centre-highest but edge≈corner. No production data have been regenerated
+with the new settings; whole-slab runs are still required before changing the report's
+baseline.
 
 **SiPM presets** (see `PresetConfig_*` in `GeometryMuonScint.cc`; src is truth):
 - cfg1 = 8 SiPMs: 2 per side, all four sides, at u = ±0.5.
@@ -215,23 +253,36 @@ raster EPS → PNG via GraphicsMagick and assembled by `convert`/`ffmpeg`.
 **Tooling**: `macros/{muon_scint_template.mac,generate_muon_matrix.sh,run_muon_matrix.sh}`,
 `macros/plot_muon.C`, `macros/analyze_muon.C`, `macros/plot_collection_efficiency.C`
 (tree-based collection-efficiency maps; `plot_light_efficiency.C` is a thin forwarder
-kept for old command lines). `slurm/` bundle (one config×reflector per task, 32 threads,
-plus whole-slab array). `slurm/run_fast.sh [MATRIX_EVENTS] [WHOLE_EVENTS] [MATRIX_THREADS]
-[WHOLE_THREADS]` is the **recommended SLURM driver** (matrix flux map off, `--mem=4G`, `low`
-queue; defaults 200/10000/32/32): it generates `slurm/muon_fast/` + `slurm/muon_whole_fast/`
-macros and `sbatch --parsable`s `run_matrix_fast.sbatch` / `run_whole_fast.sbatch`. Key env
-knobs: `BIN=/abs/path/G4DCSmonitor` (the **only** thing selecting a specific build — it must be
-built on the cluster's module stack, e.g. via `slurm/build.sbatch`; the login-node `build/`
-links Geant4 11.3.2), `VERSION` (data tag → `data_<VERSION>/`, default `v2.2` — **override or
-it clobbers existing data**), `DATAROOT` (default `$PWD`; `cd` to the bigdata dir first), plus
-per-array `MATRIX_*`/`WHOLE_*` partition/account/time/mem and `ARRAY_LIMIT`.
-`slurm/run_all.sh [NEVENTS_MATRIX] [NEVENTS_WHOLE] [THREADS]` (default 200/10000/32) is the
-older heavier driver (flux map on, 64G, `cpu-genoa`). Matrix/whole generators emit cfg 1–4
-(cfg 4 → `@PRESET@` = **7**, the analytic variant; preset 5 = legacy tessellated vis-only);
-`slurm/run_local.sh <matrix|whole|all> [NEVENTS] [THREADS]` is a no-SLURM local runner
-(defaults NEVENTS 1000, THREADS 8, `CFGS="1 2 3 4"`, `REFLS="0 1 2 3"`, `SUFFIX=_v2`,
-`PARALLEL=2`; override via env vars). **There is no SLURM on this login node**, so local runs
-use `build/G4DCSmonitor` (8 threads) while production runs on the HPC via `run_fast.sh`.
+kept for old command lines). `slurm/` bundle now submits **four arrays**: matrix
+(config×reflector, 16 tasks), whole-slab (16), bare-contact scan (default cfg 1–3 × seven
+`f=0..0.03` = 21), and Al backing (cfg 1–3 × `grease|air` = 6). Each task runs
+centre/edge/corner back-to-back; contact/Al use
+`slurm/muon_characterization_template.mac` (flux map off, `--mem=4G`, `low`, 1 h, 32
+threads, 1000 ev/position) and write case subdirs
+`data_<VERSION>/contact/c<C>_f<val>/` and `data_<VERSION>/al/c<C>_<backing>/` with the
+standard `muon_out_c<C>_r<R>_<pos>.root` names. `slurm/run_fast.sh [MATRIX_EVENTS]
+[WHOLE_EVENTS] [MATRIX_THREADS] [WHOLE_THREADS]` is the **recommended SLURM driver**
+(matrix flux map off, `--mem=4G`, `low`; defaults 200/10000/32/32); contact/Al knobs are
+`CONTACT_EVENTS`/`CONTACT_THREADS`/`CONTACT_FRACTIONS`/`CONTACT_CFGS` and
+`AL_EVENTS`/`AL_THREADS`/`AL_BACKINGS`/`AL_CFGS` (defaults 1000, matrix threads, the grids
+above). `run_all.sh [NEVENTS_MATRIX] [NEVENTS_WHOLE] [THREADS] [NEVENTS_CONTACT]
+[NEVENTS_AL]` is the older heavier matrix/whole driver (flux map on, 64G, `cpu-genoa`) but
+its contact/Al arrays still use the fast characterization template (4G, flux off). Key env
+knobs: `BIN=/abs/path/G4DCSmonitor` (the **only** thing selecting a specific build — it must
+be built on the cluster's module stack, e.g. via `slurm/build.sbatch`; the login-node
+`build/` links Geant4 11.3.2), `VERSION` (data tag → `data_<VERSION>/`, default `v2.2` —
+**override or it clobbers existing data**), `DATAROOT` (default `$PWD`; `cd` to the bigdata
+dir first), per-array `MATRIX_*`/`WHOLE_*`/`CONTACT_*`/`AL_*`
+partition/account/time/mem, `ARRAY_LIMIT` (applies to all four), and
+`CONTACT_ARRAY`/`AL_ARRAY` (override the auto manifest-derived bounds). Both drivers
+regenerate the shared `slurm/muon_contact/` + `slurm/muon_al/` macros, so use one driver at
+a time. `slurm/collect.sh` counts all four trees and prints rsync lines. Matrix/whole
+generators emit cfg 1–4 (cfg 4 → `@PRESET@` = **7**, the analytic variant; preset 5 =
+legacy tessellated vis-only); `slurm/run_local.sh <matrix|whole|all> [NEVENTS] [THREADS]` is
+a no-SLURM local runner (defaults NEVENTS 1000, THREADS 8, `CFGS="1 2 3 4"`, `REFLS="0 1
+2 3"`, `SUFFIX=_v2`, `PARALLEL=2`; override via env vars; it still covers matrix/whole
+only). **There is no SLURM on this login node**, so local runs use `build/G4DCSmonitor`
+(8 threads) while production runs on the HPC via `run_fast.sh`.
 Reflective configs run ~2.5 evt/s vs ~100 evt/s
 for bare (long multi-bounce tracks). TTree writer leaves a <2 kB partial file for the
 position *currently* being written — **not** an abort. Regenerate the report with
@@ -347,14 +398,19 @@ Build; geometry precedes physics).
 
 **Fibre solid = analytic mitered `G4CutTubs` legs** (production, preset 7), one per straight
 segment of the 4-point centreline `BentPath(x, zSpread, zBundle, Ly, conv, resL, ov)`: a
-straight spread run at `fFibrePitch = 1.5 mm`, a ramp converging over
-`fFibreConvergeLen = 15 mm` to a touching `fBundlePitch = 1.0 mm` bundle (four +y ends bunch to
-a 4 mm bundle facing the single SiPM), then a short stub before +y. `MakeCutTubeLegs` builds
+straight spread run at `fFibrePitch = 2.5 mm` (axes at z = ±1.25, ±3.75 mm: equal
+0.75 mm plastic margins to the top/bottom faces, 1.5 mm between neighbouring fibres), a ramp
+converging over `fFibreConvergeLen = 41 mm` (39 mm ramp + 2 mm stub, preserving the old ~3.3°
+outer kink) to a touching `fBundlePitch = 1.0 mm` bundle (four +y ends bunch to a 4 mm bundle
+facing the single SiPM), then a short stub before +y. `MakeCutTubeLegs` builds
 each leg; `PlaceWLSFibres` places the legs as world siblings joined at exact miter planes
 ("analytic", `fFibreAnalytic`) — no facet edges, hence no stuck tracks. Preset 5 keeps the
 legacy `G4TessellatedSolid` swept cylinder (`MakeSweptTube`) **for visualisation only**.
 Multi-clad nesting: core (r=0.46) ⊂ inner PMMA clad (r=0.48) ⊂ outer fluoropolymer sheath
-(r=0.50) ⊂ the leg solid. Paths are built slab-local in a canonical **+y-bundle / −y-mirror**
+(r=0.50) ⊂ the leg solid. **Placement subtlety:** `fFibreCladLVs` holds *every* clad (outer
+and inner) for `IsFibreLV`; the per-fibre world placement must index `fFibreOuterLVs[k]`.
+Indexing `fFibreCladLVs[k]` with multi-clad on places only the inner+outer of fibres 0/1, so
+the VRML/OpenGL view shows just two fibres. Paths are built slab-local in a canonical **+y-bundle / −y-mirror**
 frame; `PlaceWLSFibres` then applies one `Rx180` (`flipRot`) to the film/clamp/fibre placements
 so the read-out lands at slab-local **−y** (report-plan **top-left**) with the mirror caps at
 **+y**. Do **not** reintroduce `G4Tubs`+`G4Orb` unions (HepPolyhedron `too many edges` →
@@ -367,10 +423,10 @@ tangent to the film's slab-side face, giving a degenerate boolean that silently 
 topmost channel and hangs the `TSG_OFFSCREEN` renderer. **Cutter overshoot:** every cutter is
 `fHalfSize.y() + 10 mm` long so each opening is bounded by the object's own faces, never by a
 face coincident with the tool (coincident faces leave degenerate polygons). **Channels must not
-overlap in the straight run:** `fFibrePitch = 1.5 mm` (> 2·channel radius) keeps a solid clamp
+overlap in the straight run:** `fFibrePitch = 2.5 mm` (> 2·channel radius) keeps a solid clamp
 web between neighbours (Rao Fig. 4a). In the converging bundle they *do* meet —
-`fBundlePitch = 1.0 mm` < 2·`fChannelRadius` (1.1 mm) — so the four channels merge into a single
-slot over the last ~15 mm, by design.
+`fBundlePitch = 1.0 mm` < 2·`fChannelRadius` (1.1 mm) — so the four channels merge into a
+single slot near the bundle (the last few mm of the 39 mm ramp), by design.
 
 **The Ø1.1 channel / Ø1.0 fibre clearance (0.05 mm air annulus) is deliberate — do NOT make
 it snug.** The real Y-11(200) is multi-clad, so the model builds an **outer fluoropolymer

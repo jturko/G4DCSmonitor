@@ -397,6 +397,18 @@ void DetectorConstruction::SetMuonScintWrap(G4bool on)
     if (!fMuonScints.empty()) fMuonScints.back()->SetReflectorWrap(on);
 }
 
+void DetectorConstruction::SetMuonScintBareContactFraction(G4double f)
+{
+    if (!fMuonScints.empty())
+        fMuonScints.back()->SetBareContactFraction(f);
+}
+
+void DetectorConstruction::SetMuonScintAlBacking(AlBackingMode m)
+{
+    if (!fMuonScints.empty())
+        fMuonScints.back()->SetAlBackingMode(m);
+}
+
 void DetectorConstruction::SetMuonScintLightYieldScale(G4double s)
 {
     if (!fMuonScints.empty()) fMuonScints.back()->SetLightYieldScale(s);

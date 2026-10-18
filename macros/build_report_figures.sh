@@ -23,8 +23,8 @@
 #   report/figures/fig_whole_polar.{pdf,png}
 #   report/figures/fig_eff_bars.{pdf,png}
 #   report/figures/fig_whole_uniformity_map_cfg<C>.{pdf,png}   (cfg 1..4)
-#   report/figures/{wls_process,reflector_reflectivity,refractive_index,
-#                   scint_timing}.{pdf,png}
+#   report/figures/{optical_timing,reflector_reflectivity,
+#                   refractive_index}.{pdf,png}
 #   report/figures/fig_persistence_grid.{pdf,png}
 #   report/figures/fig_avg_waveform.{pdf,png}
 #   report/figures/fig_wavelength_time_grid.{pdf,png}
@@ -58,17 +58,14 @@ echo "=== irradiation sites ==="
 echo "=== optical property tables (scint / WLS / SiPM) ==="
 "${ROOT_BIN}" -l -b -q "macros/optical_spectra.C(\"${FIGDIR}\")"
 
-echo "=== WLS absorption/emission and re-emission delay ==="
-"${ROOT_BIN}" -l -b -q "macros/wls_process.C(\"${FIGDIR}\")"
+echo "=== source timing (scintillation pulse + WLS re-emission delay) ==="
+"${ROOT_BIN}" -l -b -q "macros/optical_timing.C(\"${FIGDIR}\")"
 
 echo "=== reflector reflectivity tables ==="
 "${ROOT_BIN}" -l -b -q "macros/reflector_reflectivity.C(\"${FIGDIR}\")"
 
 echo "=== refractive-index structure ==="
 "${ROOT_BIN}" -l -b -q "macros/refractive_index.C(\"${FIGDIR}\")"
-
-echo "=== scintillator pulse shape ==="
-"${ROOT_BIN}" -l -b -q "macros/scint_timing.C(\"${FIGDIR}\")"
 
 echo "=== report figures (yield/wavelength) ==="
 "${ROOT_BIN}" -l -b -q "macros/report_figures.C(\"${MATRIX_DIR}\",\"${FIGDIR}\")"

@@ -3,8 +3,10 @@
 //
 //   * scintillator (PVT / UPS-92S / EJ-200): SCINTILLATIONCOMPONENT1 emission
 //     and bulk ABSLENGTH (attenuation length);
-//   * WLS fibre core (Kuraray Y-11): the digitized G4OpWLS WLSABSLENGTH
-//     absorption and WLSCOMPONENT re-emission;
+//   * WLS fibre core (Kuraray Y-11): the digitized WLS absorption band
+//     (WLSABSLENGTH) and the WLSCOMPONENT re-emission spectrum.  Both shapes
+//     are drawn in the left panel so that the absorption/emission overlap is
+//     visible; the absolute attenuation lengths are in the middle panel;
 //   * SiPM (Cefla ASD-NUV4S-P-40): the photocathode EFFICIENCY = PDE(lambda).
 //
 // The numbers are copied verbatim from src/GeometryMuonScint.cc
@@ -97,6 +99,7 @@ const double sipmPDE[25] = {0.086,0.110,0.146,0.178,0.197,0.224,0.247,0.266,
 
 const int kScint = PetroffPalette::getP6(0);   // blue
 const int kWls   = PetroffPalette::getP6(4);   // grey-green
+const int kAbs   = PetroffPalette::getP6(2);   // red
 const int kSiPM  = PetroffPalette::getP6(2);   // red
 
 }  // namespace
@@ -111,24 +114,27 @@ void optical_spectra(const char* outdir = "report/figures")
     TCanvas* c = new TCanvas("c_optical_spectra", "optical spectra", 1290, 520);
     c->Divide(3, 1, 0.004, 0.004);
 
-    // ---- Panel 1: emission spectra (normalised) ------------------------
+    // ---- Panel 1: spectral shapes (normalised) -------------------------
     c->cd(1);
     gPad->SetLeftMargin(0.13); gPad->SetRightMargin(0.03);
     gPad->SetBottomMargin(0.16); gPad->SetTopMargin(0.24);
     TH1F* f1 = gPad->DrawFrame(310., 0., 700., 1.15,
-                               ";wavelength [nm];emission (normalised)");
+                               ";wavelength [nm];normalised amplitude");
     f1->GetYaxis()->SetTitleOffset(1.15);
     f1->GetYaxis()->SetTitleSize(0.06);  f1->GetXaxis()->SetTitleSize(0.06);
     TGraph* gScintE = makeGraph(scintE, scintEmis, 14, kScint, 20);
     TGraph* gWlsE   = makeGraphLam(lamE, relE, kNE, kWls, 21);
+    TGraph* gWlsA   = makeGraphLam(lamA, relA, kNA, kAbs, 22);
+    gWlsA->Draw("LP SAME");
     gScintE->Draw("LP SAME");
     gWlsE->Draw("LP SAME");
-    auto* l1 = new TLegend(0.12, 0.79, 0.90, 0.97);
+    auto* l1 = new TLegend(0.10, 0.74, 0.99, 0.98);
     l1->SetBorderSize(0);
     l1->SetFillStyle(0);
-    l1->SetTextSize(0.05);
-    l1->AddEntry(gScintE, "scintillator (PVT)", "lp");
-    l1->AddEntry(gWlsE,   "WLS fibre Y-11", "lp");
+    l1->SetTextSize(0.045);
+    l1->AddEntry(gScintE, "scintillator emission (PVT)", "lp");
+    l1->AddEntry(gWlsA,   "Y-11 absorption (430 nm)", "lp");
+    l1->AddEntry(gWlsE,   "Y-11 emission (476 nm)", "lp");
     l1->Draw();
     TLine* peak1 = new TLine(425., 0., 425., 1.05);
     peak1->SetLineColor(kGray + 1); peak1->SetLineStyle(2); peak1->Draw("SAME");
@@ -148,15 +154,15 @@ void optical_spectra(const char* outdir = "report/figures")
     for (int i = 0; i < 37; ++i)
         wlsAbsL[i] = (relA[i] > 0.) ? (kL0mm * 1e-3 / relA[i]) : 1e6;
     TGraph* gScintA = makeGraph(scintE, scintAbs, 14, kScint, 20);
-    TGraph* gWlsA   = makeGraphLam(lamA, wlsAbsL, kNA, kWls, 21);
+    TGraph* gWlsAbs   = makeGraphLam(lamA, wlsAbsL, kNA, kWls, 21);
     gScintA->Draw("LP SAME");
-    gWlsA->Draw("LP SAME");
+    gWlsAbs->Draw("LP SAME");
     auto* l2 = new TLegend(0.05, 0.78, 0.97, 0.98);
     l2->SetBorderSize(0);
     l2->SetFillStyle(0);
     l2->SetTextSize(0.05);
     l2->AddEntry(gScintA, "scint. bulk absorption", "lp");
-    l2->AddEntry(gWlsA,   "Y-11 WLS absorption", "lp");
+    l2->AddEntry(gWlsAbs,   "Y-11 WLS absorption", "lp");
     l2->Draw();
     TLine* onset = new TLine(486., 1e-5, 486., 1e7);
     onset->SetLineColor(kGray + 1); onset->SetLineStyle(2); onset->Draw("SAME");

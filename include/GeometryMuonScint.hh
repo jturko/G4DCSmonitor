@@ -35,6 +35,14 @@ enum ClampSurfaceMode {
     kClampMirror = 2    // legacy 95 % specular dielectric_metal
 };
 
+// Al-foil backing index.  The paper specifies grease applied selectively; the
+// two modes bracket the construction: air over most of the foil (TIR retained)
+// versus uniform grease contact (TIR cone widened to 67.5 deg).
+enum AlBackingMode {
+    kAlBackingGrease = 0,   // n = 1.46, current production model
+    kAlBackingAir    = 1    // n = 1.0003, air-backed foil
+};
+
 class GeometryMuonScint
 {
   public:
@@ -53,6 +61,18 @@ class GeometryMuonScint
 
     void SetReflectorType(ReflectorType t)        { fReflectorType = t; }
     void SetReflectorWrap(G4bool wrap)            { fWrapWithReflector = wrap; }
+
+    // Bare plate: effective area fraction in contact with the black holder.
+    // 0 = clean air gap (default), 1 = fully absorbing contact.  Implemented
+    // as a mean-field Bernoulli loss at every bare face; see
+    // BuildOpticalSurfaces().
+    void SetBareContactFraction(G4double f)
+    { fBareContactFraction = (f < 0.) ? 0. : (f > 1. ? 1. : f); }
+    G4double GetBareContactFraction() const { return fBareContactFraction; }
+
+    // Al-foil backing: uniform grease (default, n=1.46) or air (n=1.0003).
+    void SetAlBackingMode(AlBackingMode m) { fAlBackingMode = m; }
+    AlBackingMode GetAlBackingMode() const { return fAlBackingMode; }
 
     void SetSiPMSize(G4double sx, G4double sy)    { fSiPMHalfX = 0.5*sx; fSiPMHalfY = 0.5*sy; }
     void AddSiPM(const SiPMSpec& s)               { fSiPMs.push_back(s); }
@@ -186,6 +206,8 @@ class GeometryMuonScint
     // Reflector
     ReflectorType fReflectorType     = kPaintTiO2;
     G4bool        fWrapWithReflector = true;
+    G4double      fBareContactFraction = 0.0;   // 0 = air gap, 1 = full contact
+    AlBackingMode fAlBackingMode     = kAlBackingGrease;
 
     // Scintillation light-yield scale (1.0 = physical). Viz-only override.
     G4double      fLightYieldScale   = 1.0;
@@ -221,16 +243,24 @@ class GeometryMuonScint
     G4double fFibreCladFrac = 0.03;            // cladding thickness fraction
     G4double fClampGap      = 0.10 * CLHEP::mm;// thin grease film slab<->clamp
     G4double fChannelRadius = 0.55 * CLHEP::mm;// holder channel radius (Ø1.1, Ø1.0 fibre + air gap)
-    G4double fFibrePitch    = 1.50 * CLHEP::mm;// straight-section centre-to-centre pitch
+    // Equal plastic margin across the 10 mm clamp/plate height: for four
+    // Ø1.0 mm fibres, W = 4D + 2N*x with x = 0.75 mm -> centre pitch
+    // D + 2x = 2.50 mm (axes at z = ±1.25, ±3.75 mm; 1.5 mm between
+    // neighbouring fibre surfaces, 0.75 mm from the outer surfaces to the
+    // top/bottom faces).
+    G4double fFibrePitch    = 2.50 * CLHEP::mm;// straight-section centre-to-centre pitch
     G4double fBundlePitch   = 1.00 * CLHEP::mm;// bundled pitch at SiPM (fibres touching)
-    G4double fFibreConvergeLen = 15.0 * CLHEP::mm;// straight channels stop this far
+    // The bundle stub (last resL = 2 mm) is unchanged.  The ramp is lengthened
+    // so the outermost fibre keeps the old ~3.3 deg kink: 2.25 mm of transverse
+    // travel over a 39 mm ramp -> fFibreConvergeLen = 39 mm + 2 mm stub.
+    G4double fFibreConvergeLen = 41.0 * CLHEP::mm;// straight channels stop this far
                                                  // short of the SiPM; fibres bundle here
     G4double fFibreProtrusion = 0.05 * CLHEP::mm; // fibre proud of channel mouth
     G4double fClampWallZ    = 2.0 * CLHEP::mm; // clamp bar thickness (x)
 
     // Fibre read-out layout in the slab-local frame (set by BuildWLSFibres).
     G4double fFibreAxisX    = 0.;              // fibre centre x (slab-local)
-    G4double fFibreZSpacing = 1.5 * CLHEP::mm; // straight-section z spacing
+    G4double fFibreZSpacing = 2.5 * CLHEP::mm; // straight-section z spacing
 
     // Built objects
     G4LogicalVolume*   fScintLV     = nullptr;
@@ -240,6 +270,10 @@ class GeometryMuonScint
     G4LogicalVolume*   fHolderLV    = nullptr;
     std::vector<G4LogicalVolume*> fFibreCoreLVs;
     std::vector<G4LogicalVolume*> fFibreCladLVs;
+    // Outer cladding LV of each non-analytic fibre, in fibre order (k = 0..N-1).
+    // Separate from fFibreCladLVs, which also contains the inner clads for
+    // IsFibreLV(); indexing that list was placing only fibres 0 and 1.
+    std::vector<G4LogicalVolume*> fFibreOuterLVs;
     // Analytic fibre: per fibre, one clad LV (with its core daughter) per
     // straight leg, plus that leg's object transform in the (pre-flip)
     // slab-local construction frame. Leg 0 = mirror end, last = read-out end.

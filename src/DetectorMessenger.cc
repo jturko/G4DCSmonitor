@@ -189,6 +189,21 @@ DetectorMessenger::DetectorMessenger(DetectorConstruction* Det) : fDetector(Det)
     fSetMuonScintWrapCmd->SetDefaultValue(true);
     fSetMuonScintWrapCmd->AvailableForStates(G4State_PreInit);
 
+    fSetMuonScintBareContactCmd = new G4UIcmdWithADouble("/dcs-monitor/det/muonScint/setBareContactFraction", this);
+    fSetMuonScintBareContactCmd->SetGuidance("Bare plate in the black holder: effective area fraction in contact.");
+    fSetMuonScintBareContactCmd->SetGuidance("0 = clean 1.2 mm air gap (default); 1 = fully absorbing contact.");
+    fSetMuonScintBareContactCmd->SetGuidance("Applied as a per-hit Bernoulli loss on every bare face.");
+    fSetMuonScintBareContactCmd->SetParameterName("f", false);
+    fSetMuonScintBareContactCmd->SetRange("f >= 0. && f <= 1.");
+    fSetMuonScintBareContactCmd->AvailableForStates(G4State_PreInit);
+
+    fSetMuonScintAlBackingCmd = new G4UIcmdWithAString("/dcs-monitor/det/muonScint/setAlBacking", this);
+    fSetMuonScintAlBackingCmd->SetGuidance("Al-foil backing index: air (mostly air-backed foil) or grease (uniform contact).");
+    fSetMuonScintAlBackingCmd->SetGuidance("Defaults to grease (the current production model).");
+    fSetMuonScintAlBackingCmd->SetParameterName("backing", false);
+    fSetMuonScintAlBackingCmd->SetCandidates("air grease");
+    fSetMuonScintAlBackingCmd->AvailableForStates(G4State_PreInit);
+
     fSetMuonScintSiPMSizeCmd = new G4UIcmdWith3Vector("/dcs-monitor/det/muonScint/setSiPMSize", this);
     fSetMuonScintSiPMSizeCmd->SetGuidance("SiPM active-area size (sx, sy) in mm. The third component "
                                          "is ignored (thickness is fixed internally).");
@@ -315,6 +330,8 @@ DetectorMessenger::~DetectorMessenger()
     delete fSetMuonScintSizeCmd;
     delete fSetMuonScintReflectorCmd;
     delete fSetMuonScintWrapCmd;
+    delete fSetMuonScintBareContactCmd;
+    delete fSetMuonScintAlBackingCmd;
     delete fSetMuonScintSiPMSizeCmd;
     delete fAddMuonScintSiPMCmd;
     delete fClearMuonScintSiPMsCmd;
@@ -390,6 +407,13 @@ void DetectorMessenger::SetNewValue(G4UIcommand* command, G4String value)
     if (command == fSetMuonScintSizeCmd)         fDetector->SetMuonScintSize(fSetMuonScintSizeCmd->GetNew3VectorValue(value));
     if (command == fSetMuonScintReflectorCmd)    fDetector->SetMuonScintReflector(fSetMuonScintReflectorCmd->GetNewIntValue(value));
     if (command == fSetMuonScintWrapCmd)         fDetector->SetMuonScintWrap(fSetMuonScintWrapCmd->GetNewBoolValue(value));
+    if (command == fSetMuonScintBareContactCmd)  fDetector->SetMuonScintBareContactFraction(fSetMuonScintBareContactCmd->GetNewDoubleValue(value));
+    if (command == fSetMuonScintAlBackingCmd) {
+        if (value == "air")         fDetector->SetMuonScintAlBacking(kAlBackingAir);
+        else if (value == "grease") fDetector->SetMuonScintAlBacking(kAlBackingGrease);
+        else G4cerr << " [DetectorMessenger] setAlBacking: unknown '" << value
+                    << "' (use air|grease)" << G4endl;
+    }
     if (command == fSetMuonScintSiPMSizeCmd) {
         G4ThreeVector v = fSetMuonScintSiPMSizeCmd->GetNew3VectorValue(value);
         fDetector->SetMuonScintSiPMSize(v.x() * CLHEP::mm, v.y() * CLHEP::mm);

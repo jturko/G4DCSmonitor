@@ -229,13 +229,38 @@ void GeometryMuonScint::BuildOpticalSurfaces()
       //    The SiPM coupling border surfaces override at their footprints.
       // ============================================================
       case kNoReflector: {
-        if (kStudyBareRoughness > 0.) {
+        if (UsesBlackHolder() && fBareContactFraction > 0.) {
+          // Mean-field plate/holder contact: with probability f a surface hit
+          // meets the black holder (index-matched, absorbing); with
+          // probability 1-f it crosses the real air gap and follows the normal
+          // polished scintillator <-> air Fresnel/TIR path.  G4OpBoundaryProcess
+          // treats REFLECTIVITY + TRANSMITTANCE as a probability budget, so
+          // R = 1-f, T = 0 gives exactly that split.  No surface RINDEX: the
+          // non-absorbed branch must read the G4_AIR RINDEX.
+          fReflSurface->SetType(dielectric_dielectric);
+          fReflSurface->SetModel(glisur);
+          fReflSurface->SetFinish(polished);
+          fReflSurface->SetSigmaAlpha(0.0);
+
+          auto* mpt = new G4MaterialPropertiesTable();
+          G4double R[N], T[N];
+          for (G4int i = 0; i < N; ++i) {
+            R[i] = 1.0 - fBareContactFraction;
+            T[i] = 0.0;
+          }
+          mpt->AddProperty("REFLECTIVITY",  e, R, N);
+          mpt->AddProperty("TRANSMITTANCE", e, T, N);
+          fReflSurface->SetMaterialPropertiesTable(mpt);
+        }
+        else if (kStudyBareRoughness > 0.) {
           fReflSurface->SetType(dielectric_dielectric);
           fReflSurface->SetModel(unified);   // sigma_alpha is only honoured by the unified model
           fReflSurface->SetFinish(ground);
           fReflSurface->SetSigmaAlpha(kStudyBareRoughness);
           auto* mpt = new G4MaterialPropertiesTable();
-          G4double sp[N] = { 1.,1.,1.,1.,1., 1.,1.,1.,1.,1. };  // specular micro-facet
+          G4double sl[N] = { 1.,1.,1.,1.,1., 1.,1.,1.,1.,1. };  // lobe -> sigma_alpha used
+          G4double sp[N] = { 0.,0.,0.,0.,0., 0.,0.,0.,0.,0. };  // no spike (spike resets facet normal)
+          mpt->AddProperty("SPECULARLOBECONSTANT",  e, sl, N);
           mpt->AddProperty("SPECULARSPIKECONSTANT", e, sp, N);
           fReflSurface->SetMaterialPropertiesTable(mpt);
         }
@@ -291,13 +316,15 @@ void GeometryMuonScint::BuildOpticalSurfaces()
         auto* mpt = new G4MaterialPropertiesTable();
         G4double R[N]       = { 0.904, 0.911, 0.916, 0.919, 0.921,
                                 0.923, 0.924, 0.924, 0.925, 0.925 };
-        G4double nGrease[N] = { 1.46,1.46,1.46,1.46,1.46,
-                                1.46,1.46,1.46,1.46,1.46 };
+        G4double nBacking[N];
+        const G4double nAlBacking =
+            (fAlBackingMode == kAlBackingGrease) ? 1.46 : 1.0003;
+        for (G4int i = 0; i < N; ++i) nBacking[i] = nAlBacking;
         G4double specSp[N]  = { 1.,1.,1.,1.,1., 1.,1.,1.,1.,1. };  // pure mirror
         G4double specLo[N]  = { 0.,0.,0.,0.,0., 0.,0.,0.,0.,0. };
         G4double backSc[N]  = { 0.,0.,0.,0.,0., 0.,0.,0.,0.,0. };
-        mpt->AddProperty("REFLECTIVITY",          e, R,       N);
-        mpt->AddProperty("RINDEX",                e, nGrease, N);
+        mpt->AddProperty("REFLECTIVITY",          e, R,        N);
+        mpt->AddProperty("RINDEX",                e, nBacking, N);
         mpt->AddProperty("SPECULARSPIKECONSTANT", e, specSp,  N);
         mpt->AddProperty("SPECULARLOBECONSTANT",  e, specLo,  N);
         mpt->AddProperty("BACKSCATTERCONSTANT",   e, backSc,  N);
@@ -1076,11 +1103,15 @@ void GeometryMuonScint::BuildWLSFibres()
 
     // ---------- Bent fibre core + cladding solids (one pair per fibre) ------
     // Each fibre runs straight at the straight-section pitch (fFibrePitch) for
-    // most of the plate, then converges over fFibreConvergeLen to a TOUCHING
-    // bundle (fBundlePitch) at the +y read-out end, where all four ends face the
-    // single SiPM. The guide is a tessellated swept cylinder (see MakeSweptTube),
-    // watertight through the kinks; each fibre needs its own clad+core solids
-    // because the transverse bend offset differs per fibre.
+    // most of the plate, then converges over the ramp (fFibreConvergeLen minus
+    // the 2 mm bundle stub) to a TOUCHING bundle (fBundlePitch) at the +y
+    // read-out end, where all four ends face the single SiPM. The straight-run
+    // pitch gives equal plastic margins across the 10 mm bar: x = 0.75 mm from
+    // the outer fibre surfaces to the top/bottom faces, 2x = 1.5 mm between
+    // neighbouring fibres (pitch 2.5 mm). The guide is a swept cylinder (see
+    // MakeSweptTube / the analytic G4CutTubs legs), watertight through the
+    // kinks; each fibre needs its own clad+core solids because the transverse
+    // bend offset differs per fibre.
     const G4double rFibre = fFibreRadius;
     // Multi-clad: two 2%-of-D layers (0.02 mm each) -> inner clad r=0.48,
     // core r=0.46. Single clad: the legacy 3%-of-radius PMMA clad -> core
@@ -1166,6 +1197,7 @@ void GeometryMuonScint::BuildWLSFibres()
 
     fFibreCoreLVs.clear();
     fFibreCladLVs.clear();
+    fFibreOuterLVs.clear();
     fFibreSegs.clear();
     if (analytic) fFibreSegs.resize(fNFibres);
     for (G4int k = 0; analytic && k < fNFibres; ++k) {
@@ -1247,6 +1279,7 @@ void GeometryMuonScint::BuildWLSFibres()
 
         fFibreCladLVs.push_back(cladLV);
         fFibreCoreLVs.push_back(coreLV);
+        fFibreOuterLVs.push_back(cladLV);
     }
 
     // ---------- Thin grease coupling film (slab face -> clamp front) ----------
@@ -1285,12 +1318,13 @@ void GeometryMuonScint::BuildWLSFibres()
         for (G4int k = 0; k < fNFibres; ++k) {
             const auto tool = BentPath(fFibreAxisX - filmCx, zSpread[k],
                                        zBundle[k], halfL, conv, resL, cutterOv);
+            const auto tag = std::to_string(k);
             auto* groove = analytic
-                ? MakeCutTubeCutter("WLSCoupleGroove_" + std::to_string(k),
+                ? MakeCutTubeCutter("WLSCoupleGroove_" + tag,
                                     rFibre + grooveClear, tool)
-                : swept("WLSCoupleGroove_" + std::to_string(k),
+                : swept("WLSCoupleGroove_" + tag,
                         rFibre + grooveClear, tool);
-            solid = new G4SubtractionSolid("WLSCoupleCut_" + std::to_string(k),
+            solid = new G4SubtractionSolid("WLSCoupleCut_" + tag,
                                            solid, groove, nullptr,
                                            G4ThreeVector(0., 0., 0.));
         }
@@ -1334,11 +1368,11 @@ void GeometryMuonScint::BuildWLSFibres()
         for (G4int k = 0; k < fNFibres; ++k) {
             const auto tool = BentPath(relChX, zSpread[k],
                                        zBundle[k], halfL, conv, resL, cutterOv);
+            const auto tag = std::to_string(k);
             auto* channel = analytic
-                ? MakeCutTubeCutter("WLSChannel_" + std::to_string(k),
-                                    fChannelRadius, tool)
-                : swept("WLSChannel_" + std::to_string(k), fChannelRadius, tool);
-            clampSolid = new G4SubtractionSolid("WLSClampSolid_" + std::to_string(k),
+                ? MakeCutTubeCutter("WLSChannel_" + tag, fChannelRadius, tool)
+                : swept("WLSChannel_" + tag, fChannelRadius, tool);
+            clampSolid = new G4SubtractionSolid("WLSClampSolid_" + tag,
                                                 clampSolid, channel, nullptr,
                                                 G4ThreeVector(0., 0., 0.));
         }
@@ -1564,7 +1598,7 @@ void GeometryMuonScint::PlaceWLSFibres(G4LogicalVolume* worldLV,
     for (G4int k = 0; fFibreSegs.empty() && k < fNFibres; ++k) {
         cladPVs[k] = new G4PVPlacement(rotCopy(baseFibreRot),
                                        mapPos(cladPos),
-                                       fFibreCladLVs[k],
+                                       fFibreOuterLVs[k],
                                        "WLSFibreCladPhys_" + std::to_string(k),
                                        worldLV, false, k, true);
         capSidePVs[k] = cladPVs[k];
@@ -1707,7 +1741,12 @@ void GeometryMuonScint::PlaceDetector(G4LogicalVolume* worldLV,
     // face-scattering study is active (kStudyBareRoughness > 0); otherwise it
     // keeps the plain polished scintillator <-> air Fresnel/TIR boundary
     // across the real air gap.
-    if (fWrapWithReflector && (fReflectorType != kNoReflector || kStudyBareRoughness > 0.)) {
+    const G4bool bareContactSkin =
+        (fReflectorType == kNoReflector) && UsesBlackHolder() &&
+        fBareContactFraction > 0.;
+    if (fWrapWithReflector &&
+        (fReflectorType != kNoReflector || kStudyBareRoughness > 0. ||
+         bareContactSkin)) {
         new G4LogicalSkinSurface("MuonScintSkin", fScintLV, fReflSurface);
     }
 
