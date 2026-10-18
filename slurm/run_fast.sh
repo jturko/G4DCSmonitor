@@ -82,7 +82,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Load nominal surface calibration values, if available.
 ENVFILE="${HERE}/nominal_surface.env"
 [[ -f "${ENVFILE}" ]] && source "${ENVFILE}"
-NOMINAL_BARE_CONTACT="${NOMINAL_BARE_CONTACT:-0.040}"
+NOMINAL_BARE_CONTACT="${NOMINAL_BARE_CONTACT:-0.045}"
 NOMINAL_AL_BACKING="${NOMINAL_AL_BACKING:-air}"
 
 MATRIX_EVENTS="${1:-${MATRIX_EVENTS:-200}}"

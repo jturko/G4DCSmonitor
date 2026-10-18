@@ -8,8 +8,11 @@
 # removed, the extension macros are regenerated, and the SLURM array is
 # submitted.
 #
-# Run from the repo root on the cluster:
+# Run on the cluster (any CWD; the script operates from slurm/):
 #   ./slurm/extend_contact_v6.sh
+#
+# Data must live on the HPC-native /bigdata mount, not the login-node sshfs
+# path (~/bigdata/...).  The default DATAROOT below is the native path.
 #
 # Override defaults via environment:
 #   DATAROOT, VERSION, BIN, CONTACT_FRACTIONS, CONTACT_CFGS,
@@ -19,9 +22,11 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "${HERE}/.."
+# Submit from slurm/ so run_contact.sbatch resolves muon_contact/manifest.txt
+# via SLURM_SUBMIT_DIR.
+cd "${HERE}"
 
-DATAROOT="${DATAROOT:-/home/turko46/bigdata/DCS-Monitor-II/turko46/MuonScinti}"
+DATAROOT="${DATAROOT:-/bigdata/DCS-Monitor-II/turko46/MuonScinti}"
 VERSION="${VERSION:-v6}"
 BIN="${BIN:-/home/turko46/geant4/muon_trigger_test/build/G4DCSmonitor}"
 CONTACT_FRACTIONS="${CONTACT_FRACTIONS:-0.035 0.040 0.045 0.050}"

@@ -29,6 +29,21 @@ by CLYC / plastic detectors. See `README.md` for physics, geometry, and macros.
   re-run cmake after editing them if running the copied copies.
 - No test suite, lint, or CI. Verification = build cleanly and run a macro.
 
+## Data storage: HPC native path vs login-node sshfs
+- **HPC (SLURM jobs):** the shared data root is
+  `/bigdata/DCS-Monitor-II/turko46/MuonScinti`. Every `DATAROOT`, generated
+  macro `/analysis/setFileName`, and `sbatch` command must use this native path.
+- **This login node:** the same tree is mounted via sshfs at
+  `/home/turko46/bigdata/DCS-Monitor-II/turko46/MuonScinti`
+  (`~/bigdata/...`). Use that for local inspection and ROOT analysis only; do
+  **not** pass it as `DATAROOT` to a job that runs on the HPC.
+- `slurm/run_fast.sh` defaults `DATAROOT=$PWD` (so `cd` to the bigdata root
+  first or set `DATAROOT=/bigdata/...` explicitly).
+  `slurm/extend_contact_v6.sh` defaults to the native `/bigdata/...` path.
+- The two paths are not interchangeable: an sshfs path in a batch script can
+  silently send output through the login-node mount instead of the HPC
+  filesystem, or fail on the compute node.
+
 ## CLI / biasing
 - `G4DCSmonitor [macro] [fileNum]` — **positional only** (`G4DCSmonitor.cc:64-97,143`):
   `argv[1]` is the macro, `argv[2]` an integer that suffixes the output filename via
@@ -168,6 +183,14 @@ cfg 1–3) gives a centre crossing of f≈0.017 in every layout, but cfg1–2 ed
 at 0.003–0.009 while cfg3 edge/corner need f>0.03, so no single f matches every layout.
 Report Sec. 3.6 keeps f=0 as the baseline and presents the scan as an effective bracket;
 Sec. 3.7 does the same for Al (air/grease = 2.38–2.59, air-backed Al ≈92% of glossy).
+
+**v6 lock (2026-10-18):** extending the scan to `f=0.035–0.050` (1000 ev/point,
+cfg 1–3) gives crossing fractions cfg1/2 centre 0.0172/0.0170, edge
+0.0085/0.0086, corner 0.0034/0.0035; cfg3 centre 0.0171, edge 0.0397, corner
+0.0410. At `f=0.040` cfg3 corner is still +0.34 pe above the v5 TiO₂ reference
+(+1.5σ), so the nominal is locked at **`f=0.045`**, where all nine cells are
+below TiO₂ (worst: cfg3 edge −0.97 pe, −4.3σ; cfg3 corner −1.39 pe, −6.4σ).
+`slurm/nominal_surface.env` carries this value.
 
 **SiPM presets** (see `PresetConfig_*` in `GeometryMuonScint.cc`; src is truth):
 - cfg1 = 8 SiPMs: 2 per side, all four sides, at u = ±0.5.
