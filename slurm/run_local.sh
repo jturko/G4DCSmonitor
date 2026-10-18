@@ -34,6 +34,11 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOTDIR="$(cd "${HERE}/.." && pwd)"
 BIN="${BIN:-${ROOTDIR}/build/G4DCSmonitor}"
 
+ENVFILE="${HERE}/nominal_surface.env"
+[[ -f "${ENVFILE}" ]] && source "${ENVFILE}"
+NOMINAL_BARE_CONTACT="${NOMINAL_BARE_CONTACT:-0.040}"
+NOMINAL_AL_BACKING="${NOMINAL_AL_BACKING:-air}"
+
 WHAT="${1:-all}"
 NEVENTS="${2:-1000}"
 THREADS="${3:-8}"
@@ -68,6 +73,8 @@ gen_and_run() {
                 -e "s/@REFLECTOR@/${refl}/g" \
                 -e "s/@NEVENTS@/${nev}/g" \
                 -e "s/@THREADS@/${THREADS}/g" \
+                -e "s/@BARECONTACT@/${NOMINAL_BARE_CONTACT}/g" \
+                -e "s/@ALBACKING@/${NOMINAL_AL_BACKING}/g" \
                 -e "s#@DATADIR@#${datadir}#g" \
                 "${template}" > "${out}"
 

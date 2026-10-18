@@ -27,7 +27,7 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TEMPLATE="${CONTACT_TEMPLATE:-${HERE}/muon_characterization_template.mac}"
-OUTDIR="${HERE}/muon_contact"
+OUTDIR="${CONTACT_OUTDIR:-${HERE}/muon_contact}"
 DATADIR="${3:-data_v2.2/contact}"
 NEVENTS="${1:-1000}"
 THREADS="${2:-32}"

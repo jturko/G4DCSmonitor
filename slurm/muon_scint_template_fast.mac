@@ -33,6 +33,8 @@
 /dcs-monitor/det/muonScint/preset @PRESET@
 /dcs-monitor/det/muonScint/setReflector @REFLECTOR@
 /dcs-monitor/det/muonScint/setWrap true
+/dcs-monitor/det/muonScint/setBareContactFraction @BARECONTACT@
+/dcs-monitor/det/muonScint/setAlBacking @ALBACKING@
 
 /run/initialize
 

@@ -79,6 +79,12 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Load nominal surface calibration values, if available.
+ENVFILE="${HERE}/nominal_surface.env"
+[[ -f "${ENVFILE}" ]] && source "${ENVFILE}"
+NOMINAL_BARE_CONTACT="${NOMINAL_BARE_CONTACT:-0.040}"
+NOMINAL_AL_BACKING="${NOMINAL_AL_BACKING:-air}"
+
 MATRIX_EVENTS="${1:-${MATRIX_EVENTS:-200}}"
 WHOLE_EVENTS="${2:-${WHOLE_EVENTS:-10000}}"
 MATRIX_THREADS="${3:-${MATRIX_THREADS:-32}}"
@@ -116,6 +122,8 @@ AL_MEM="${AL_MEM:-4G}"
 AL_BACKINGS="${AL_BACKINGS:-grease air}"
 AL_CFGS="${AL_CFGS:-1 2 3}"
 
+SKIP_CONTACT="${SKIP_CONTACT:-0}"
+
 export CONTACT_FRACTIONS CONTACT_CFGS AL_BACKINGS AL_CFGS
 
 ARRAY_LIMIT="${ARRAY_LIMIT:-}"
@@ -149,11 +157,17 @@ fi
 echo "=== MuonScint FAST SLURM driver ==="
 echo "  matrix events : ${MATRIX_EVENTS}  (threads ${MATRIX_THREADS})"
 echo "  whole  events : ${WHOLE_EVENTS}  (threads ${WHOLE_THREADS})"
-echo "  contact events: ${CONTACT_EVENTS}  (threads ${CONTACT_THREADS}; f='${CONTACT_FRACTIONS}'; cfg='${CONTACT_CFGS}')"
+if [[ "${SKIP_CONTACT}" == "1" ]]; then
+    echo "  contact events: skipped"
+else
+    echo "  contact events: ${CONTACT_EVENTS}  (threads ${CONTACT_THREADS}; f='${CONTACT_FRACTIONS}'; cfg='${CONTACT_CFGS}')"
+fi
 echo "  Al events     : ${AL_EVENTS}  (threads ${AL_THREADS}; backings='${AL_BACKINGS}'; cfg='${AL_CFGS}')"
 echo "  matrix route  : -p ${MATRIX_PARTITION} -A ${MATRIX_ACCOUNT} -t ${MATRIX_TIME} --array=${MATRIX_ARRAY} --mem=${MATRIX_MEM}"
 echo "  whole  route  : -p ${WHOLE_PARTITION} -A ${WHOLE_ACCOUNT} -t ${WHOLE_TIME} --array=${WHOLE_ARRAY} --mem=${WHOLE_MEM}"
-echo "  contact route : -p ${CONTACT_PARTITION} -A ${CONTACT_ACCOUNT} -t ${CONTACT_TIME} --array=${CONTACT_ARRAY:-auto} --mem=${CONTACT_MEM}"
+if [[ "${SKIP_CONTACT}" != "1" ]]; then
+    echo "  contact route : -p ${CONTACT_PARTITION} -A ${CONTACT_ACCOUNT} -t ${CONTACT_TIME} --array=${CONTACT_ARRAY:-auto} --mem=${CONTACT_MEM}"
+fi
 echo "  Al route      : -p ${AL_PARTITION} -A ${AL_ACCOUNT} -t ${AL_TIME} --array=${AL_ARRAY:-auto} --mem=${AL_MEM}"
 echo "  throttle      : ${ARRAY_LIMIT:-<none>}"
 echo "  binary        : ${BIN}"
@@ -193,6 +207,8 @@ for cfg in 1 2 3 4; do
             -e "s/@REFLECTOR@/${refl}/g" \
             -e "s/@NEVENTS@/${MATRIX_EVENTS}/g" \
             -e "s/@THREADS@/${MATRIX_THREADS}/g" \
+            -e "s/@BARECONTACT@/${NOMINAL_BARE_CONTACT}/g" \
+            -e "s/@ALBACKING@/${NOMINAL_AL_BACKING}/g" \
             -e "s#@DATADIR@#${MATRIX_DATA}#g" \
             "${MATRIX_TEMPLATE}" > "${MATRIX_OUT}/${out}"
         printf '%s\n' "${out}" >> "${MATRIX_OUT}/manifest.txt"
@@ -215,6 +231,8 @@ for cfg in 1 2 3 4; do
             -e "s/@REFLECTOR@/${refl}/g" \
             -e "s/@NEVENTS@/${WHOLE_EVENTS}/g" \
             -e "s/@THREADS@/${WHOLE_THREADS}/g" \
+            -e "s/@BARECONTACT@/${NOMINAL_BARE_CONTACT}/g" \
+            -e "s/@ALBACKING@/${NOMINAL_AL_BACKING}/g" \
             -e "s#@DATADIR@#${WHOLE_DATA}#g" \
             "${WHOLE_TEMPLATE}" > "${WHOLE_OUT}/${out}"
         printf '%s\n' "${out}" >> "${WHOLE_OUT}/manifest.txt"
@@ -224,10 +242,12 @@ for cfg in 1 2 3 4; do
 done
 
 # ---- generate characterization macros (contact + Al backing) ----------------
-echo
-echo "--- generating FAST contact-fraction macros (${CONTACT_EVENTS} ev/position) ---"
-FLUXMAP=off CONTACT_FRACTIONS="${CONTACT_FRACTIONS}" CONTACT_CFGS="${CONTACT_CFGS}" \
-    "${HERE}/generate_contact_scan.sh" "${CONTACT_EVENTS}" "${CONTACT_THREADS}" "${CONTACT_DATA}"
+if [[ "${SKIP_CONTACT}" != "1" ]]; then
+    echo
+    echo "--- generating FAST contact-fraction macros (${CONTACT_EVENTS} ev/position) ---"
+    FLUXMAP=off CONTACT_FRACTIONS="${CONTACT_FRACTIONS}" CONTACT_CFGS="${CONTACT_CFGS}" \
+        "${HERE}/generate_contact_scan.sh" "${CONTACT_EVENTS}" "${CONTACT_THREADS}" "${CONTACT_DATA}"
+fi
 
 echo
 echo "--- generating FAST Al-backing macros (${AL_EVENTS} ev/position) ---"
@@ -236,9 +256,11 @@ FLUXMAP=off AL_BACKINGS="${AL_BACKINGS}" AL_CFGS="${AL_CFGS}" \
 
 # Auto array bounds unless the user asked for a subset via CONTACT_ARRAY /
 # AL_ARRAY.  The manifest is the single source of truth.
-if [[ -z "${CONTACT_ARRAY}" ]]; then
-    n=$(wc -l < "${CONTACT_OUT}/manifest.txt")
-    CONTACT_ARRAY="0-$((n - 1))"
+if [[ "${SKIP_CONTACT}" != "1" ]]; then
+    if [[ -z "${CONTACT_ARRAY}" ]]; then
+        n=$(wc -l < "${CONTACT_OUT}/manifest.txt")
+        CONTACT_ARRAY="0-$((n - 1))"
+    fi
 fi
 if [[ -z "${AL_ARRAY}" ]]; then
     n=$(wc -l < "${AL_OUT}/manifest.txt")
@@ -256,7 +278,9 @@ at_array="${AL_ARRAY}"
 if [[ -n "${ARRAY_LIMIT}" ]]; then
     mt_array="${MATRIX_ARRAY%%%*}%${ARRAY_LIMIT}"
     wt_array="${WHOLE_ARRAY%%%*}%${ARRAY_LIMIT}"
-    ct_array="${CONTACT_ARRAY%%%*}%${ARRAY_LIMIT}"
+    if [[ "${SKIP_CONTACT}" != "1" ]]; then
+        ct_array="${CONTACT_ARRAY%%%*}%${ARRAY_LIMIT}"
+    fi
     at_array="${AL_ARRAY%%%*}%${ARRAY_LIMIT}"
 fi
 
@@ -272,11 +296,15 @@ jid_whole="$(sbatch --parsable \
     --cpus-per-task="${WHOLE_THREADS}" --mem="${WHOLE_MEM}" \
     "${HERE}/run_whole_fast.sbatch")"
 
-jid_contact="$(sbatch --parsable \
-    -p "${CONTACT_PARTITION}" -A "${CONTACT_ACCOUNT}" \
-    -t "${CONTACT_TIME}" --array="${ct_array}" \
-    --cpus-per-task="${CONTACT_THREADS}" --mem="${CONTACT_MEM}" \
-    "${HERE}/run_contact.sbatch")"
+if [[ "${SKIP_CONTACT}" != "1" ]]; then
+    jid_contact="$(sbatch --parsable \
+        -p "${CONTACT_PARTITION}" -A "${CONTACT_ACCOUNT}" \
+        -t "${CONTACT_TIME}" --array="${ct_array}" \
+        --cpus-per-task="${CONTACT_THREADS}" --mem="${CONTACT_MEM}" \
+        "${HERE}/run_contact.sbatch")"
+else
+    jid_contact="(skipped)"
+fi
 
 jid_al="$(sbatch --parsable \
     -p "${AL_PARTITION}" -A "${AL_ACCOUNT}" \

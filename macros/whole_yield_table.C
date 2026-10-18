@@ -15,7 +15,7 @@
 // Writes <outdir>/whole_yield.csv and prints a LaTeX body.
 //
 // Usage:
-//   root -l -b -q 'macros/whole_yield_table.C("slurm/data_v2.2/whole","report/figures")'
+//   root -l -b -q 'macros/whole_yield_table.C("slurm/data_v5/whole","report/figures")'
 
 #include <TFile.h>
 #include <TTree.h>
@@ -31,7 +31,7 @@ const char* kCfg[5]  = {"", "1", "2", "3", "4"};
 const char* kRefl[4] = {"bare", "TiO2", "Al", "glossy"};
 }  // namespace
 
-void whole_yield_table(const char* dir = "slurm/data_v2.2/whole",
+void whole_yield_table(const char* dir = "slurm/data_v5/whole",
                        const char* outdir = "report/figures")
 {
     gSystem->mkdir(outdir, kTRUE);
@@ -46,21 +46,22 @@ void whole_yield_table(const char* dir = "slurm/data_v2.2/whole",
             double N = 0., Nd = 0., tot = 0.;
             TFile* f = TFile::Open(fname, "READ");
             if (f && !f->IsZombie()) {
+                std::map<int, double> sums;
                 TTree* t = (TTree*)f->Get("sipmHits");
                 if (t && t->GetBranch("nDetected")) {
                     int evt = 0, nd = 0;
                     t->SetBranchAddress("evtNb", &evt);
                     t->SetBranchAddress("nDetected", &nd);
-                    double cur = -1., sum = 0.;
                     for (long i = 0; i < t->GetEntries(); ++i) {
                         t->GetEntry(i);
-                        if ((double)evt != cur) {
-                            if (cur >= 0.) { ++N; if (sum > 0.) ++Nd; tot += sum; }
-                            cur = evt; sum = 0.;
-                        }
-                        sum += nd;
+                        sums[evt] += nd;
                     }
-                    if (cur >= 0.) { ++N; if (sum > 0.) ++Nd; tot += sum; }
+                }
+                TTree* os = (TTree*)f->Get("opticalStats");
+                N = os ? (double)os->GetEntries() : (double)sums.size();
+                for (const auto& kv : sums) {
+                    tot += kv.second;
+                    if (kv.second > 0.) ++Nd;
                 }
                 delete f;
             }

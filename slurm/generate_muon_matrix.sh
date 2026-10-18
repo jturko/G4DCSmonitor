@@ -34,6 +34,12 @@ DATADIR="${3:-data_v2.2/matrix}"
 NEVENTS="${1:-200}"
 THREADS="${2:-32}"
 
+# Load nominal surface calibration values, if available.
+ENVFILE="${HERE}/nominal_surface.env"
+[[ -f "${ENVFILE}" ]] && source "${ENVFILE}"
+NOMINAL_BARE_CONTACT="${NOMINAL_BARE_CONTACT:-0.040}"
+NOMINAL_AL_BACKING="${NOMINAL_AL_BACKING:-air}"
+
 if [[ ! -f "${TEMPLATE}" ]]; then
     echo "ERROR: template not found: ${TEMPLATE}" >&2
     exit 1
@@ -57,6 +63,8 @@ for cfg in 1 2 3 4; do
             -e "s/@REFLECTOR@/${refl}/g" \
             -e "s/@NEVENTS@/${NEVENTS}/g" \
             -e "s/@THREADS@/${THREADS}/g" \
+            -e "s/@BARECONTACT@/${NOMINAL_BARE_CONTACT}/g" \
+            -e "s/@ALBACKING@/${NOMINAL_AL_BACKING}/g" \
             -e "s#@DATADIR@#${DATADIR}#g" \
             "${TEMPLATE}" > "${OUTDIR}/${out}"
         printf '%s\n' "${out}" >> "${MANIFEST}"

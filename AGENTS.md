@@ -163,9 +163,11 @@ just below glossy. A finer centre scan gives `f=0.0125/0.015/0.0175` → 142/134
 `bare < TiO₂ < Al ≈ glossy` without changing the defaults. The contact fraction is an effective area fraction, not a
 measured holder gap: 2 % of the total plate area is only a few contact spots on the bottom
 face. Position ordering remains a separate discrepancy: TiO₂ is corner-highest, and bare
-at `f=0.02` is centre-highest but edge≈corner. No production data have been regenerated
-with the new settings; whole-slab runs are still required before changing the report's
-baseline.
+at `f=0.02` is centre-highest but edge≈corner. The v5 production scan (1000 ev/point,
+cfg 1–3) gives a centre crossing of f≈0.017 in every layout, but cfg1–2 edge/corner cross
+at 0.003–0.009 while cfg3 edge/corner need f>0.03, so no single f matches every layout.
+Report Sec. 3.6 keeps f=0 as the baseline and presents the scan as an effective bracket;
+Sec. 3.7 does the same for Al (air/grease = 2.38–2.59, air-backed Al ≈92% of glossy).
 
 **SiPM presets** (see `PresetConfig_*` in `GeometryMuonScint.cc`; src is truth):
 - cfg1 = 8 SiPMs: 2 per side, all four sides, at u = ±0.5.
@@ -286,11 +288,14 @@ only). **There is no SLURM on this login node**, so local runs use `build/G4DCSm
 Reflective configs run ~2.5 evt/s vs ~100 evt/s
 for bare (long multi-bounce tracks). TTree writer leaves a <2 kB partial file for the
 position *currently* being written — **not** an abort. Regenerate the report with
-`macros/build_report_figures.sh [MATRIX_DIR] [WHOLE_DIR]` (runs `sipm_layouts.C`,
-`irradiation_sites.C`, `optical_spectra.C`, `report_figures.C`, `pe_spectra_grid.C`,
-`plot_collection_efficiency.C`, `plot_whole_slab.C` for cfg 1–4,
-`whole_slab_uniformity.C`, `persistence_map_grid.C`, `wavelength_time_grid.C`,
-copies figures into `report/figures/`, then `pdflatex` twice).
+`macros/build_report_figures.sh [MATRIX_DIR] [WHOLE_DIR] [CONTACT_DIR] [AL_DIR]`
+(defaults `slurm/data_v5/{matrix,whole,contact,al}`; pass absolute dirs when the data
+live outside the repo). It runs `sipm_layouts.C`, `irradiation_sites.C`,
+`optical_spectra.C`, `report_figures.C`, `pe_spectra_grid.C`, `matrix_positions.C`,
+`contact_scan.C`, `al_backing.C`, `plot_collection_efficiency.C`, `plot_whole_slab.C`
+for cfg 1–4, `whole_slab_uniformity.C`, `whole_yield_table.C`, `persistence_map_grid.C`,
+`wavelength_time_grid.C`, `avg_waveform.C`, copies figures into `report/figures/`, then
+runs `pdflatex` twice.
 `macros/persistence_map_grid.C [WHOLE_DIR] [OUTDIR] [REFL]` and
 `macros/wavelength_time_grid.C [WHOLE_DIR] [OUTDIR] [REFL]` (default REFL 3 = glossy) consume
 the per-photoelectron `tDetected`/`wlDetected_nm` vector branches of `sipmHits`: a 2×2 grid

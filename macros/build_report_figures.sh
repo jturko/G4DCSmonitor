@@ -4,19 +4,24 @@
 # report/matrix_report.tex from the simulation output and (re)build the PDF.
 #
 # Usage:
-#   macros/build_report_figures.sh [MATRIX_DATA_DIR] [WHOLE_DATA_DIR]
+#   macros/build_report_figures.sh [MATRIX_DATA_DIR] [WHOLE_DATA_DIR] \
+#                                  [CONTACT_DATA_DIR] [AL_DATA_DIR]
 #
-# Defaults: slurm/data_v2.2/matrix  slurm/data_v2.2/whole
-# (DATA_VERSION selects the tree; override the two dirs positionally if needed)
+# Defaults: slurm/data_v5/{matrix,whole,contact,al}
+# (DATA_VERSION selects the tree; override dirs positionally if needed)
 #
 # Reads:
 #   <MATRIX_DATA_DIR>/muon_out_c<C>_r<R>_{centre,edge,corner}.root
 #   <WHOLE_DATA_DIR>/muon_whole_out_c<C>_r<R>.root
+#   <CONTACT_DATA_DIR>/c<C>_f<frac>/muon_out_c<C>_r0_<pos>.root
+#   <AL_DATA_DIR>/c<C>_<backing>/muon_out_c<C>_r2_<pos>.root
 # Writes:
 #   report/figures/{sipm_layouts,irradiation_sites,optical_spectra,
 #                   fig_yield,fig_detected,fig_wavelength}.{pdf,png}
 #   report/figures/{fig_pos_layouts,fig_pos_refl,fig_uniformity,
 #                   fig_sipm_sharing}.{pdf,png}
+#   report/figures/{contact_scan,al_backing}.{pdf,png}
+#   report/figures/{contact_scan,al_backing}.csv
 #   report/figures/fig_pe_grid.{pdf,png}
 #   report/figures/efficiency_grid_cfg<C>_all.{pdf,png}   (cfg 1..4)
 #   report/figures/whole_slab_cfg<C>.{pdf,png}            (cfg 1..4)
@@ -37,9 +42,11 @@ set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOTDIR="$(cd "${HERE}/.." && pwd)"
 ROOT_BIN="${ROOT_BIN:-${HOME}/programs/root/build/bin/root}"
-DATA_VERSION="${DATA_VERSION:-v2.2}"
+DATA_VERSION="${DATA_VERSION:-v5}"
 MATRIX_DIR="${1:-${ROOTDIR}/slurm/data_${DATA_VERSION}/matrix}"
 WHOLE_DIR="${2:-${ROOTDIR}/slurm/data_${DATA_VERSION}/whole}"
+CONTACT_DIR="${3:-${ROOTDIR}/slurm/data_${DATA_VERSION}/contact}"
+AL_DIR="${4:-${ROOTDIR}/slurm/data_${DATA_VERSION}/al}"
 FIGDIR="${ROOTDIR}/report/figures"
 
 # Figure macros #include "style.h" (shared fonts/ticks + PetroffPalette P6).
@@ -75,6 +82,12 @@ echo "=== photoelectron spectra grid (Rao Fig. 10 layout) ==="
 
 echo "=== position-resolved matrix analysis ==="
 "${ROOT_BIN}" -l -b -q "macros/matrix_positions.C(\"${MATRIX_DIR}\",\"${FIGDIR}\")"
+
+echo "=== bare-holder contact-fraction scan ==="
+"${ROOT_BIN}" -l -b -q "macros/contact_scan.C+(\"${CONTACT_DIR}\",\"${MATRIX_DIR}\",\"${FIGDIR}\")"
+
+echo "=== aluminium backing: grease vs air ==="
+"${ROOT_BIN}" -l -b -q "macros/al_backing.C+(\"${AL_DIR}\",\"${MATRIX_DIR}\",\"${FIGDIR}\")"
 
 echo "=== efficiency-grid maps, one per config ==="
 # plot_collection_efficiency writes <inDir>/plots/efficiency_grid_cfg<C>_all.{pdf,png}
