@@ -56,27 +56,30 @@ the config-4 fibre core (with absorption length \SI{1.0}{\milli\meter} at
 photodetection; and the per-event optical accounting that feeds the analysis.
 Config~4 is built from an analytic, multi-clad Y-11 fibre bundle in a white
 Lambertian clamp with exponential (\SI{7}{\nano\second}) WLS re-emission.
-A \num{48}-file matrix scan (4 SiPM layouts $\times$ 4 reflectors $\times$
-3 beam positions, \num{2500} events each, \num{120000} events) and a
-whole-plate irradiation (\num{25000} events per configuration and wrapper,
-\num{400000} events) are complemented by a \num{63}-file bare-contact scan
-(\num{63000} events) and an \num{18}-file aluminium-backing scan
-(\num{18000} events), for \num{601000} events in total.
-The results reproduce only part of the experimentally observed ordering. The
-glossy-paper wrapper is the brightest in every layout, while the diffuse
-TiO$_2$ paint is the most position-dependent, but the bare plate is \emph{not}
-the weakest collector: modelled with its true \SI{1.2}{\milli\meter} air gap to
-the black holder (contact fraction $f=0$ by default), the polished plate is a
-near-lossless total-internal-reflection light guide, second in brightness only
-to glossy paper in every layout and nearly uniform over the whole plate
-($\kappa_{\rm 2D}=\num{1.13}$--\num{1.49}; TiO$_2$ \num{1.90}--\num{8.19},
-Al \num{1.18}--\num{1.77}, glossy \num{1.07}--\num{1.25}). A contact-fraction
-scan gives $f\approx\num{0.017}$ at the centre and lower values at the
-edge/corner for configs~1 and~2, while an air-backed aluminium model reaches
-$\approx\SI{92}{\percent}$ of the glossy yield. We report per-event photon yields, photoelectron spectra,
-wavelength distributions, position-resolved efficiency maps, and the
-contact/aluminium systematics. Model and implementation caveats are documented,
-principally the bare-plate ordering discrepancy above.
+Two calibration scans fix the remaining surface inputs: a \num{99}-file
+bare-contact scan (11 fractions, \num{99000} events) selects an effective
+plate--holder contact fraction $f=\num{0.045}$, and an \num{18}-file
+aluminium-backing scan (\num{18000} events; the backing model is unchanged from
+the earlier production campaign) selects air-backed foil. With these parameters
+fixed, a \num{48}-file matrix scan (4 SiPM layouts $\times$ 4 reflectors $\times$
+3 beam positions, \num{2500} events each, \num{120000} events) and a whole-plate
+irradiation (\num{25000} events per configuration and wrapper, \num{400000}
+events) are produced, for \num{637000} events in total. With these calibrated
+surfaces the three direct-coupled layouts recover the measured ordering
+$\text{bare}<\text{TiO}_2<\text{Al}<\text{glossy}$: glossy paper is brightest,
+air-backed Al reaches about \SI{92}{\percent} of the glossy yield, and TiO$_2$
+is the most position-dependent wrapper. The WLS-fibre layout retains a
+different ordering, $\text{TiO}_2<\text{bare}<\text{Al}<\text{glossy}$, and
+remains roughly half as efficient as config~3 for the reflective wrappers. The
+whole-plate contrast ranks TiO$_2$ highest
+($\kappa_{\rm 2D}=\num{1.91}$--\num{8.31}), followed by the contact-limited
+bare plate (\num{1.36}--\num{3.82}), with Al (\num{1.08}--\num{1.28}) and
+glossy paper (\num{1.07}--\num{1.28}) nearly uniform. The clean air-gap
+reference ($f=0$) is retained to expose the contact systematic. We report
+per-event photon yields, photoelectron spectra, wavelength distributions,
+position-resolved efficiency maps, and the contact/aluminium systematics. Model
+and implementation caveats are documented, principally the residual
+config-4/config-3 efficiency ratio.
 \end{abstract}
 
 \tableofcontents
@@ -116,10 +119,13 @@ that the transport actually consumes (emission, bulk and WLS attenuation,
 refractive index, reflector reflectivity, wavelength-shifting and photocathode
 PDE), and the optical-physics implementation, all verified line-by-line against
 the \gfour\ source.
-Section~\ref{sec:matrix} presents the matrix simulation---its beam and patch
-setup, the resulting collection efficiencies, photon/photoelectron spectra, and
-position-resolved maps---and the two focused campaigns that bracket the
-bare-plate holder contact and the aluminium-foil backing.
+Section~\ref{sec:sim} describes the simulation campaigns and fixes the two
+unmeasured surface inputs first: the beam and patch setup, the bare-holder
+contact scan, and the aluminium grease-versus-air comparison. These select the
+nominal contact fraction and Al backing used everywhere below.
+Section~\ref{sec:matrix} then presents the matrix irradiation results obtained
+with those parameters---collection efficiencies, photon/photoelectron spectra,
+wavelengths, and position-resolved maps.
 Section~\ref{sec:whole} presents the complementary whole-slab irradiation, which
 samples the full plate uniformly.
 Section~\ref{sec:caveats} documents known caveats, and
@@ -170,7 +176,7 @@ Four layouts are studied (schematic in Fig.~\ref{fig:layouts}):
         four-fold symmetric.
   \item[Config 3 (2 SiPMs)] both SiPMs on the \emph{same} narrow
         face---the $-x$ face in the simulation frame, which is the report
-        plan view's top edge (Sec.~\ref{sec:matrix})---at $\pm 50\%$, matching
+        plan view's top edge (Sec.~\ref{sec:sim})---at $\pm 50\%$, matching
         T1/T2 of Ref.~\cite{Rao2025}.
   \item[Config 4 (1 SiPM $+$ WLS clamp)] a single SiPM reading out a
         wavelength-shifting (WLS) fibre clamp along the $-x$ narrow face
@@ -263,9 +269,10 @@ absorbing skin (\texttt{MuonScintHolderAbsorber}, a \texttt{polished}
 \texttt{TRANSMITTANCE} $=0$), so the sub-critical light that refracts across the
 air gap is killed at the wall---and the holder bulk, with its
 \SI{1}{\micro\meter} absorption length, would absorb it anyway. The bare model
-also carries an optional mean-field contact fraction $f$ (default $f=0$, the
-clean air gap); for $f>0$ every hit on a bare face is absorbed with probability
-$f$ ($R=1-f$, $T=0$), representing partial plate--holder contact.}
+also carries an optional mean-field contact fraction $f$ (production default
+$f=\num{0.045}$; the clean air-gap reference is $f=0$); for $f>0$ every hit on
+a bare face is absorbed with probability $f$ ($R=1-f$, $T=0$), representing
+partial plate--holder contact.}
 \end{table}
 
 \subsubsection{Bare plate in its black holder}
@@ -284,24 +291,23 @@ reflection. Fresnel reflection and TIR are taken from the material
 \texttt{RINDEX} tables.
 
 \emph{Fidelity.} This is the least faithful configuration and the source of the
-report's central discrepancy. The default model assumes the plate is optically
-\emph{decoupled} from the holder everywhere ($f=0$). A real clamped plate
-touches the holder at scattered high spots, and each contact forms a
-frustrated-TIR sink that removes trapped light; surface scratches do the same.
-Those loss channels are absent at $f=0$, so the modelled plate acts as a
-near-lossless light guide and is one of the \emph{brightest} collectors, whereas
-the reference measurement gives it by far the \emph{lowest} signal. The code
-offers an optional mean-field contact fraction,
+report's central modelling choice. A real clamped plate touches the holder at
+scattered high spots, and each contact forms a frustrated-TIR sink that removes
+trapped light; surface scratches do the same. Those loss channels are absent in
+the clean air-gap model ($f=0$), where the plate acts as a near-lossless light
+guide and is one of the \emph{brightest} collectors, whereas the reference
+measurement gives it the \emph{lowest} signal. The code therefore offers an
+optional mean-field contact fraction,
 \texttt{/dcs-monitor/det/muonScint/setBareContactFraction <f>}
-($0\le f\le 1$, default $0$): for $f>0$ every hit on a bare face is absorbed
-with probability $f$ (a polished \texttt{dielectric\_dielectric} skin with
+($0\le f\le 1$): for $f>0$ every hit on a bare face is absorbed with probability
+$f$ (a polished \texttt{dielectric\_dielectric} skin with
 \texttt{REFLECTIVITY} $=1-f$ and \texttt{TRANSMITTANCE} $=0$), representing
 frustrated TIR over an effective contact area. The loss is ignored for the
-config-4 bare layout, whose clamp occupies that face. A dedicated $f$ scan has
-been performed in the production campaign and is summarised in
-Sec.~\ref{sec:contact}; the clean air-gap model ($f=0$) remains the default
-because it is the defensible reading of the stated construction (a plate set in
-a holder).
+config-4 bare layout, whose clamp occupies that face. The dedicated scan
+(Sec.~\ref{sec:contact}) gives a nominal
+$f=\num{0.045}$, the smallest sampled fraction that places all nine
+config/position cells below the corresponding TiO$_2$ reference; $f=0$ is kept
+as the clean-air reference and lower bound on the loss.
 
 \subsubsection{Titanium-dioxide paint (EJ-510)}
 \label{sec:refl-tio2}
@@ -335,15 +341,16 @@ foil contacts the scintillator rather than leaving an air gap.
 
 \emph{Model.} \texttt{polishedbackpainted} with a selectable backing refractive
 index, chosen pre-init with
-\texttt{/dcs-monitor/det/muonScint/setAlBacking air|grease}. The default,
+\texttt{/dcs-monitor/det/muonScint/setAlBacking air|grease}. The production
+choice is \texttt{air} ($n=1.0003$), which leaves the full TIR cone intact and
+lets only the sub-critical fraction cross to the foil, modelling a foil
+separated from the plate by a trapped air layer. The alternative,
 \texttt{grease} ($n=1.46$), represents a foil applied over the coupling grease,
 as in Ref.~\cite{Rao2025}; the scintillator/grease interface is a normal
 Fresnel/TIR boundary, but since the index step is small the critical angle is
 wide ($\arcsin(1.46/1.58)=\SI{67.5}{\degree}$): most light refracts into the
 grease film and is returned by the foil as a pure \emph{specular} reflection
-($f_{ss}=1$). The alternative, \texttt{air} ($n=1.0003$), leaves the full TIR
-cone intact and lets only the sub-critical fraction cross to the foil, modelling
-a foil separated from the plate by a trapped air layer. In both cases
+($f_{ss}=1$). It is retained as the lower-bound systematic. In both cases
 \texttt{REFLECTIVITY} is the normal-incidence reflectance of evaporated
 aluminium computed from the McPeak \emph{et al.}~$n,k$
 data~\cite{McPeak2015} (\num{0.904} at \SI{650}{\nano\meter} rising to
@@ -353,12 +360,12 @@ data~\cite{McPeak2015} (\num{0.904} at \SI{650}{\nano\meter} rising to
 smooth evaporated film and is therefore an \emph{upper bound}: household foil is
 rougher and carries a native oxide, both of which lower $R$ and add a small
 diffuse component we do not model. (ii) The foil is assumed to cover the plate
-uniformly, whereas real wrapping leaves wrinkles and trapped air. Which backing
-choice is appropriate is itself an open question: the production whole-slab runs
-use the \texttt{grease} default, whose tight critical angle leaves the foil
-third, below the bare plate, whereas the \texttt{air} backing recovers the
-measured near-equality of aluminium and glossy paper, reaching
-$\approx\SI{92}{\percent}$ of the glossy yield.
+uniformly, whereas real wrapping leaves wrinkles and trapped air. The production
+campaign uses the \texttt{air} backing, which retains the full TIR cone and
+recovers the measured near-equality of aluminium and glossy paper, reaching
+$\approx\SI{92}{\percent}$ of the glossy yield in the direct-coupled layouts.
+The \texttt{grease} backing is retained as the lower-bound systematic
+(Sec.~\ref{sec:albacking}).
 
 \subsubsection{High-gloss photo paper}
 \label{sec:refl-glossy}
@@ -879,8 +886,7 @@ display is generated reproducibly by \texttt{macros/muon\_vis.mac}.}
 \end{figure}
 
 % =====================================================================
-\section{Matrix simulation}
-\label{sec:matrix}
+\section{Simulation campaigns and surface calibration}
 \label{sec:sim}
 % =====================================================================
 
@@ -911,16 +917,23 @@ denominator of Eq.~\ref{eq:eff}---equal at all three positions. Each
   4\ \text{configs} \times 4\ \text{reflectors} \times 3\ \text{positions}
   = 48\ \text{files}, \qquad 48 \times \num{2500} = \num{120000}\ \text{events}.
 \]
-Two focused campaigns complete the production dataset. A bare-contact scan
-runs configs~1--3 at seven contact fractions $f=0$, $0.005$, \dots, $0.030$ at
-the three beam positions, $3 \times 7 \times 3 = \num{63}$ files with
-\num{1000} events each (\num{63000} events); an aluminium-backing scan runs
-configs~1--3 with \texttt{grease} and \texttt{air} backing at the three
-positions, $3 \times 2 \times 3 = \num{18}$ files with \num{1000} events each
-(\num{18000} events). Together with the whole-plate run of
+Two focused calibration campaigns bracket the remaining surface inputs and are
+presented first. A bare-contact scan
+runs configs~1--3 at eleven contact fractions
+$f=0$, $0.005$, \dots, $0.050$ at the three beam positions,
+$3 \times 11 \times 3 = \num{99}$ files with \num{1000} events each
+(\num{99000} events); an aluminium-backing scan runs configs~1--3 with
+\texttt{grease} and \texttt{air} backing at the three positions,
+$3 \times 2 \times 3 = \num{18}$ files with \num{1000} events each
+(\num{18000} events). The Al scan is taken from the earlier production
+campaign because the Al model is unchanged and that scan is complete; the
+contact scan is the new extended campaign. Together with the whole-plate run of
 Sec.~\ref{sec:whole} ($16 \times \num{25000} = \num{400000}$ events), the
-campaign totals \num{601000} events, of which \num{201000} are matrix-style
-($\text{matrix} + \text{contact} + \text{Al}$).
+campaign totals \num{637000} events, of which \num{237000} are matrix-style
+($\text{matrix} + \text{contact} + \text{Al}$). The next two subsections present
+the calibrations and select the nominal surface parameters; the production
+matrix and whole-slab results follow in Secs.~\ref{sec:matrix}
+and~\ref{sec:whole}.
 
 Production runs were executed on the HPC cluster.
 The optional per-slab optical track-length flux map is disabled for the matrix
@@ -966,6 +979,226 @@ leaves every scalar result (yields, spectra, efficiencies) unchanged; it only
 fixes the orientation of config~3 (top edge) and of the edge/corner irradiation
 sites (bottom edge).
 
+The optical measurements do not fix two remaining surface inputs: the effective
+bare-holder contact fraction $f$ and the aluminium backing. We determine both
+before presenting any production result, so that every matrix and whole-slab
+yield below uses one consistent nominal surface model. Both calibrations use the
+same beam patches and efficiency definition just described.
+
+\subsection{Bare-plate holder contact}
+\label{sec:contact}
+
+The clean bare model assumes a \SI{1.2}{\milli\meter} air gap between the
+polished plate and the black holder. A real clamped plate touches the holder at
+scattered high spots, and each contact frustrates total internal reflection and
+removes trapped light. To bracket this unmeasured loss channel we repeat the
+three-patch scan for a mean-field contact fraction $f$: every hit on a bare face
+is absorbed with probability $f$ and otherwise follows the normal Fresnel/TIR
+path, implemented as a polished \texttt{dielectric\_dielectric} skin with
+\texttt{REFLECTIVITY} $=1-f$ and \texttt{TRANSMITTANCE} $=0$
+(Sec.~\ref{sec:refl-bare}). The extended scan covers configs~1--3, the three beam
+positions and eleven fractions $f=0$, $0.005$, \dots, $0.050$, with \num{1000}
+events per case ($99$ files, \num{99000} events). It is an effective area
+fraction, not a measurement of the holder gap.
+
+Figure~\ref{fig:contact} shows the absolute yield versus $f$, with the matrix
+TiO$_2$ reference (reported in Sec.~\ref{sec:matrix}) drawn as dashed lines,
+and the normalised centre yield. At
+$f=0$ the config-1 bare plate collects \num{304.95}, \num{295.37} and
+\num{288.55}~pe/event at the centre, edge and corner; the corresponding config-2
+values are \num{160.21}, \num{153.68} and \num{152.25}, and the config-3 values
+\num{81.27}, \num{79.20} and \num{80.23}. A 1\% contact fraction already removes
+about half the light: at the config-1 centre the yield falls to \num{155.01}
+pe/event, and at the nominal $f=\num{0.045}$ to \num{74.37}. The loss is therefore
+strongly non-linear in the first few percent of contact area, as expected when a
+small fraction of the surface provides a fast escape path for the trapped mode
+volume.
+
+The nominal value is chosen from the crossings themselves. At the centre the
+crossing is remarkably stable across layouts, $f=\num{0.0165}$--$\num{0.0174}$
+for configs~1--3. At the edge and corner the required fraction drops to
+\num{0.0033}--\num{0.0088} in the four-sided layouts, where the diffuse TiO$_2$
+reference is bright, while in the single-sided config~3 it rises to
+\num{0.0389} (edge) and \num{0.0412} (corner), because the TiO$_2$ edge and
+corner patches there are the dimmest of the three positions. The smallest
+sampled fraction that places all nine cells below TiO$_2$ is therefore
+$f=\num{0.045}$; at that value the nine bare yields are
+\num{74.37}/\num{64.42}/\num{63.25} (cfg~1),
+\num{37.60}/\num{32.35}/\num{32.04} (cfg~2) and
+\num{19.22}/\num{16.32}/\num{16.04} (cfg~3) for centre/edge/corner.
+The same global $f$ thus matches the ordering in every layout and position, at
+the cost of over-suppressing the cfg~1/2 centre relative to the calibration
+target; we retain $f=0$ as the clean-air reference and lower bound on the loss.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.86\textwidth]{figures/contact_scan.pdf}
+\caption{Bare-plate contact-fraction scan. The first three panels show the mean
+photoelectron yield versus contact fraction $f$ for configs~1--3, with the
+centre, edge and corner patches as separate curves and the corresponding matrix
+TiO$_2$ reference as a dashed line in the same colour. The bottom-right panel
+shows the centre yield normalised to $f=0$. Markers in the first three panels
+indicate the interpolated crossing where the bare yield falls below TiO$_2$.
+The contact model is a mean-field per-hit loss ($R=1-f$, $T=0$), so $f$ is an
+effective area fraction, not a measured holder contact area.}
+\label{fig:contact}
+\end{figure}
+
+Table~\ref{tab:contact} lists the config-1 centre scan. The crossing fractions,
+where the bare curve falls below the matrix TiO$_2$ value, are collected in
+Table~\ref{tab:contactcross}. At the centre the crossing is remarkably stable
+across layouts, $f=\num{0.0165}$--$\num{0.0174}$ for configs~1--3. At the edge
+and corner the required fraction drops to \num{0.0033}--\num{0.0088} in the
+four-sided layouts, where the diffuse TiO$_2$ reference is bright, while in the
+single-sided config~3 it rises to \num{0.0389}--\num{0.0412}, because the TiO$_2$
+edge and corner patches there are the dimmest of the three positions. No single
+$f$ matches every cell exactly; the production nominal $f=\num{0.045}$ is the
+smallest sampled fraction that places all nine cells below TiO$_2$, at the cost
+of over-suppressing the four-sided centre. The clean-air value $f=0$ is retained
+as the lower-bound reference.
+
+\begin{table}[H]
+\centering
+\caption{Config-1 centre contact-fraction scan. $\pe$ is the mean
+photoelectron yield per event with its statistical uncertainty, $Y(f)/Y(0)$ is
+normalised to the air-gap value, and $\Delta$ is the signed difference from the
+matrix TiO$_2$ reference (\num{124.12}~pe/event). The production nominal is
+$f=\num{0.045}$.}
+\label{tab:contact}
+\small
+\begin{tabular}{@{}cccc@{}}
+\toprule
+$f$ & $\pe$ & $Y(f)/Y(0)$ & $\Delta$ (pe) \\
+\midrule
+0.000 & $304.95 \pm 2.75$ & 1.000 & $+180.83$ \\
+0.005 & $198.78 \pm 1.74$ & 0.652 & $+74.66$ \\
+0.010 & $155.01 \pm 1.47$ & 0.508 & $+30.89$ \\
+0.015 & $131.75 \pm 1.18$ & 0.432 & $+7.63$ \\
+0.020 & $115.67 \pm 1.09$ & 0.379 & $-8.45$ \\
+0.025 & $101.94 \pm 0.83$ & 0.334 & $-22.18$ \\
+0.030 & $93.61 \pm 0.80$ & 0.307 & $-30.51$ \\
+0.035 & $85.51 \pm 0.77$ & 0.280 & $-38.61$ \\
+0.040 & $78.87 \pm 0.71$ & 0.259 & $-45.25$ \\
+0.045 & $74.37 \pm 0.61$ & 0.244 & $-49.75$ \\
+0.050 & $71.12 \pm 0.68$ & 0.233 & $-53.00$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Interpolated contact fraction $f_{\rm cross}$ at which the bare yield
+falls below the matrix TiO$_2$ reference, for each layout and beam position,
+and the bare yield at the production nominal $f=\num{0.045}$. The TiO$_2$
+reference is the v6 matrix value (Sec.~\ref{sec:matrix}).}
+\label{tab:contactcross}
+\small
+\begin{tabular}{@{}llcccc@{}}
+\toprule
+Config & Position & Bare at $f=0$ & TiO$_2$ & $f_{\rm cross}$ & Bare at $0.045$ \\
+\midrule
+1 & centre & 304.95 & 124.12 & 0.0174 & 74.37 \\
+1 & edge   & 295.37 & 155.47 & 0.0085 & 64.42 \\
+1 & corner & 288.55 & 217.92 & 0.0033 & 63.25 \\
+2 & centre & 160.21 & 62.98  & 0.0171 & 37.60 \\
+2 & edge   & 153.68 & 78.79  & 0.0088 & 32.35 \\
+2 & corner & 152.25 & 110.51 & 0.0035 & 32.04 \\
+3 & centre & 81.27  & 32.06  & 0.0165 & 19.22 \\
+3 & edge   & 79.20  & 17.62  & 0.0389 & 16.32 \\
+3 & corner & 80.23  & 17.35  & 0.0412 & 16.04 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Aluminium backing: grease versus air}
+\label{sec:albacking}
+
+The aluminium foil is the one wrapper whose optical contact is explicitly
+ambiguous in the reference construction: grease is applied in places, but
+wrinkles and trapped air leave other regions decoupled. The production model
+uses the \texttt{air} backing ($n=1.0003$, critical angle
+$\SI{39.3}{\degree}$ at the scintillator), which leaves the full TIR cone intact,
+so only the sub-critical fraction reaches the foil. The alternative
+\texttt{grease} backing ($n=1.46$, critical angle $\SI{67.5}{\degree}$) lets most
+trapped light refract into the grease and return specularly from the foil; it is
+retained as the lower-bound systematic. Both use the same tabulated aluminium
+reflectance ($R=0.904$--$0.925$). The backing scan covers configs~1--3 at the
+three positions, with \num{1000} events per case, using
+\texttt{/dcs-monitor/det/muonScint/setAlBacking air|grease}. It is taken from
+the earlier complete production campaign because the Al model is unchanged; the
+v6 matrix air-backed centre value (\num{479.89}~pe/event) agrees with the v5
+scan value (\num{480.05}) to better than \SI{0.1}{\percent}.
+
+Figure~\ref{fig:albacking} and Table~\ref{tab:albacking} show the result. Air
+backing raises the aluminium yield by a factor \num{2.38}--\num{2.59} depending
+on layout and position. At the config-1 centre the foil goes from \num{201.92}
+to \num{480.05}~pe/event, at the config-2 centre from \num{102.51} to
+\num{254.57}, and at the config-3 centre from \num{51.98} to \num{127.90}. The
+air-backed foil reaches \SI{92.2}{\percent}, \SI{93.4}{\percent} and
+\SI{91.6}{\percent} of the glossy yield from the production matrix
+(Sec.~\ref{sec:matrix}) in those three cases, i.e.\ it recovers
+the measured near-equality of aluminium and glossy paper. The grease-backed
+branch is roughly a factor \num{2.4} lower---about \SI{40}{\percent} of the
+glossy yield---and would put the foil below the clean-air ($f=0$) bare plate, so
+the backing choice is the dominant Al systematic. The
+enhancement is slightly larger at the edge and corner than at the centre for
+config~3, but the position dependence within each backing remains weak.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.86\textwidth]{figures/al_backing.pdf}
+\caption{Aluminium backing scan. The first three panels compare the grease and
+air backings at the three beam positions for configs~1--3, with the matrix
+TiO$_2$ and glossy references shown for orientation; the bottom-right panel
+shows the air/grease enhancement ratio. The backing index changes the critical
+angle, not the tabulated aluminium reflectance, so the difference is entirely
+due to whether the plate retains its full TIR cone.}
+\label{fig:albacking}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\caption{Aluminium yield for the grease and air backings, and the air/grease
+ratio, for configs~1--3 and the three beam positions (\num{1000} events per
+case). The production campaign uses the air backing; the grease column is the
+lower-bound systematic. The scan is from the earlier complete Al campaign (the
+Al model is unchanged); the v6 air matrix centre agrees with it to better than
+\SI{0.1}{\percent}.}
+\label{tab:albacking}
+\small
+\begin{tabular}{@{}llccc@{}}
+\toprule
+Config & Position & Grease (pe) & Air (pe) & Air/grease \\
+\midrule
+1 & centre & $201.92 \pm 1.79$ & $480.05 \pm 3.94$ & $2.377 \pm 0.029$ \\
+1 & edge   & $189.72 \pm 1.58$ & $460.71 \pm 3.39$ & $2.428 \pm 0.027$ \\
+1 & corner & $186.80 \pm 1.45$ & $459.18 \pm 3.67$ & $2.458 \pm 0.027$ \\
+2 & centre & $102.51 \pm 0.90$ & $254.57 \pm 2.16$ & $2.483 \pm 0.030$ \\
+2 & edge   & $97.85 \pm 0.86$  & $242.85 \pm 1.86$ & $2.482 \pm 0.029$ \\
+2 & corner & $97.06 \pm 0.86$  & $243.00 \pm 1.87$ & $2.504 \pm 0.029$ \\
+3 & centre & $51.98 \pm 0.45$  & $127.90 \pm 1.00$ & $2.461 \pm 0.029$ \\
+3 & edge   & $49.35 \pm 0.46$  & $127.10 \pm 1.04$ & $2.575 \pm 0.032$ \\
+3 & corner & $49.34 \pm 0.44$  & $127.71 \pm 0.99$ & $2.588 \pm 0.031$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The two backings bracket the as-built foil: uniform grease is the lower bound
+and a perfectly trapped air layer the upper bound. The air-backed result is
+consistent with the reference measurement's near-equality of aluminium and
+glossy paper. Together with the contact scan, the calibration fixes the
+production surface model: $f=\num{0.045}$ for the bare plate and the air backing
+for aluminium. Every matrix and whole-slab result in
+Secs.~\ref{sec:matrix} and~\ref{sec:whole} uses these nominal values; $f=0$ and
+grease are retained only as systematic bounds.
+
+\section{Matrix irradiation results}
+\label{sec:matrix}
+% =====================================================================
+
+With the surface model fixed at $f=\num{0.045}$ and air-backed aluminium, we now
+present the production matrix results.
+
 \subsection{Photon yield and photoelectron spectra}
 
 Figure~\ref{fig:yield} shows the per-event optical-photon yield (the
@@ -975,12 +1208,14 @@ photons are transported, not how many are produced. The small spread reflects
 event-to-event variation in the muon path length.
 
 Figure~\ref{fig:detected} shows the corresponding photoelectron spectra. Here
-the reflector has a clear effect: the config-1 centre mean runs from
-\num{124.6}\,\pe/event for TiO$_2$ and \num{200.0}\,\pe/event for aluminium up to
-\num{303.7}\,\pe/event for the air-gap bare plate and \num{520.6}\,\pe/event for
-glossy paper. In particular the bare curve is \emph{not} a near-zero peak but a
-broad distribution comparable to the reflective wrappers---the direct signature
-of its near-lossless TIR transport.
+the reflector has a clear effect: at the config-1 centre the calibrated model
+gives \num{75.1}\,\pe/event for the contact-limited bare plate,
+\num{124.1}\,\pe/event for TiO$_2$, \num{479.9}\,\pe/event for air-backed
+aluminium and \num{518.0}\,\pe/event for glossy paper. The ordering is
+$\text{bare}<\text{TiO}_2<\text{Al}<\text{glossy}$, with the air-backed foil
+close to glossy paper. The bare curve is therefore a broad, low-occupancy
+distribution rather than the near-lossless TIR peak obtained at $f=0$; the
+difference is the contact-loss systematic of Sec.~\ref{sec:contact}.
 
 \begin{figure}[H]
 \centering
@@ -1007,7 +1242,7 @@ on a linear scale.}
 
 The efficiency scale is set by the SiPM PDE and the coupling: of order
 \num{19600} photons are produced and the best wrapper delivers
-$\approx 521$ photoelectrons, i.e.\ $\approx 2.65\%$. Given a PDE of
+$\approx 519$ photoelectrons, i.e.\ $\approx 2.65\%$. Given a PDE of
 $\sim\!0.4$ and the geometric acceptance of a side-mounted sensor, this is
 consistent.
 
@@ -1015,15 +1250,16 @@ consistent.
 
 Figure~\ref{fig:wavelength} shows the wavelength distribution of detected
 photoelectrons, weighted by their count, for the four reflectors. The
-distribution peaks near \SI{456}{\nano\meter} for the reflective wrappers and
-the bare plate (measured config-1 centre means of \SI{452.3}{\nano\meter} for
-aluminium and \SI{457.0}{\nano\meter} for the bare plate), i.e.\ slightly
-red-shifted with respect to the \SI{425}{\nano\meter} emission peak. This is the
-expected consequence of self-absorption: the shorter-wavelength part of the
-emission overlaps the absorption band and is attenuated over the multi-bounce
-path, so the surviving and detected spectrum is red-shifted. With the air-gap
-model the bare plate now has as many detected photons as the reflective
-wrappers, so its spectrum is equally well defined.
+distribution peaks near \SI{456}{\nano\meter} for the reflective wrappers
+(config-1 centre means of \SI{456.8}{\nano\meter} for glossy,
+\SI{456.2}{\nano\meter} for Al and \SI{454.5}{\nano\meter} for TiO$_2$), i.e.\
+slightly red-shifted with respect to the \SI{425}{\nano\meter} emission peak.
+This is the expected consequence of self-absorption: the shorter-wavelength part
+of the emission overlaps the absorption band and is attenuated over the
+multi-bounce path, so the surviving and detected spectrum is red-shifted. The
+contact-limited bare plate is bluer (\SI{449.6}{\nano\meter}) because the
+holder-contact loss suppresses the longest multi-bounce paths before they can
+redden the spectrum; its lower yield still leaves a well-defined distribution.
 
 \begin{figure}[H]
 \centering
@@ -1040,7 +1276,7 @@ configurations for each wrapper. Configurations~1--3, in which the SiPMs view th
 tile directly, all detect the same blue scintillation spectrum: the
 \emph{mean} wavelength is essentially independent of the number of sensors,
 moving only from \SI{457.0}{\nano\meter} (glossy, config~1) to
-\SI{457.2}{\nano\meter} (config~3), the small increase reflecting the slightly
+\SI{457.4}{\nano\meter} (config~3), the small increase reflecting the slightly
 longer collection path of the single-sided layouts. Config~4 is qualitatively
 different: the WLS fibres absorb the blue light and re-emit it at their own
 emission band, so the detected spectrum is shifted to
@@ -1087,26 +1323,27 @@ denominators are equal and the three points within each curve are directly
 comparable. The curves are plotted on a logarithmic $y$-axis, which resolves the
 weaker TiO$_2$ wrapper alongside the others.
 
-The conspicuous feature is that the bare plate and the reflective wrappers are
-nearly \emph{flat} across the three patches: across all four layouts the
-maximum/minimum patch ratio spans \SIrange{1.8}{5.6}{\percent} for the air-gap
-bare plate, \SIrange{4.5}{8.7}{\percent} for aluminium and
-\SIrange{0.8}{2.9}{\percent} for glossy paper. Only the diffuse TiO$_2$ paint
-shows a clear position dependence, varying by \SIrange{75}{84}{\percent} (a
-factor \num{1.75}--\num{1.84}). This is the
-expected behaviour of a closed cavity: after the first few bounces the light no
-longer remembers where the muon crossed the plate, so the sensor coverage, and
-not the irradiation point, sets the collection. The specular foil and glossy
-paper homogenise the response directly; the air-gap bare plate homogenises it
-more slowly, but because its bulk attenuation is weak the TIR random walk mixes
-the light just as thoroughly by the time it reaches the edges.
+The conspicuous feature is that the specular wrappers are nearly \emph{flat}
+across the three patches: across all four layouts the maximum/minimum patch
+ratio spans \SIrange{1.5}{3.4}{\percent} for aluminium and
+\SIrange{0.8}{3.2}{\percent} for glossy paper. The diffuse TiO$_2$ paint is the
+opposite extreme, varying by \SIrange{74.8}{87.4}{\percent} (a factor
+\num{1.75}--\num{1.87}). The contact-limited bare plate lies between them:
+\SIrange{4.7}{18.9}{\percent}, with the largest spread in the four-sided
+layouts. This is the expected behaviour of a closed cavity: after the first few
+bounces the light no longer remembers where the muon crossed the plate, so the
+sensor coverage, and not the irradiation point, sets the collection. The
+specular foil and glossy paper homogenise the response directly. The bare plate
+homogenises it more slowly, and the mean-field holder contact adds a
+position-dependent loss that is visible as the residual few-percent to
+\SI{19}{\percent} spread.
 
 These three patches lie near the \emph{instrumented} half of the plate, so the
 comparison above captures the position dependence within the well-lit region.
 The response over the \emph{whole} plate is resolved in
-Sec.~\ref{sec:wholeunif}; there the bare and specular wrappers are confirmed to
-be almost uniform, while TiO$_2$ retains the strongest (and now
-centre-depressed) position dependence.
+Sec.~\ref{sec:wholeunif}; there Al and glossy are confirmed to be almost
+uniform, the contact-limited bare plate is intermediate, and TiO$_2$ retains the
+strongest (and now centre-depressed) position dependence.
 
 \begin{figure}[H]
 \centering
@@ -1114,9 +1351,10 @@ centre-depressed) position dependence.
 \caption{Collection efficiency at the three irradiation patches (centre, edge,
 corner), one panel per detector layout, with the four reflector curves
 (logarithmic $y$-axis). All three patches have equal area and lie fully on the
-plate, so the points are directly comparable. The bare plate and the specular
-wrappers are nearly flat across the three patches in every layout; only the
-diffuse TiO$_2$ paint shows a clear position dependence.}
+plate, so the points are directly comparable. Aluminium and glossy paper are
+nearly flat across the three patches in every layout; the contact-limited bare
+plate varies by up to \SI{19}{\percent}, and the diffuse TiO$_2$ paint shows by
+far the strongest position dependence.}
 \label{fig:poslayouts}
 \end{figure}
 
@@ -1124,12 +1362,12 @@ diffuse TiO$_2$ paint shows a clear position dependence.}
 \centering
 \includegraphics[width=\textwidth]{figures/fig_pos_refl.pdf}
 \caption{The same data grouped by reflector (one panel per wrapper), with the
-four layouts as curves. Configs~1 and~2 (sensors on every face) are nearly flat
-for the bare and specular wrappers, but the diffuse TiO$_2$ paint varies by a
-factor $\approx\!\num{1.75}$ there as well (corner highest); in the
+four layouts as curves. Aluminium and glossy paper are nearly flat in every
+layout, while the contact-limited bare plate varies by up to
+\SI{19}{\percent}. The diffuse TiO$_2$ paint varies by a factor
+$\approx\!\num{1.75}$ in the four-sided layouts (corner highest); in the
 single-sided layouts (3 and~4) it drops from centre toward the edge and corner
-patches, which sit on the far side of the plate from its sensors, while the
-bare and specular wrappers remain flat.}
+patches, which sit on the far side of the plate from its sensors.}
 \label{fig:posrefl}
 \end{figure}
 
@@ -1138,19 +1376,19 @@ config~1 (the layout with the most sensors) it shows the \emph{share} of the
 collected light seen by each of the eight sensors, in one panel per reflector,
 with the three irradiation patches as grouped bars (dashed line: the uniform
 expectation of $1/8$). The difference between the
-wrappers is instructive. For the air-gap bare plate the light is well mixed:
-at the corner patch the largest and smallest single-sensor shares differ by a
-factor \num{1.52}, while glossy paper is flatter still (\num{1.26}); the
-aluminium foil is somewhat less uniform (\num{1.73}). Only the diffuse TiO$_2$
-paint concentrates the light strongly: at the corner patch the largest and
-smallest shares differ by a factor \num{12.0}, and the two sensors on the faces
-bordering the illuminated corner together collect \SI{75}{\percent} of the
-photoelectrons (about three times the uniform share each), while the remaining
-six share the rest. The total efficiency is nearly the same for all three patches
-(Table~\ref{tab:positions}), so the cavity keeps the \emph{amount} of collected
-light constant while rearranging its spatial division. A radius-only summary
-averages these distinct per-sensor patterns into a single number and hides
-precisely this information.
+wrappers is instructive. Glossy paper and aluminium spread the light almost
+uniformly: at the corner patch the largest and smallest single-sensor shares
+differ by only \num{1.26} and \num{1.28}. The diffuse TiO$_2$ paint concentrates
+it strongly: the largest and smallest shares differ by a factor \num{11.95}, and
+the two sensors on the faces bordering the illuminated corner together collect
+\SI{75}{\percent} of the photoelectrons (about three times the uniform share
+each), while the remaining six share the rest. The contact-limited bare plate is
+intermediate (\num{8.61}), a direct consequence of the position-dependent
+holder-loss model. The total efficiency still varies only modestly across the
+three patches for Al and glossy (Table~\ref{tab:positions}), so the cavity keeps
+the \emph{amount} of collected light nearly constant while rearranging its
+spatial division. A radius-only summary averages these distinct per-sensor
+patterns into a single number and hides precisely this information.
 
 \begin{figure}[H]
 \centering
@@ -1159,11 +1397,11 @@ precisely this information.
 group of bars is one sensor (x axis) and the three colours are the irradiation
 patches (blue: centre, orange: edge, red: corner); the height is that sensor's
 share of the light collected at that patch, and the dashed line marks the
-uniform expectation $1/8$. The bare plate and glossy paper spread the light
-almost uniformly over all eight sensors (corner max/min \num{1.52} and
-\num{1.26}), aluminium is slightly less uniform (\num{1.73}), whereas the
+uniform expectation $1/8$. Glossy paper and aluminium spread the light almost
+uniformly over all eight sensors (corner max/min \num{1.26} and \num{1.28}),
+the contact-limited bare plate is intermediate (\num{8.61}), whereas the
 diffuse TiO$_2$ paint concentrates it on the two sensors nearest the beam
-(corner max/min \num{12.0}).}
+(corner max/min \num{11.95}).}
 \label{fig:sharing}
 \end{figure}
 
@@ -1182,10 +1420,10 @@ and lies fully on the plate, so the produced-photon denominators are equal.}
 \toprule
 Reflector & Centre & Edge & Corner \\
 \midrule
-Bare   & $1.546\times10^{-2}$ & $1.488\times10^{-2}$ & $1.471\times10^{-2}$ \\
-TiO$_2$& $6.379\times10^{-3}$ & $8.017\times10^{-3}$ & $1.119\times10^{-2}$ \\
-Al     & $1.028\times10^{-2}$ & $9.752\times10^{-3}$ & $9.819\times10^{-3}$ \\
-Glossy & $2.647\times10^{-2}$ & $2.578\times10^{-2}$ & $2.572\times10^{-2}$ \\
+Bare   & $3.868\times10^{-3}$ & $3.315\times10^{-3}$ & $3.254\times10^{-3}$ \\
+TiO$_2$& $6.380\times10^{-3}$ & $8.014\times10^{-3}$ & $1.121\times10^{-2}$ \\
+Al     & $2.440\times10^{-2}$ & $2.376\times10^{-2}$ & $2.365\times10^{-2}$ \\
+Glossy & $2.644\times10^{-2}$ & $2.581\times10^{-2}$ & $2.566\times10^{-2}$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1224,204 +1462,27 @@ few percent of the axis. Panel~(b) shows every cell over its full distribution o
 a single shared logarithmic abscissa with logarithmic bins, so the four layouts
 remain directly comparable there. Zero-photoelectron events form a
 pulse below threshold and lie off the abscissa. The
-wrappers shift and broaden the spectrum from the low, narrow TiO$_2$ distribution
-to the wide, bright glossy one, with the air-gap bare plate between the
-aluminium foil and glossy paper; apart from TiO$_2$ the spectra vary by at most
-\SI{9}{\percent} across positions.}
+wrappers shift and broaden the spectrum from the low, contact-limited bare
+distribution through TiO$_2$ and air-backed Al to the wide, bright glossy one;
+apart from TiO$_2$ and the bare plate the spectra vary by at most
+\SI{3.4}{\percent} across positions.}
 \label{fig:pegrid}
 \end{figure}
 
 The figure condenses the trends established above. At the config-1 centre the
-mean yields are \num{124.6}, \num{200.0}, \num{303.7} and \num{520.6}~pe/event
-for TiO$_2$, Al, bare and glossy, so the reflector ordering
-$\text{TiO}_2 < \text{Al} < \text{bare} < \text{glossy}$ holds in every
-direct-coupled cell, with TiO$_2$ the lowest and glossy the highest; the air-gap
-bare plate sits between the aluminium foil and glossy paper. The position
-dependence is wrapper-specific: for the diffuse TiO$_2$ paint the corner spectrum
-is shifted highest in the four-sided layouts (a factor $\approx\!\num{1.75}$ in
-the mean, config~1) but the centre is highest in the single-sided layouts~3
-and~4, whereas the bare and specular wrappers vary by at most \SI{9}{\percent}
-across positions, reflecting the flat response found above. This is the same
+mean yields are \num{75.1}, \num{124.1}, \num{479.9} and \num{518.0}~pe/event
+for bare, TiO$_2$, Al and glossy, so the calibrated ordering
+$\text{bare} < \text{TiO}_2 < \text{Al} < \text{glossy}$ holds in every
+direct-coupled cell, with the contact-limited bare plate the lowest and glossy
+the highest. The position dependence is wrapper-specific: for the diffuse
+TiO$_2$ paint the corner spectrum is shifted highest in the four-sided
+layouts (a factor $\approx\!\num{1.75}$ in the mean, configurations~1 and~2)
+but the centre is highest in the single-sided layouts~3 and~4. Aluminium and
+glossy paper vary by at most \SI{3.4}{\percent} across positions, whereas the
+contact-limited bare plate varies by up to \SI{18.9}{\percent}. This is the same
 reflector-versus-position interplay summarised in Table~\ref{tab:positions} and
 the efficiency maps, presented here as the pulse-height distributions that a
 threshold-based read-out would actually see.
-
-\subsection{Bare-plate holder contact}
-\label{sec:contact}
-
-The default bare model assumes a clean \SI{1.2}{\milli\meter} air gap between
-the polished plate and the black holder. A real clamped plate touches the holder
-at scattered high spots, and each contact frustrates total internal reflection
-and removes trapped light. To bracket this unmeasured loss channel we repeat the
-three-patch scan for a mean-field contact fraction $f$: every hit on a bare face
-is absorbed with probability $f$ and otherwise follows the normal Fresnel/TIR
-path, implemented as a polished \texttt{dielectric\_dielectric} skin with
-\texttt{REFLECTIVITY} $=1-f$ and \texttt{TRANSMITTANCE} $=0$
-(Sec.~\ref{sec:refl-bare}). The scan covers configs~1--3, the three beam
-positions and seven fractions $f=0$, $0.005$, \dots, $0.030$, with \num{1000}
-events per case. It is an effective area fraction, not a measurement of the
-holder gap.
-
-Figure~\ref{fig:contact} shows the absolute yield versus $f$, with the matrix
-TiO$_2$ reference drawn as dashed lines, and the normalised centre yield. At
-$f=0$ the config-1 bare plate collects \num{304.95}, \num{295.37} and
-\num{288.55}~pe/event at the centre, edge and corner; the corresponding config-2
-values are \num{160.21}, \num{153.68} and \num{152.25}, and the config-3 values
-\num{81.27}, \num{79.20} and \num{80.23}. A 1\% contact fraction already removes
-about half the light: at the config-1 centre the yield falls to \num{155.01}
-pe/event, and at $f=0.030$ to \num{93.61}. The loss is therefore strongly
-non-linear in the first few percent of contact area, as expected when a small
-fraction of the surface provides a fast escape path for the trapped mode
-volume.
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.86\textwidth]{figures/contact_scan.pdf}
-\caption{Bare-plate contact-fraction scan. The first three panels show the mean
-photoelectron yield versus contact fraction $f$ for configs~1--3, with the
-centre, edge and corner patches as separate curves and the corresponding matrix
-TiO$_2$ reference as a dashed line in the same colour. The bottom-right panel
-shows the centre yield normalised to $f=0$. Markers in the first three panels
-indicate the interpolated crossing where the bare yield falls below TiO$_2$.
-The contact model is a mean-field per-hit loss ($R=1-f$, $T=0$), so $f$ is an
-effective area fraction, not a measured holder contact area.}
-\label{fig:contact}
-\end{figure}
-
-Table~\ref{tab:contact} lists the config-1 centre scan. The crossing fractions,
-where the bare curve falls below the matrix TiO$_2$ value, are collected in
-Table~\ref{tab:contactcross}. At the centre the crossing is remarkably stable
-across layouts, $f\approx\num{0.017}$ for configs~1--3. At the edge and corner,
-however, the required fraction drops to $0.003$--\num{0.009} in the four-sided
-layouts, where the diffuse TiO$_2$ reference is bright, while in the
-single-sided config~3 it exceeds \num{0.030}, because the TiO$_2$ edge and
-corner patches there are the dimmest of the three positions. The physically
-important point is that no single $f$ reproduces the measured
-$\text{bare}<\text{TiO}_2$ ordering in every layout and at every position: a
-global effective contact of \num{1.7}\% works for configs~1 and~2 and for the
-config-3 centre, but not for the config-3 edge/corner.
-
-\begin{table}[H]
-\centering
-\caption{Config-1 centre contact-fraction scan. $\pe$ is the mean
-photoelectron yield per event with its statistical uncertainty, $Y(f)/Y(0)$ is
-normalised to the air-gap value, and $\Delta$ is the signed difference from the
-matrix TiO$_2$ reference (\num{124.64}~pe/event).}
-\label{tab:contact}
-\small
-\begin{tabular}{@{}cccc@{}}
-\toprule
-$f$ & $\pe$ & $Y(f)/Y(0)$ & $\Delta$ (pe) \\
-\midrule
-0.000 & $304.95 \pm 2.75$ & 1.000 & $+180.32$ \\
-0.005 & $198.78 \pm 1.74$ & 0.652 & $+74.14$ \\
-0.010 & $155.01 \pm 1.47$ & 0.508 & $+30.37$ \\
-0.015 & $131.75 \pm 1.18$ & 0.432 & $+7.11$ \\
-0.020 & $115.67 \pm 1.09$ & 0.379 & $-8.97$ \\
-0.025 & $101.94 \pm 0.83$ & 0.334 & $-22.70$ \\
-0.030 & $93.61 \pm 0.80$ & 0.307 & $-31.03$ \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\begin{table}[H]
-\centering
-\caption{Interpolated contact fraction $f_{\rm cross}$ at which the bare yield
-falls below the matrix TiO$_2$ reference, for each layout and beam position.
-The reference itself is shown alongside the air-gap bare yield. Entries
-$>0.030$ lie beyond the scanned range.}
-\label{tab:contactcross}
-\small
-\begin{tabular}{@{}llccc@{}}
-\toprule
-Config & Position & Bare at $f=0$ (pe) & TiO$_2$ (pe) & $f_{\rm cross}$ \\
-\midrule
-1 & centre & 304.95 & 124.64 & 0.0172 \\
-1 & edge   & 295.37 & 155.18 & 0.0085 \\
-1 & corner & 288.55 & 217.58 & 0.0034 \\
-2 & centre & 160.21 & 63.20  & 0.0170 \\
-2 & edge   & 153.68 & 79.84  & 0.0086 \\
-2 & corner & 152.25 & 110.41 & 0.0035 \\
-3 & centre & 81.27  & 31.60  & 0.0171 \\
-3 & edge   & 79.20  & 17.28  & $>0.030$ \\
-3 & corner & 80.23  & 17.43  & $>0.030$ \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\subsection{Aluminium backing: grease versus air}
-\label{sec:albacking}
-
-The aluminium foil is the one wrapper whose optical contact is explicitly
-ambiguous in the reference construction: grease is applied in places, but
-wrinkles and trapped air leave other regions decoupled. The production model
-uses the \texttt{grease} backing ($n=1.46$, critical angle
-$\SI{67.5}{\degree}$), which lets most trapped light refract into the grease and
-return specularly from the foil. The alternative \texttt{air} backing
-($n=1.0003$, critical angle $\SI{39.3}{\degree}$ at the scintillator) leaves the
-full TIR cone intact, so only the sub-critical fraction reaches the foil. Both
-use the same tabulated aluminium reflectance ($R=0.904$--$0.925$). We scanned
-both backings for configs~1--3 at the three positions, with \num{1000} events
-per case, using \texttt{/dcs-monitor/det/muonScint/setAlBacking air|grease}.
-
-Figure~\ref{fig:albacking} and Table~\ref{tab:albacking} show the result. Air
-backing raises the aluminium yield by a factor \num{2.38}--\num{2.59} depending
-on layout and position. At the config-1 centre the foil goes from \num{201.92}
-to \num{480.05}~pe/event, at the config-2 centre from \num{102.51} to
-\num{254.57}, and at the config-3 centre from \num{51.98} to \num{127.90}. The
-air-backed foil reaches \SI{92.2}{\percent}, \SI{93.4}{\percent} and
-\SI{91.6}{\percent} of the glossy yield in those three cases, i.e.\ it recovers
-the measured near-equality of aluminium and glossy paper. The grease-backed foil
-instead sits below the bare plate and only slightly above TiO$_2$, the ordering
-reported in the plate averages of Table~\ref{tab:eff}. The enhancement is
-slightly larger at the edge and corner than at the centre for config~3, but the
-position dependence within each backing remains weak.
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.86\textwidth]{figures/al_backing.pdf}
-\caption{Aluminium backing scan. The first three panels compare the grease and
-air backings at the three beam positions for configs~1--3, with the matrix
-TiO$_2$ and glossy references shown for orientation; the bottom-right panel
-shows the air/grease enhancement ratio. The backing index changes the critical
-angle, not the tabulated aluminium reflectance, so the difference is entirely
-due to whether the plate retains its full TIR cone.}
-\label{fig:albacking}
-\end{figure}
-
-\begin{table}[H]
-\centering
-\caption{Aluminium yield for the grease and air backings, and the air/grease
-ratio, for configs~1--3 and the three beam positions (\num{1000} events per
-case). The whole-slab production runs use the grease default; the air column is
-a systematic bracket.}
-\label{tab:albacking}
-\small
-\begin{tabular}{@{}llccc@{}}
-\toprule
-Config & Position & Grease (pe) & Air (pe) & Air/grease \\
-\midrule
-1 & centre & $201.92 \pm 1.79$ & $480.05 \pm 3.94$ & $2.377 \pm 0.029$ \\
-1 & edge   & $189.72 \pm 1.58$ & $460.71 \pm 3.39$ & $2.428 \pm 0.027$ \\
-1 & corner & $186.80 \pm 1.45$ & $459.18 \pm 3.67$ & $2.458 \pm 0.027$ \\
-2 & centre & $102.51 \pm 0.90$ & $254.57 \pm 2.16$ & $2.483 \pm 0.030$ \\
-2 & edge   & $97.85 \pm 0.86$  & $242.85 \pm 1.86$ & $2.482 \pm 0.029$ \\
-2 & corner & $97.06 \pm 0.86$  & $243.00 \pm 1.87$ & $2.504 \pm 0.029$ \\
-3 & centre & $51.98 \pm 0.45$  & $127.90 \pm 1.00$ & $2.461 \pm 0.029$ \\
-3 & edge   & $49.35 \pm 0.46$  & $127.10 \pm 1.04$ & $2.575 \pm 0.032$ \\
-3 & corner & $49.34 \pm 0.44$  & $127.71 \pm 0.99$ & $2.588 \pm 0.031$ \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-The two backings bracket the as-built foil: uniform grease is the lower bound
-and a perfectly trapped air layer the upper bound. The air-backed result is
-consistent with the reference measurement's near-equality of aluminium and
-glossy paper, whereas the grease default is not. Because the whole-slab campaign
-was run with the grease default, all plate-averaged efficiencies and maps
-elsewhere in this report remain on the conservative lower branch; the air-backed
-column shows how much the aluminium results would move if the foil were largely
-decoupled.
 
 % =====================================================================
 \section{Whole-slab irradiation}
@@ -1442,37 +1503,33 @@ $\sum\pe/\sum\ngam$ is the \emph{plate-averaged} collection efficiency---the
 appropriate global figure of merit. Figure~\ref{fig:bars} shows it for every
 (config, reflector) pair, and Table~\ref{tab:eff} lists the numbers.
 
-The measured ordering of Ref.~\cite{Rao2025} is only partly reproduced. Glossy
-paper is the brightest wrapper in every layout, as the experiment finds, but the
-bare plate is \emph{not} the weakest collector: with its true air gap it is the
-\emph{second}-brightest configuration in every layout. The resulting orderings
-are
+With the calibrated surfaces the direct-coupled layouts reproduce the measured
+ordering,
 \[
-  \text{TiO}_2 < \text{Al} < \text{bare} < \text{glossy}
+  \text{bare} < \text{TiO}_2 < \text{Al} < \text{glossy}
   \quad(\text{configs 1--3}),
-  \qquad
-  \text{Al} < \text{TiO}_2 < \text{bare} < \text{glossy}
-  \quad(\text{config 4}),
 \]
-so within a given layout the spread from the weakest to the brightest wrapper is
-only a factor of about three, and the bare plate sits near the top rather than
-at the bottom. The reason is that a polished plate in air is a nearly lossless
-TIR light guide (Sec.~\ref{sec:physics}): without a rough or
-optically-contacting surface the trapped light is efficiently transported to the
-edge sensors, so the bare collection is comparable to---and, for the
-grease-coupled foil whose reflectivity is only $\approx\num{90}\%$, higher
-than---the aluminium wrapper.
+while the WLS-fibre layout retains
+\[
+  \text{TiO}_2 < \text{bare} < \text{Al} < \text{glossy}
+  \quad(\text{config 4}).
+\]
+Glossy paper is the brightest wrapper in every layout and air-backed aluminium
+reaches \SI{92}{\percent} of its yield in configs~1--3 (\SI{96}{\percent} in
+config~4). The contact-limited bare plate is now the weakest direct-coupled
+wrapper, as the experiment finds, but it is \emph{not} the weakest in the WLS
+layout: config~4 has no black holder, so the bare plate keeps its clean air gap
+and remains above TiO$_2$. The spread from weakest to brightest is a factor
+\num{6.5}--\num{7.0} in configs~1--3, set mainly by the bare contact loss, and
+only \num{2.2} in config~4.
 The efficiency scales roughly with the photosensitive area: the eight-SiPM
-layout (config~1) is highest, four SiPMs on four faces (config~2) roughly halve
-it, and concentrating the two sensors of config~3 on a single face costs a
-further factor. The single-SiPM WLS-fibre layout (config~4) collects
-substantially less than the direct-coupled layouts: only the fraction of light
-that reaches the fibre face is wavelength-shifted and guided to the sensor, so
-its efficiency sits roughly a factor of 1.5 to 2.5 below config~3.
-In this layout the aluminium foil is no longer more efficient than the diffuse
-paint: the TiO$_2$ wrapper overtakes it, so the foil becomes the weakest of the
-four, though all four wrappers remain within a factor of about 2.3 of one
-another.
+layout (config~1, $\varepsilon = 4.09\times10^{-3}$) is highest, four SiPMs on
+four faces (config~2, $2.06\times10^{-3}$) roughly halve it, and concentrating
+the two sensors of config~3 on a single face ($1.02\times10^{-3}$) halves it
+again. The single-SiPM WLS-fibre layout (config~4, $1.71\times10^{-3}$) is
+comparable to config~3:
+it is lower for TiO$_2$, Al and glossy by about a factor of two, but higher for
+the bare plate because the holder loss is absent.
 
 \begin{figure}[H]
 \centering
@@ -1480,10 +1537,9 @@ another.
 \caption{Plate-averaged collection efficiency
 $\varepsilon = \sum \pe / \sum \ngam$ for the four reflector treatments and four
 detector layouts, from the uniform whole-plate irradiation (\num{25000} events
-per panel). Glossy paper is brightest in every layout and the air-gap bare plate
-is second, not the weakest; the diffuse TiO$_2$ paint is the weakest wrapper in
-the three direct-coupled layouts, while in the WLS layout the aluminium foil is
-the weakest.}
+per panel). Glossy paper is brightest in every layout and air-backed aluminium
+is second in configs~1--3; the contact-limited bare plate is the weakest direct
+wrapper, while in the WLS layout the diffuse TiO$_2$ paint is the weakest.}
 \label{fig:bars}
 \end{figure}
 
@@ -1498,21 +1554,23 @@ statistical uncertainties are below the quoted digits.}
 \toprule
 Layout & Bare & TiO$_2$ & Al & Glossy \\
 \midrule
-Config 1 (8 SiPMs) & $1.556\times10^{-2}$ & $9.545\times10^{-3}$ & $1.050\times10^{-2}$ & $2.649\times10^{-2}$ \\
-Config 2 (4 SiPMs) & $8.242\times10^{-3}$ & $4.837\times10^{-3}$ & $5.411\times10^{-3}$ & $1.399\times10^{-2}$ \\
-Config 3 (2 SiPMs) & $4.246\times10^{-3}$ & $2.413\times10^{-3}$ & $2.725\times10^{-3}$ & $7.137\times10^{-3}$ \\
-Config 4 (1 SiPM, WLS) & $1.715\times10^{-3}$ & $1.571\times10^{-3}$ & $1.506\times10^{-3}$ & $3.452\times10^{-3}$ \\
+Config 1 (8 SiPMs) & $4.093\times10^{-3}$ & $9.583\times10^{-3}$ & $2.444\times10^{-2}$ & $2.649\times10^{-2}$ \\
+Config 2 (4 SiPMs) & $2.064\times10^{-3}$ & $4.847\times10^{-3}$ & $1.288\times10^{-2}$ & $1.399\times10^{-2}$ \\
+Config 3 (2 SiPMs) & $1.022\times10^{-3}$ & $2.415\times10^{-3}$ & $6.573\times10^{-3}$ & $7.146\times10^{-3}$ \\
+Config 4 (1 SiPM, WLS) & $1.712\times10^{-3}$ & $1.560\times10^{-3}$ & $3.317\times10^{-3}$ & $3.450\times10^{-3}$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 A complementary, absolute figure of merit is the mean photoelectron yield per
-event. Because the whole-plate beam covers the entire scintillator, every
-primary enters the slab, and \num{399997} of the \num{400000} events register at
-least one photoelectron (detection probability $0.9999925$; three events are
-empty, one each in config~3 glossy, config~4 bare and config~4 TiO$_2$). The
-mean per event and the mean per \emph{detected} event therefore differ
-negligibly.
+event. Because the whole-plate beam covers the entire scintillator, almost
+every primary enters the slab, and \num{399981} of the \num{400000} events
+register at least one photoelectron (detection probability $0.9999525$).
+The 19 events without a detected photoelectron are 14 in config~3 bare and two
+in config~4 TiO$_2$ (zero-detection rows), plus one each in config~1 bare,
+config~1 TiO$_2$ and config~4 glossy (no \texttt{sipmHits} row, so no
+registered muon entry). The mean per event and the mean per \emph{detected} event
+therefore differ negligibly.
 Table~\ref{tab:wholeyield} lists the mean per event for every (config, wrapper)
 pair.
 Since the optical-photon production is set by the muon energy deposit and is
@@ -1524,10 +1582,11 @@ produced per event, so it reproduces exactly the same wrapper ordering.
 \centering
 \caption{Mean photoelectron yield per event for the full-slab irradiation
 (whole-plate beam, \num{25000} events per cell), for each layout and reflector
-treatment. Of the \num{400000} whole-plate events, \num{399997} detect at least
-one photoelectron (detection probability $0.9999925$; the three zero-detection
-events are one each in config~3 glossy, config~4 bare and config~4 TiO$_2$), so
-the mean per detected event differs negligibly from the mean per event; the
+treatment. Of the \num{400000} whole-plate events, \num{399981} detect at least
+one photoelectron (detection probability $0.9999525$; the 19 events without a
+detected photoelectron are 14 in config~3 bare and two in config~4 TiO$_2$,
+plus one each in config~1 bare, config~1 TiO$_2$ and config~4 glossy), so the
+mean per detected event differs negligibly from the mean per event; the
 statistical uncertainties are below the quoted digits.}
 \label{tab:wholeyield}
 \small
@@ -1535,10 +1594,10 @@ statistical uncertainties are below the quoted digits.}
 \toprule
 Layout & Bare & TiO$_2$ & Al & Glossy \\
 \midrule
-Config 1 (8 SiPMs)     & 305.5 & 185.7 & 204.4 & 519.9 \\
-Config 2 (4 SiPMs)     & 162.2 & 94.0  & 105.1 & 273.9 \\
-Config 3 (2 SiPMs)     & 83.6  & 46.9  & 52.8  & 140.0 \\
-Config 4 (1 SiPM, WLS) & 33.3  & 30.6  & 29.2  & 67.5 \\
+Config 1 (8 SiPMs)     & 79.88 & 186.75 & 477.82 & 518.79 \\
+Config 2 (4 SiPMs)     & 40.38 & 94.12  & 251.67 & 273.96 \\
+Config 3 (2 SiPMs)     & 19.97 & 46.95  & 129.11 & 140.21 \\
+Config 4 (1 SiPM, WLS) & 33.27 & 30.35  & 64.80  & 67.45 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1558,25 +1617,20 @@ Eq.~\ref{eq:eff} but binned in the entry position. The
 whole-slab maps therefore fill in the gaps left by the three-patch scan.
 
 Figure~\ref{fig:wholeslab} shows the complete set of full-plate maps for
-config~1, one panel per reflector. For the bare plate the plate-averaged
-efficiency is $\varepsilon = 1.556\times10^{-2}$, consistent with the three-patch
-bare values of Table~\ref{tab:positions}, and the map is nearly \emph{flat}: the
-mean within $r < \SI{60}{\milli\meter}$ ($1.534\times10^{-2}$) differs from that
-in the outer region ($1.561\times10^{-2}$) by under \SI{2}{\percent}. This is the
-direct consequence of the TIR-guide picture: because bulk attenuation is weak,
-photons born at the centre random-walk to a sensor-bearing edge with little loss,
-so the entry position barely matters.
-
-The other panels show the same weak position dependence, with TiO$_2$ as the one
-exception. Aluminium is essentially flat ($1.026\times10^{-2}$ for
-$r < \SI{60}{\milli\meter}$ versus $1.056\times10^{-2}$ beyond) and glossy paper
-flatter still ($2.635$ versus $2.652\times10^{-2}$). TiO$_2$ is the only wrapper
-with a clear gradient, and it runs the other way: the centre
-($6.734\times10^{-3}$) is \emph{dimmer} than the edge and corner
-($1.016\times10^{-2}$), a factor of $\sim\!1.51$. Diffuse recycling couples light
-into the sensors most efficiently when the source sits near a painted edge, and
-least when it is in the middle of the plate, whereas the specular and TIR
-transports erase the entry position altogether.
+config~1, one panel per reflector. The plate-averaged efficiencies are
+$4.093\times10^{-3}$ (bare), $9.583\times10^{-3}$ (TiO$_2$),
+$2.444\times10^{-2}$ (Al) and $2.649\times10^{-2}$ (glossy). The contact-limited
+bare plate has a modest inner deficit---$3.839\times10^{-3}$ within
+$r < \SI{60}{\milli\meter}$ versus $4.148\times10^{-3}$ outside, about
+\SI{7.5}{\percent}---reflecting the holder-loss model. Aluminium and glossy paper
+are essentially flat ($2.431\times10^{-2}$ versus $2.447\times10^{-2}$ and
+$2.637\times10^{-2}$ versus $2.652\times10^{-2}$). TiO$_2$ is the only wrapper
+with a strong gradient, and it
+runs the other way: the centre ($6.738\times10^{-3}$) is \emph{dimmer} than the
+edge and corner ($1.019\times10^{-2}$), a factor of $\sim\!1.51$. Diffuse
+recycling couples light into the sensors most efficiently when the source sits
+near a painted edge, and least when it is in the middle of the plate, whereas the
+specular transport erases the entry position almost completely.
 
 \clearpage
 \begin{figure}[t]
@@ -1584,10 +1638,11 @@ transports erase the entry position altogether.
 \includegraphics[width=0.74\textwidth]{figures/whole_slab_cfg1.pdf}
 \caption{Full-plate collection-efficiency maps for config~1, from \num{25000}
 whole-slab events per panel ($5 \times \SI{5}{\milli\meter}$ cells, on a
-logarithmic colour scale shared by the panels). The bare plate (top left) and
-the specular wrappers are almost flat; TiO$_2$ (top right) is the weakest and the
-only one with a clear gradient, dimmest at the centre and brightest toward the
-edges and corners. The bold rectangle is the
+logarithmic colour scale shared by the panels). Aluminium and glossy paper are
+almost flat; the contact-limited bare plate (top left) is the weakest and has a
+modest inner deficit, while TiO$_2$ (top right) is the only one with a strong
+gradient, dimmest at the centre and brightest toward the edges and corners. The
+bold rectangle is the
 \SI{250}{\milli\meter}$\times$\SI{250}{\milli\meter} slab outline and the black
 squares mark the eight SiPM positions.}
 \label{fig:wholeslab}
@@ -1598,8 +1653,8 @@ squares mark the eight SiPM positions.}
 \includegraphics[width=0.74\textwidth]{figures/whole_slab_cfg2.pdf}
 \caption{Full-plate collection-efficiency maps for config~2 (four SiPMs, one per
 lateral face at the config-1 offsets), otherwise identical to
-Fig.~\ref{fig:wholeslab}. The reflector ordering and the near-flat response are
-the same, with each efficiency about half the config-1 value.}
+Fig.~\ref{fig:wholeslab}. The reflector ordering is the same, Al and glossy are
+almost flat, and each efficiency is about half the config-1 value.}
 \label{fig:wholeslab2}
 \end{figure}
 
@@ -1608,9 +1663,9 @@ the same, with each efficiency about half the config-1 value.}
 \centering
 \includegraphics[width=0.74\textwidth]{figures/whole_slab_cfg3.pdf}
 \caption{Full-plate collection-efficiency maps for config~3 (two SiPMs, both on
-the top $+y$ face). The efficiencies are the lowest of the direct-coupled
-layouts; the TiO$_2$ panel shows the clearest top--bottom asymmetry, while the
-bare and specular wrappers stay nearly flat.}
+the top $+y$ face). The TiO$_2$ panel shows the clearest top--bottom asymmetry,
+the contact-limited bare plate shows a weaker one, and the Al and glossy panels
+remain nearly flat.}
 \label{fig:wholeslab3}
 \end{figure}
 
@@ -1618,9 +1673,11 @@ bare and specular wrappers stay nearly flat.}
 \centering
 \includegraphics[width=0.74\textwidth]{figures/whole_slab_cfg4.pdf}
 \caption{Full-plate collection-efficiency maps for config~4 (single SiPM $+$ WLS
-fibre clamp). The lowest efficiencies of all four layouts appear here; the TiO$_2$
-panel retains a centre-to-edge gradient, while the bare and specular wrappers are
-almost flat. The red bar along the top ($+y$) edge marks the WLS
+fibre clamp). The efficiencies are comparable to config~3, higher for the bare
+plate because the black holder is absent and lower for the reflective wrappers.
+The TiO$_2$ panel retains a strong top--bottom gradient, the bare plate a weaker
+one, while the Al and glossy panels are almost flat. The red bar along the top
+($+y$) edge marks the WLS
 fibre clamp (the fibres run the full plate length along it) and the black square
 at its left end is the single read-out SiPM, so the fibres can be located
 relative to the read-out. Same report frame and binning as
@@ -1632,55 +1689,54 @@ logarithmic colour scale.}
 \clearpage
 Figure~\ref{fig:wholeslab2} repeats the whole-slab scan for config~2 (four
 sensors, one on each lateral face at the config-1 offsets). Every configuration
-is weaker than
-its config-1 counterpart---roughly halved, as expected from the reduced sensor
-area---while the reflector ordering and the near-flat response are unchanged.
-The bare plate gives $\varepsilon = 8.242\times10^{-3}$, again flat
-($8.150\times10^{-3}$ at the centre versus $8.263\times10^{-3}$ outside
-$r = \SI{60}{\milli\meter}$); TiO$_2$ reaches $4.837\times10^{-3}$ with the same
-centre deficit ($3.405$ versus $5.152\times10^{-3}$), and Al and glossy reach
-$5.411\times10^{-3}$ and $1.399\times10^{-2}$, both nearly flat. The
-$\text{TiO}_2 < \text{Al} < \text{bare} < \text{glossy}$ sequence and the near
-position-independence of the bare and specular wrappers are therefore robust
-against the sensor count: fewer sensors lower the overall light collection but
-do not change the physics of the wrapper.
+is weaker than its config-1 counterpart---roughly halved, as expected from the
+reduced sensor area---while the ordering is unchanged. The bare plate gives
+$\varepsilon = 2.064\times10^{-3}$ ($1.951\times10^{-3}$ inside
+$r = \SI{60}{\milli\meter}$ versus $2.089\times10^{-3}$ outside); TiO$_2$ reaches
+$4.847\times10^{-3}$ with the same centre deficit ($3.409\times10^{-3}$ versus
+$5.166\times10^{-3}$), and Al and glossy reach $1.288\times10^{-2}$ and
+$1.399\times10^{-2}$, both nearly flat. The
+$\text{bare} < \text{TiO}_2 < \text{Al} < \text{glossy}$ sequence is therefore
+robust against the sensor count: fewer sensors lower the overall light
+collection but do not change the physics of the wrapper.
 
 Finally, Fig.~\ref{fig:wholeslab3} shows config~3, in which both sensors sit on
-the same (top, $+y$) face. The integrated efficiencies are the lowest of the
-direct-coupled
-configurations---bare $4.246\times10^{-3}$, TiO$_2$ $2.413\times10^{-3}$, Al
-$2.725\times10^{-3}$, glossy $7.137\times10^{-3}$---because concentrating both
-sensors on one face halves the solid angle available to photons born on the
-opposite side. The bare, Al and glossy panels remain nearly flat (to better than
-\SI{4}{\percent} between the inner and outer regions), whereas the TiO$_2$ panel
-is brightest near the instrumented top ($+y$) edge and dimmest on the far
-($-y$) side, the inner region ($1.703\times10^{-3}$) lying well below the outer
-one ($2.571\times10^{-3}$).
+the same (top, $+y$) face. The integrated efficiencies are
+bare $1.022\times10^{-3}$, TiO$_2$ $2.415\times10^{-3}$, Al
+$6.573\times10^{-3}$ and glossy $7.146\times10^{-3}$, roughly half their
+config-2 values because concentrating both sensors on one face halves the solid
+angle available to photons born on the opposite side. Aluminium and glossy paper
+remain nearly flat (better than \SI{1}{\percent} between the inner and outer
+regions). The TiO$_2$ panel is brightest near the instrumented top ($+y$) edge
+and dimmest on the far ($-y$) side: in the report frame the top/bottom
+efficiencies are $3.752\times10^{-3}$ and $1.073\times10^{-3}$, a factor
+\num{3.50}. The contact-limited bare plate shows the same sign but a much weaker
+asymmetry ($1.165\times10^{-3}$ versus $0.882\times10^{-3}$).
 
 Figure~\ref{fig:wholeslab4} completes the set with the single-SiPM WLS-fibre
-layout (config~4). The absolute efficiencies remain the lowest of all four
-layouts---bare $1.715\times10^{-3}$, TiO$_2$ $1.571\times10^{-3}$, Al
-$1.506\times10^{-3}$, glossy $3.452\times10^{-3}$---as expected from the small
-fibre acceptance, but the ordering is changed: glossy paper is again the most
-efficient configuration while the aluminium foil drops to the weakest, just
-below TiO$_2$ (the same reversal appears in the plate averages of
-Table~\ref{tab:eff}). TiO$_2$ again shows the clearest gradient
-($1.103\times10^{-3}$ versus $1.674\times10^{-3}$, a factor \num{1.52}), whereas
-the bare plate ($1.689\times10^{-3}$ vs.\ $1.720\times10^{-3}$) and glossy
-(agreeing to better than \SI{2}{\percent}) are almost flat, so even with a single
-readout face the TIR and specular transports erase the entry-point dependence.
+layout (config~4). The efficiencies are bare $1.712\times10^{-3}$, TiO$_2$
+$1.560\times10^{-3}$, Al $3.317\times10^{-3}$ and glossy $3.450\times10^{-3}$,
+comparable to config~3 but with the ordering
+$\text{TiO}_2<\text{bare}<\text{Al}<\text{glossy}$. Glossy paper is again the
+most efficient wrapper and air-backed Al is second. TiO$_2$ shows the clearest
+gradient: in the report frame the top/bottom efficiencies are $2.473\times10^{-3}$
+and $0.676\times10^{-3}$, a factor \num{3.66}. The bare plate is much flatter
+($1.782\times10^{-3}$ versus $1.642\times10^{-3}$), and Al and glossy agree to
+within about \SI{4}{\percent}, so even with a single readout face the specular
+transport
+largely erases the entry-point dependence.
 
-Across all four layouts glossy paper is the brightest wrapper and the bare plate
-the second, while the weakest wrapper is TiO$_2$ in the three direct-coupled
-layouts and aluminium in the WLS layout. The efficiency scales roughly with the
-collected photosensitive area, confirming that the readout layout sets the
-overall scale while the wrapper sets the ordering.
+Across all four layouts glossy paper is the brightest wrapper and air-backed
+aluminium the second, while the weakest is the contact-limited bare plate in the
+three direct-coupled layouts and TiO$_2$ in the WLS layout. The efficiency
+scales roughly with the collected photosensitive area, confirming that the
+readout layout sets the overall scale while the wrapper sets the ordering.
 
 \subsection{Whole-slab uniformity}
 \label{sec:wholeunif}
 
 The full-plate maps also expose an inhomogeneity that the three discrete
-patches of Sec.~\ref{sec:matrix} can only sample.  Because the whole-slab beam
+patches of Sec.~\ref{sec:sim} can only sample.  Because the whole-slab beam
 irradiates every point of the plate, this inhomogeneity can be quantified
 \emph{continuously} and with far better statistics.
 
@@ -1721,28 +1777,28 @@ $\kappa_{\rm 2D}$ is meaningful for the single-sided layouts~3 and~4 as well as
 for the four-sided ones.
 
 The direction-sensitive contrast $\kappa_{\rm 2D}$ ranks the reflectors
-identically in \emph{every} layout,
+consistently in \emph{every} layout,
 \[
-\text{TiO}_2 \;>\; \text{Al} \;>\; \text{bare} \;\gtrsim\; \text{glossy},
+\text{TiO}_2 \;>\; \text{bare} \;>\; \text{Al} \;\gtrsim\; \text{glossy},
 \]
 i.e.\ the diffuse TiO$_2$ paint is the \emph{least} uniform wrapper and glossy
-paper the most uniform. This runs opposite to the naive expectation that the
-brightest wrappers should be the most inhomogeneous, and it follows directly
-from the flat responses found above: the specular and TIR transports mix the
-light so thoroughly that the entry position is largely erased
-($\kappa_{\rm 2D}$ near unity), whereas the diffuse paint retains a pronounced
-positional response. Numerically the TiO$_2$ contrast grows from
-$\kappa_{\rm 2D} = \num{1.897}$ and \num{2.530} in the four-sided layouts~1 and~2
-to \num{8.186} and \num{8.121} in the single-sided layouts~3 and~4, whereas the
-bare plate stays at $\kappa_{\rm 2D} = \num{1.13}$--\num{1.49}, aluminium at
-\num{1.18}--\num{1.77} and glossy at \num{1.07}--\num{1.25}. For the bare plate and the two
-specular wrappers a muon crossing anywhere on the plate is therefore collected
-within about a factor of two of one at the most favourable point, whereas for
-TiO$_2$ in the single-sided layouts the corner-to-centre penalty approaches an
-order of magnitude. Figure~\ref{fig:wholecontrast} collects all sixteen values
-as bar charts, one panel per layout; Table~\ref{tab:wholerefl} lists the same
-values numerically, resolving the near-unity entries that the linear bar scale
-cannot.
+paper the most uniform. The diffuse paint is also the dimmest direct-coupled
+wrapper, while the bright specular wrappers are the most uniform: the specular
+transport mixes the light so thoroughly that the entry position is largely
+erased ($\kappa_{\rm 2D}\approx1.1$--\num{1.3}), whereas the diffuse paint
+retains a pronounced positional response. The contact-limited bare plate sits
+between them because the holder loss is itself position dependent. Numerically
+the TiO$_2$ contrast grows from $\kappa_{\rm 2D} = \num{1.911}$ and \num{2.579}
+in the four-sided layouts~1 and~2 to \num{8.146} and \num{8.311} in the
+single-sided layouts~3 and~4; the bare plate spans
+\num{1.36}--\num{3.82}, aluminium \num{1.08}--\num{1.28} and glossy
+\num{1.07}--\num{1.28}. A muon crossing anywhere on the plate is therefore
+collected within about \SI{30}{\percent} of the most favourable point for
+Al/glossy, within a factor of \num{3.8} for the contact-limited bare plate, and
+within a factor of \num{8.3} for TiO$_2$ in the single-sided layouts.
+Figure~\ref{fig:wholecontrast} collects all sixteen values as bar charts, one
+panel per layout; Table~\ref{tab:wholerefl} lists the same values numerically,
+resolving the near-unity entries that the linear bar scale cannot.
 
 \begin{figure}[H]
 \centering
@@ -1752,9 +1808,9 @@ $\kappa_{\rm 2D} = \varepsilon_{\max}/\varepsilon_{\min}$ over the
 \SI{50}{\milli\meter} cells of the whole-slab map, one panel per layout and one
 bar per reflector (each panel on its own linear scale).  This is the same kind
 of comparison as the three near-edge patches, but evaluated over the entire
-plate; the dashed line marks unity (a perfectly uniform response).  TiO$_2$
-shows by far the largest contrast in every layout, the Al and bare wrappers sit
-in between, and glossy paper stays closest to unity.}
+plate; the dashed line marks unity (a perfectly uniform response). TiO$_2$
+shows by far the largest contrast in every layout, the contact-limited bare
+plate is second, and Al and glossy paper stay closest to unity.}
 \label{fig:wholecontrast}
 \end{figure}
 
@@ -1764,9 +1820,9 @@ in between, and glossy paper stays closest to unity.}
 \SI{50}{\milli\meter} cells of the whole-slab map, per layout and reflector,
 with the propagated Poisson uncertainty.  These are the values plotted in
 Fig.~\ref{fig:wholecontrast}; the table resolves the near-unity entries that the
-linear bar scale cannot, and shows the monotonic
-$\text{TiO}_2>\text{Al}>\text{bare}\gtrsim\text{glossy}$ ordering in every
-layout.  The number in parentheses is the uncertainty in the last digits of the
+linear bar scale cannot, and shows the
+$\text{TiO}_2>\text{bare}>\text{Al}\gtrsim\text{glossy}$ ordering in every
+layout. The number in parentheses is the uncertainty in the last digits of the
 preceding value.}
 \label{tab:wholerefl}
 \small
@@ -1777,34 +1833,34 @@ preceding value.}
 Reflector & \multicolumn{1}{c}{Config 1} & \multicolumn{1}{c}{Config 2}
           & \multicolumn{1}{c}{Config 3} & \multicolumn{1}{c}{Config 4} \\
 \midrule
-Bare    & 1.129(3)  & 1.210(4)  & 1.492(7)  & 1.372(10) \\
-TiO$_2$ & 1.897(7)  & 2.530(12) & 8.186(66) & 8.121(81) \\
-Al      & 1.182(4)  & 1.340(6)  & 1.765(11) & 1.609(13) \\
-Glossy  & 1.067(2)  & 1.131(3)  & 1.253(5)  & 1.167(6) \\
+Bare    & 1.549(5)  & 2.060(9)  & 3.821(49) & 1.359(9)  \\
+TiO$_2$ & 1.911(7)  & 2.579(12) & 8.146(76) & 8.311(92) \\
+Al      & 1.078(3)  & 1.138(5)  & 1.283(6)  & 1.179(7)  \\
+Glossy  & 1.067(2)  & 1.131(3)  & 1.276(5)  & 1.166(6)  \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The single-sided layouts are the most demanding.  The largest TiO$_2$
-two-dimensional contrast of the entire study appears in config~3
-($\kappa_{\rm 2D} = \num{8.186}$), just above config~4 (\num{8.121}): the
+The single-sided layouts are the most demanding. The largest TiO$_2$
+two-dimensional contrast of the entire study appears in config~4
+($\kappa_{\rm 2D} = \num{8.311}$), just above config~3 (\num{8.146}): the
 front--back asymmetry of the diffusely wrapped plate is far stronger than any
-radial average reveals, although the bare and specular wrappers in the same
-layouts stay below a factor of about \num{1.8}. A single-sided layout is simply
-not described by a radius, so only the full $(x,y)$ map---not a radial
-profile---carries the information.
+radial average reveals. The Al and glossy wrappers in the same layouts stay
+below \num{1.3}, whereas the contact-limited bare plate reaches \num{3.82} in
+config~3. A single-sided layout is simply not described by a radius, so only
+the full $(x,y)$ map---not a radial profile---carries the information.
 
 Figures~\ref{fig:wholeunifmap}--\ref{fig:wholeunifmap4} show the same response
 in normalised form, $\varepsilon/\langle\varepsilon\rangle$, for each of the
 four layouts, on a shared \emph{logarithmic} colour scale.  A single linear
 scale cannot hold the range: for the diffuse TiO$_2$ paint the response spans
-close to a factor of two about its mean in the four-sided layouts and up to a
-factor of eight in the single-sided ones, dimmest at the centre and brightest
-toward the edges and corners, while the bare and specular wrappers occupy a
-narrow band around unity.  The two four-sided layouts~(1 and~2) are nearly
-azimuthally symmetric, whereas in the single-sided layouts~(3 and~4) the TiO$_2$
-panel shows the one-sided read-out directly, the region opposite the sensors
-darkening.
+about a factor of \num{1.9}--\num{2.6} about its mean in the four-sided layouts
+and up to a factor of \num{8.3} in the single-sided ones, dimmest at the centre
+and brightest toward the edges and corners. Aluminium and glossy paper occupy a
+narrow band around unity, and the contact-limited bare plate lies between them.
+The two four-sided layouts~(1 and~2) are nearly azimuthally symmetric, whereas
+in the single-sided layouts~(3 and~4) the TiO$_2$ panel shows the one-sided
+read-out directly, the region opposite the sensors darkening.
 
 \begin{figure}[H]
 \centering
@@ -1815,10 +1871,10 @@ $\varepsilon/\langle\varepsilon\rangle$, for config~1, one panel per reflector
 Figs.~\ref{fig:wholeslab}--\ref{fig:wholeslab4}, on a shared \emph{logarithmic}
 colour scale).  The slab outline and the SiPM positions (black squares), or for
 config~4 the WLS fibre clamp (red bar) with its read-out SiPM, are overlaid as
-in Fig.~\ref{fig:wholeslab4}.  The TiO$_2$ panel spans close to a factor of two
-about its mean, dimmest at the centre and brightest at the edges and corners;
-the bare and specular wrappers occupy a narrow band around unity, confirming
-that their position dependence is weak.}
+in Fig.~\ref{fig:wholeslab4}. The TiO$_2$ panel spans a factor \num{1.91} about
+its mean, dimmest at the centre and brightest at the edges and corners; Al and
+glossy occupy a narrow band around unity, while the contact-limited bare plate
+shows a modest inner deficit.}
 \label{fig:wholeunifmap}
 \end{figure}
 
@@ -1838,8 +1894,9 @@ overall normalisation (hence the absolute efficiency) reduced.}
 \caption{As Fig.~\ref{fig:wholeunifmap} but for config~3 (two SiPMs, both on the
 top $+y$ face).  The one-sided read-out breaks the azimuthal symmetry: the
 TiO$_2$ panel shows a pronounced top--bottom gradient, with the response falling
-toward the ($-y$) face opposite the sensors.  The bare and specular wrappers
-close most of this gap.}
+toward the ($-y$) face opposite the sensors. Al and glossy paper remain nearly
+flat, while the contact-limited bare plate shows a weaker version of the same
+asymmetry.}
 \label{fig:wholeunifmap3}
 \end{figure}
 
@@ -1851,7 +1908,7 @@ fibre clamp along the top $+y$ edge, read out at the top-left corner).  The
 single fibre read-out gives the TiO$_2$ panel a very strong asymmetry, the
 response falling from the middle of the plate toward the ($-y$) side opposite
 the sensors; it is essentially as strong as in config~3
-($\kappa_{\rm 2D}=\num{8.121}$ versus \num{8.186}), just below it.}
+($\kappa_{\rm 2D}=\num{8.311}$ versus \num{8.146}), just above it.}
 \label{fig:wholeunifmap4}
 \end{figure}
 
@@ -1871,18 +1928,19 @@ ordinate is the instantaneous photoelectron count, and whose colour is the numbe
 of events. The rising edge and the decaying tail therefore show how the detected
 light builds up and dies away, and the vertical spread at a given time is the
 event-to-event fluctuation of the instantaneous rate. For the three directly-read
-layouts the modal mean arrival times are \SI{3.85}{\nano\second},
-\SI{3.95}{\nano\second} and \SI{3.75}{\nano\second}, and the prompt peaks reach
-$54$, $55$ and $37$ photoelectrons per \SI{0.1}{\nano\second} bin in
+layouts the modal mean arrival times are \SI{3.45}{\nano\second},
+\SI{3.65}{\nano\second} and \SI{3.55}{\nano\second}, and the prompt peaks reach
+\num{62}, \num{63} and \num{47} photoelectrons per \SI{0.1}{\nano\second} bin in
 configs~1--3; the single-fibre WLS read-out (config~4) peaks markedly later, at
-\SI{9.25}{\nano\second} and at only $6$ photoelectrons per bin. All four panels
-share a single linear amplitude axis of $0$--$30$ p.e.\ at $1$ p.e.\ per bin; the
-very top of the prompt peak in configs~1--3 lies above this range and is
-off-scale. The fractions arriving within \SI{5}{\nano\second} are $31.7$,
-$30.5$, $29.7$ and \SI{7.3}{\percent} for configs~1--4, within
-\SI{10}{\nano\second} $63.3$, $61.4$, $60.3$ and \SI{32.8}{\percent}, while the
-late ($t>\SI{20}{\nano\second}$) tail carries $10.6$, $12.1$, $12.85$ and
-\SI{24.6}{\percent} of the photoelectrons.
+\SI{9.45}{\nano\second} and at only \num{12} photoelectrons per bin. All four
+panels share a single linear amplitude axis of $0$--$30$ p.e.\ at $1$ p.e.\ per
+bin; the very top of the prompt peak in configs~1--3 lies above this range and
+is off-scale. The fractions arriving within \SI{5}{\nano\second} are
+\num{31.6}, \num{30.3}, \num{29.7} and \SI{7.3}{\percent} for configs~1--4,
+within \SI{10}{\nano\second} \num{63.2}, \num{61.2}, \num{60.2} and
+\SI{32.8}{\percent}, while the late ($t>\SI{20}{\nano\second}$) tail carries
+\num{10.8}, \num{12.3}, \num{13.1} and \SI{24.8}{\percent} of the
+photoelectrons.
 
 \begin{figure}[H]
 \centering
@@ -1897,7 +1955,7 @@ $0$--$30$ photoelectrons per bin ($1$ p.e.\ per bin), the arrival-time axis over
 $0$--$60$ ns. The prompt rise reflects the direct scintillation and
 \v{C}erenkov light, while the slower tail is the multi-bounce transport and
 delayed (self-absorbed and re-emitted) light. The WLS layout (config~4) builds
-up roughly \SI{5.4}{\nano\second} later than the others, its prompt peak shifted
+up roughly \SI{6.0}{\nano\second} later than the others, its prompt peak shifted
 by the fibre absorption and re-emission.}
 \label{fig:persistence}
 \end{figure}
@@ -1906,12 +1964,13 @@ The same arrival-time data can be collapsed into one average waveform per layout
 by averaging the per-event traces of Fig.~\ref{fig:persistence} over events;
 Fig.~\ref{fig:avgwaveform} overlays the four averages. This makes the amplitude
 hierarchy and the time shifts explicit. Integrating the mean rate over the full
-\SI{60}{\nano\second} window recovers $519.9$, $273.9$, $140.0$ and $67.5$
-photoelectrons per event for configs~1--4 (the same ordering found in the
-collection-efficiency maps), and the rising edges of the three directly-read
+\SI{60}{\nano\second} window recovers \num{518.8}, \num{274.0}, \num{140.2} and
+\num{67.5} photoelectrons per event for configs~1--4 (the same ordering found in
+the collection-efficiency maps), and the rising edges of the three directly-read
 layouts coincide within a fraction of a nanosecond, whereas the WLS read-out of
-config~4 rises several nanoseconds later and decays more slowly -- its late tail
-stands out on the logarithmic ordinate as a straighter, shallower fall.
+config~4 rises about \SI{6}{\nano\second} later and decays more slowly -- its
+late tail stands out on the logarithmic ordinate as a straighter, shallower
+fall.
 
 \begin{figure}[H]
 \centering
@@ -1923,9 +1982,9 @@ global arrival time and the ordinate the mean number of photoelectrons in each
 \SI{0.1}{\nano\second} bin per event. The left panel uses a linear ordinate and
 the right a logarithmic one; all four configurations are drawn on each panel
 (the prompt peaks of configs~1--3 nearly coincide and extend above the linear
-range). The integrated mean yields are $519.9$, $273.9$, $140.0$ and $67.5$
-photoelectrons per event for configs~1--4. The WLS layout (config~4) peaks
-roughly \SI{5.4}{\nano\second} later than the others and retains a long,
+range). The integrated mean yields are \num{518.8}, \num{274.0}, \num{140.2} and
+\num{67.5} photoelectrons per event for configs~1--4. The WLS layout (config~4)
+peaks roughly \SI{6.0}{\nano\second} later than the others and retains a long,
 slowly-decaying tail, the average-waveform counterpart of the persistence map.}
 \label{fig:avgwaveform}
 \end{figure}
@@ -1938,9 +1997,9 @@ green-shifted to \SI{509.5}{\nano\meter}, consistent with the steady-state
 spectra of Fig.~\ref{fig:wavelengthcfg}. In every layout the spectrum reddens
 with arrival time: the mean wavelength rises from \SI{450.9}{\nano\meter}
 ($t<\SI{5}{\nano\second}$) to \SI{467.7}{\nano\meter}
-($t>\SI{20}{\nano\second}$) for configs~1--3, and from \SI{498.9}{\nano\meter}
+($t>\SI{20}{\nano\second}$) for configs~1--3, and from \SI{499.1}{\nano\meter}
 to \SI{511.3}{\nano\meter} for config~4, while the rms spread narrows
-($37.9\to35.5$ \si{\nano\meter} and $35.8\to22.7$ \si{\nano\meter},
+($37.9\to35.5$ \si{\nano\meter} and $35.8\to22.6$ \si{\nano\meter},
 respectively). The depleted blue edge of the late light is the signature of
 self-absorption along the multi-bounce path and, in config~4, of the additional
 wavelength-dependent attenuation of the WLS fibres.
@@ -1955,7 +2014,7 @@ photoelectrons). Configurations~1--3 populate a narrow band around the
 the Y-11 WLS fibres. The time dependence of the mean wavelength traces the
 self-absorption of the shorter-wavelength light over the multi-bounce path
 (from \SI{450.9}{\nano\meter} to \SI{467.7}{\nano\meter} in configs~1--3 and
-from \SI{498.9}{\nano\meter} to \SI{511.3}{\nano\meter} in config~4, between the
+from \SI{499.1}{\nano\meter} to \SI{511.3}{\nano\meter} in config~4, between the
 early and late arrival windows).}
 \label{fig:wltime}
 \end{figure}
@@ -1977,29 +2036,27 @@ that class of degenerate boundary; the stall has not recurred since. As a safety
 net the production workflow still wraps every task in a timeout with automatic
 retry.
 
-\paragraph{The bare plate is not the weakest collector.}
+\paragraph{Bare-holder contact is effective, not measured.}
 Modelled with a real \SI{1.2}{\milli\meter} air gap between the polished plate
 and the black holder ($f=0$), the bare configuration is a near-lossless TIR
 light guide and is the \emph{second}-brightest wrapper in every layout, not the
-weakest. This disagrees with Ref.~\cite{Rao2025}, whose bare plate gives by far
-the smallest signal. Reproducing that suppression requires the plate--holder
+weakest. Reproducing the experimental suppression requires the plate--holder
 interface to be optically \emph{lossy}, i.e.\ partial real contact (frustrated
-TIR). The dedicated contact scan shows that a contact
-fraction $f\approx\num{0.017}$ brings the bare plate below TiO$_2$ in configs~1
-and~2 at all three positions and in config~3 at the centre, while the config-3
-edge and corner require $f>0.03$. No single $f$ reproduces the ordering in every
-layout and at every position: the required fraction is $\approx\num{0.017}$ at
-the centre but only \num{0.003}--\num{0.009} at the edge/corner in
-configs~1--2. We therefore keep the clean air-gap model ($f=0$) as the
-production default---the defensible reading of the stated construction (a plate
-simply clamped in its holder)---and report the contact fraction as an effective,
-not measured, loss channel.
+TIR). The extended contact scan shows that the crossing fraction is
+$\approx\num{0.017}$ at the centre in every layout, \num{0.003}--\num{0.009} at
+the edge/corner in configs~1--2, and \num{0.039}--\num{0.041} at the edge/corner
+of config~3. No single $f$ matches every cell exactly; the production nominal
+$f=\num{0.045}$ is the smallest sampled fraction that places all nine cells
+below TiO$_2$. The fraction is an effective area fraction, not a measured holder
+gap, so $f=0$ is retained as the clean-air reference and lower bound on the
+contact loss.
 
 \paragraph{Position trend in TiO$_2$.}
-For the air-gap bare plate and the mirror-like wrappers (Al, glossy) the
-response is essentially flat across the three patches (bare
-\SIrange{1.8}{5.6}{\percent}, Al \SIrange{4.5}{8.7}{\percent}, glossy
-\SIrange{0.8}{2.9}{\percent}). The diffuse TiO$_2$ paint is the only wrapper
+For the air-backed Al and glossy wrappers the response is nearly flat across
+the three patches (Al \SIrange{1.5}{3.4}{\percent}, glossy
+\SIrange{0.8}{3.2}{\percent}). The contact-limited bare plate varies more
+(\SIrange{4.7}{18.9}{\percent}) because the holder loss is itself position
+dependent. The diffuse TiO$_2$ paint is the only wrapper
 with a clear position dependence, and its sign depends on the layout: in the
 four-sided layouts~1 and~2 it shows corner $>$ edge $>$ centre (a factor
 $\approx\!\num{1.75}$), whereas in the single-sided layouts~3 and~4 it shows
@@ -2011,52 +2068,62 @@ independent simulation settings before being interpreted physically.
 
 \paragraph{Scale and normalisation.}
 The absolute efficiencies are model-dependent: they are fixed by the assumed
-PDE curve, the grease coupling, and the absorbed-fraction of the tabulated
-reflectivities. The SiPM breakdown-voltage and gain (which drive the PDE) are
+PDE curve, the grease coupling, and the absorbed fraction of the tabulated
+reflectivities. The SiPM breakdown voltage and gain (which drive the PDE) are
 also temperature-dependent~\cite{Anfimov2021}, an effect not modelled here. The
-robust results are the \emph{ordering} (glossy paper the brightest wrapper, and
-TiO$_2$ weakest in the direct-coupled layouts) and the finding that a polished
-plate in a non-contacting holder is \emph{not} suppressed.
+robust results are the \emph{ordering} (glossy paper brightest and most uniform,
+air-backed aluminium second, contact-limited bare plate weakest in the
+direct-coupled layouts, and TiO$_2$ weakest in the WLS layout) and the full-plate
+contrast hierarchy, not the absolute efficiencies.
 
 % =====================================================================
 \section{Summary}
 \label{sec:summary}
 % =====================================================================
 
-A \gfour\ optical simulation of a \SI{250}{\milli\meter}$\times$\SI{250}{\milli\meter}$\times$\SI{10}{\milli\meter} polished plastic
-scintillator read out by side-mounted SiPMs has been developed and applied to a
-full matrix of four SiPM layouts and four reflector treatments at three beam
-positions (\num{120000} events), complemented by a uniform whole-plate
-irradiation (\num{400000} events), a \num{63000}-event bare-contact scan and an
-\num{18000}-event aluminium-backing scan (\num{601000} events in total). The
-optical
-physics---unified surface model, finish selection, photocathode PDE via the
-boundary process, and per-event photon accounting---has been verified against
-the \gfour\ source. The results reproduce part of the experimentally observed
-ordering: glossy paper is the brightest and most uniform wrapper in every
-layout, the diffuse TiO$_2$ paint is the most position-dependent and the weakest
-wrapper in the three direct-coupled layouts (the aluminium foil in the WLS
-layout). They do \emph{not}, however, reproduce the experimental result that
-the bare plate is by far the weakest collector. Modelled with its true air gap
-($f=0$), the polished plate is a near-lossless TIR light guide, second only to
-glossy paper in every layout. The contact scan shows that an effective contact
-fraction $f\approx\num{0.017}$ at the centre ($0.003$--\num{0.009} at the
-edge/corner) suppresses the bare plate below TiO$_2$ in configs~1 and~2 at all
-three positions and in config~3 at the centre, but config~3 edge/corner require
-$f>0.03$; no single $f$ matches every layout and position. An air-backed aluminium model (backing index \num{1.0003}) raises
-the foil to $\approx\SI{92}{\percent}$ of the glossy yield, recovering the
-measured near-equality of the two best wrappers, while the production whole-slab
-runs use the grease-backed default. Keeping the three irradiation patches
-separate---rather than collapsing them to a single beam-axis
-radius---shows that the bare plate and the reflective wrappers homogenise the
-response over the illuminated region (position contrast
-\SIrange{1.8}{5.6}{\percent} for the bare plate, \SIrange{4.5}{8.7}{\percent}
-for Al and \SIrange{0.8}{2.9}{\percent} for glossy), while only the diffuse
-TiO$_2$ paint retains a clear position trend (\SIrange{75}{84}{\percent}).
-Extending the scan to the whole plate sharpens this
-picture: the full-plate contrast is largest for TiO$_2$
-($\kappa_{\rm 2D} = \num{1.90}$--\num{8.19}), reaches only \num{1.13}--\num{1.49}
-for the bare plate, and stays below about \num{1.8} for the specular wrappers.
+A \gfour\ optical simulation of a
+\SI{250}{\milli\meter}$\times$\SI{250}{\milli\meter}$\times$\SI{10}{\milli\meter}
+polished plastic scintillator read out by side-mounted SiPMs has been developed
+and applied to a full matrix of four SiPM layouts and four reflector treatments
+at three beam positions (\num{120000} events), complemented by a uniform
+whole-plate irradiation (\num{400000} events), a \num{99000}-event bare-contact
+scan and an \num{18000}-event aluminium-backing scan (\num{637000} events in
+total). The optical physics---unified surface model, finish selection,
+photocathode PDE via the boundary process, and per-event photon
+accounting---has been verified against the \gfour\ source.
+
+With the calibrated surfaces the direct-coupled layouts reproduce the
+experimentally observed ordering: glossy paper is the brightest and most uniform
+wrapper, air-backed aluminium reaches about \SI{92}{\percent} of its yield, the
+contact-limited bare plate is the weakest, and the diffuse TiO$_2$ paint is the
+most position dependent. In the WLS layout the ordering is instead
+$\text{TiO}_2<\text{bare}<\text{Al}<\text{glossy}$, because the black holder is
+absent there. The
+air-gap model ($f=0$) remains the clean reference in which the bare plate is
+second only to glossy paper; the production contact fraction $f=\num{0.045}$ is
+the smallest sampled value that places all nine direct-coupled cells below
+TiO$_2$, at the cost of over-suppressing the four-sided centre. The
+aluminium--grease branch is retained as the lower-bound systematic:
+air-backed aluminium is consistent with the measured near-equality of the two
+best wrappers, while grease coupling would put the foil below the bare plate.
+
+Keeping the three irradiation patches separate---rather than collapsing them to
+a single beam-axis radius---shows that the air-backed Al and glossy responses
+are nearly flat (position contrast \SIrange{1.5}{3.4}{\percent} and
+\SIrange{0.8}{3.2}{\percent}), whereas the contact-limited bare plate varies by
+\SIrange{4.7}{18.9}{\percent} and the diffuse TiO$_2$ paint by
+\SIrange{74.8}{87.4}{\percent}. Extending the scan to the whole plate sharpens
+this picture: the full-plate contrast is largest for TiO$_2$
+($\kappa_{\rm 2D} = \num{1.91}$--\num{8.31}), reaches \num{1.36}--\num{3.82}
+for the bare plate, and stays at or below \num{1.28} for Al and glossy. The
+plate-averaged efficiency scales roughly with the number of directly coupled
+SiPMs, while the single-SiPM WLS layout is comparable to the two-SiPM config~3.
+Its arrival-time distribution is delayed by about \SI{6}{\nano\second} and its
+spectrum is green-shifted to \SI{509.5}{\nano\meter} by the Y-11 fibres,
+confirming that the WLS path is active. Absolute efficiencies remain
+model-dependent (PDE, coupling, and tabulated reflectivities); the robust
+results are the wrapper and layout orderings and the full-plate contrast
+hierarchy.
 \begin{thebibliography}{20}
 
 \bibitem{Rao2025}

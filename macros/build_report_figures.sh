@@ -9,6 +9,9 @@
 #
 # Defaults: slurm/data_v5/{matrix,whole,contact,al}
 # (DATA_VERSION selects the tree; override dirs positionally if needed)
+# AL_MATRIX_DIR selects the matrix tree used for the Al reference curves; it
+# defaults to the sibling matrix of AL_DATA_DIR so a v5 Al scan stays paired
+# with its v5 matrix references.
 #
 # Reads:
 #   <MATRIX_DATA_DIR>/muon_out_c<C>_r<R>_{centre,edge,corner}.root
@@ -47,6 +50,7 @@ MATRIX_DIR="${1:-${ROOTDIR}/slurm/data_${DATA_VERSION}/matrix}"
 WHOLE_DIR="${2:-${ROOTDIR}/slurm/data_${DATA_VERSION}/whole}"
 CONTACT_DIR="${3:-${ROOTDIR}/slurm/data_${DATA_VERSION}/contact}"
 AL_DIR="${4:-${ROOTDIR}/slurm/data_${DATA_VERSION}/al}"
+AL_MATRIX_DIR="${AL_MATRIX_DIR:-${AL_DIR%/al}/matrix}"
 FIGDIR="${ROOTDIR}/report/figures"
 
 # Figure macros #include "style.h" (shared fonts/ticks + PetroffPalette P6).
@@ -87,7 +91,7 @@ echo "=== bare-holder contact-fraction scan ==="
 "${ROOT_BIN}" -l -b -q "macros/contact_scan.C+(\"${CONTACT_DIR}\",\"${MATRIX_DIR}\",\"${FIGDIR}\")"
 
 echo "=== aluminium backing: grease vs air ==="
-"${ROOT_BIN}" -l -b -q "macros/al_backing.C+(\"${AL_DIR}\",\"${MATRIX_DIR}\",\"${FIGDIR}\")"
+"${ROOT_BIN}" -l -b -q "macros/al_backing.C+(\"${AL_DIR}\",\"${AL_MATRIX_DIR}\",\"${FIGDIR}\")"
 
 echo "=== efficiency-grid maps, one per config ==="
 # plot_collection_efficiency writes <inDir>/plots/efficiency_grid_cfg<C>_all.{pdf,png}

@@ -178,11 +178,12 @@ just below glossy. A finer centre scan gives `f=0.0125/0.015/0.0175` → 142/134
 `bare < TiO₂ < Al ≈ glossy` without changing the defaults. The contact fraction is an effective area fraction, not a
 measured holder gap: 2 % of the total plate area is only a few contact spots on the bottom
 face. Position ordering remains a separate discrepancy: TiO₂ is corner-highest, and bare
-at `f=0.02` is centre-highest but edge≈corner. The v5 production scan (1000 ev/point,
-cfg 1–3) gives a centre crossing of f≈0.017 in every layout, but cfg1–2 edge/corner cross
-at 0.003–0.009 while cfg3 edge/corner need f>0.03, so no single f matches every layout.
-Report Sec. 3.6 keeps f=0 as the baseline and presents the scan as an effective bracket;
-Sec. 3.7 does the same for Al (air/grease = 2.38–2.59, air-backed Al ≈92% of glossy).
+at `f=0.02` is centre-highest but edge≈corner. The v5 scan (1000 ev/point, cfg 1–3) gave a
+centre crossing of f≈0.017 in every layout, but cfg1–2 edge/corner cross at 0.003–0.009
+while cfg3 edge/corner need >0.039; because it stopped at 0.03, that scan could not match
+every cell. The v6 extension to 0.050 (below) locks the global nominal. Report Sec. 3.2 uses
+`f=0.045` as production and `f=0` as the clean-air reference; Sec. 3.3 uses Al-air as
+production and grease as the lower bound (air/grease = 2.38–2.59, air-backed Al ≈92% of glossy).
 
 **v6 lock (2026-10-18):** extending the scan to `f=0.035–0.050` (1000 ev/point,
 cfg 1–3) gives crossing fractions cfg1/2 centre 0.0172/0.0170, edge
@@ -278,9 +279,9 @@ raster EPS → PNG via GraphicsMagick and assembled by `convert`/`ffmpeg`.
 **Tooling**: `macros/{muon_scint_template.mac,generate_muon_matrix.sh,run_muon_matrix.sh}`,
 `macros/plot_muon.C`, `macros/analyze_muon.C`, `macros/plot_collection_efficiency.C`
 (tree-based collection-efficiency maps; `plot_light_efficiency.C` is a thin forwarder
-kept for old command lines). `slurm/` bundle now submits **four arrays**: matrix
-(config×reflector, 16 tasks), whole-slab (16), bare-contact scan (default cfg 1–3 × seven
-`f=0..0.03` = 21), and Al backing (cfg 1–3 × `grease|air` = 6). Each task runs
+kept for old command lines). `slurm/` bundle now submits **up to four arrays**: matrix
+(config×reflector, 16 tasks), whole-slab (16), bare-contact scan (default cfg 1–3 × eleven
+`f=0..0.05` = 99; v6 nominal `f=0.045`), and Al backing (cfg 1–3 × `grease|air` = 6). Each task runs
 centre/edge/corner back-to-back; contact/Al use
 `slurm/muon_characterization_template.mac` (flux map off, `--mem=4G`, `low`, 1 h, 32
 threads, 1000 ev/position) and write case subdirs
@@ -290,7 +291,9 @@ standard `muon_out_c<C>_r<R>_<pos>.root` names. `slurm/run_fast.sh [MATRIX_EVENT
 (matrix flux map off, `--mem=4G`, `low`; defaults 200/10000/32/32); contact/Al knobs are
 `CONTACT_EVENTS`/`CONTACT_THREADS`/`CONTACT_FRACTIONS`/`CONTACT_CFGS` and
 `AL_EVENTS`/`AL_THREADS`/`AL_BACKINGS`/`AL_CFGS` (defaults 1000, matrix threads, the grids
-above). `run_all.sh [NEVENTS_MATRIX] [NEVENTS_WHOLE] [THREADS] [NEVENTS_CONTACT]
+above). `SKIP_CONTACT=1`/`SKIP_AL=1` skip the respective calibration scan;
+`SKIP_CALIBRATION=1` skips both and submits only matrix + whole-slab (the main-production
+mode once the nominal surface parameters are locked). `run_all.sh [NEVENTS_MATRIX] [NEVENTS_WHOLE] [THREADS] [NEVENTS_CONTACT]
 [NEVENTS_AL]` is the older heavier matrix/whole driver (flux map on, 64G, `cpu-genoa`) but
 its contact/Al arrays still use the fast characterization template (4G, flux off). Key env
 knobs: `BIN=/abs/path/G4DCSmonitor` (the **only** thing selecting a specific build — it must
@@ -298,10 +301,10 @@ be built on the cluster's module stack, e.g. via `slurm/build.sbatch`; the login
 `build/` links Geant4 11.3.2), `VERSION` (data tag → `data_<VERSION>/`, default `v2.2` —
 **override or it clobbers existing data**), `DATAROOT` (default `$PWD`; `cd` to the bigdata
 dir first), per-array `MATRIX_*`/`WHOLE_*`/`CONTACT_*`/`AL_*`
-partition/account/time/mem, `ARRAY_LIMIT` (applies to all four), and
-`CONTACT_ARRAY`/`AL_ARRAY` (override the auto manifest-derived bounds). Both drivers
-regenerate the shared `slurm/muon_contact/` + `slurm/muon_al/` macros, so use one driver at
-a time. `slurm/collect.sh` counts all four trees and prints rsync lines. Matrix/whole
+partition/account/time/mem, `ARRAY_LIMIT` (applies to all submitted arrays), and
+`CONTACT_ARRAY`/`AL_ARRAY` (override the auto manifest-derived bounds). When the
+calibration scans are not skipped, both drivers regenerate the shared
+`slurm/muon_contact/` + `slurm/muon_al/` macros, so use one driver at a time. `slurm/collect.sh` counts all four trees and prints rsync lines. Matrix/whole
 generators emit cfg 1–4 (cfg 4 → `@PRESET@` = **7**, the analytic variant; preset 5 =
 legacy tessellated vis-only); `slurm/run_local.sh <matrix|whole|all> [NEVENTS] [THREADS]` is
 a no-SLURM local runner (defaults NEVENTS 1000, THREADS 8, `CFGS="1 2 3 4"`, `REFLS="0 1
@@ -313,7 +316,9 @@ for bare (long multi-bounce tracks). TTree writer leaves a <2 kB partial file fo
 position *currently* being written — **not** an abort. Regenerate the report with
 `macros/build_report_figures.sh [MATRIX_DIR] [WHOLE_DIR] [CONTACT_DIR] [AL_DIR]`
 (defaults `slurm/data_v5/{matrix,whole,contact,al}`; pass absolute dirs when the data
-live outside the repo). It runs `sipm_layouts.C`, `irradiation_sites.C`,
+live outside the repo). The v6 report uses `data_v6/{matrix,whole,contact}` plus
+`data_v5/al`, with `AL_MATRIX_DIR=<...>/data_v5/matrix` so the Al curves stay paired with
+their v5 matrix references (the Al model is unchanged; v6 Al is incomplete). It runs `sipm_layouts.C`, `irradiation_sites.C`,
 `optical_spectra.C`, `report_figures.C`, `pe_spectra_grid.C`, `matrix_positions.C`,
 `contact_scan.C`, `al_backing.C`, `plot_collection_efficiency.C`, `plot_whole_slab.C`
 for cfg 1–4, `whole_slab_uniformity.C`, `whole_yield_table.C`, `persistence_map_grid.C`,
@@ -334,9 +339,9 @@ histogram/panel title drawn must re-enable `gStyle->SetOptTitle(1)` *after* `sty
 `whole_slab_uniformity.C` always did; `plot_whole_slab.C` and `plot_collection_efficiency.C`
 (the 2×2 reflector grids) do too now — without it the four panel titles (reflector names)
 vanish. **Report packing:** the four whole-slab maps (`fig:wholeslab`–`fig:wholeslab4`,
-Figs. 14–17) are `0.74\textwidth` and forced two-per-page by a `\clearpage` before/after each
+Figs. 20–23) are `0.74\textwidth` and forced two-per-page by a `\clearpage` before/after each
 pair; the four normalised whole-slab uniformity maps (`fig:wholeunifmap`–`fig:wholeunifmap4`,
-Figs. 19–22) are `0.68\textwidth` and pack two/page as consecutive `\begin{figure}`s.
+Figs. 25–28) are `0.68\textwidth` and pack two/page as consecutive `\begin{figure}`s.
 `macros/pe_spectra_grid.C [MATRIX_DIR] [OUTDIR]` draws the Fig. 10 of Rao et al. layout:
 a 3 (region: centre/edge/corner) × 4 (config 1–4) grid in which every cell overlays the four
 reflector treatments, x = photoelectrons/event, y = normalised entries (both log). Zero-p.e.
@@ -369,11 +374,11 @@ robust (25000 ev; e.g. cfg1 bare ≈9.5) and ranks bare ≫ TiO2 > Al ≳ glossy
 `fig_whole_contrast` is the **full-slab analogue of the old 3-patch `fig_uniformity`**: a 2×2
 grid (one panel per layout), each a 4-bin bar chart of `kappa_2d` per reflector, **linear y,
 each panel scaled to its own maximum** (dashed unity line), as in the original
-`matrix_positions.C` three-patch figure. The report's "Whole-slab uniformity" subsection (§4.2)
-uses `fig_whole_contrast` (Fig. 18) as the visual for the `kappa_2d` numbers, plus
-`tab:wholerefl` (Table 5: `kappa_2d`±err per layout × reflector, the linear bars' near-unity
+`matrix_positions.C` three-patch figure. The report's "Whole-slab uniformity" subsection (§5.3)
+uses `fig_whole_contrast` (Fig. 24) as the visual for the `kappa_2d` numbers, plus
+`tab:wholerefl` (Table 9: `kappa_2d`±err per layout × reflector, the linear bars' near-unity
 entries resolved numerically), plus the four
-normalised `fig_whole_uniformity_map_cfg<C>` maps (Figs. 19–22, all at `0.68\textwidth` so
+normalised `fig_whole_uniformity_map_cfg<C>` maps (Figs. 25–28, all at `0.68\textwidth` so
 two fit per page). The polar `(r,φ)` `fig_whole_polar` map and its radial defence are
 **deliberately omitted** (retained in the repo in `whole_slab_uniformity.C` but not referenced
 by the report). `whole_uniformity.csv` is retained. The 3-patch κ figure/table and the matrix
@@ -381,9 +386,10 @@ by the report). `whole_uniformity.csv` is retained. The 3-patch κ figure/table 
 contrast is now carried by the full-slab `kappa_2d`.
 `macros/whole_yield_table.C [WHOLE_DIR] [OUTDIR]` writes `whole_yield.csv` — the absolute
 mean p.e./event (and /detected-event, plus detection probability) for every config × wrapper
-from the whole-plate run; every whole-plate event detects ≥1 p.e. (eps = 1), so the two means
-coincide. It backs report Table 5 (`tab:wholeyield`); the p.e./event columns are just the
-`tab:eff` plate-averaged ε scaled by the ~19700 photons/event produced.
+from the whole-plate run; almost every event detects ≥1 p.e. (399981/400000; 19 without a
+detected photoelectron, so the two means differ negligibly). It backs report Table 8
+(`tab:wholeyield`); the p.e./event columns are just the `tab:eff` plate-averaged ε scaled by
+the ~19700 photons/event produced.
 
 **G4OpBoundaryProcess ground truth** (`.refs/source/processes/optical`): a
 `G4LogicalBorderSurface` overrides a `G4LogicalSkinSurface` at the same boundary;

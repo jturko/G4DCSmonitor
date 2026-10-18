@@ -5,11 +5,16 @@
 # This is a SELF-CONTAINED companion to run_all.sh; it does not modify any
 # existing .sbatch or driver script.  It writes isolated matrix/whole macro
 # sets (muon_fast/, muon_whole_fast/) and regenerates the shared contact/Al
-# sets (muon_contact/, muon_al/), and uses FOUR job arrays:
+# sets (muon_contact/, muon_al/), and uses up to FOUR job arrays:
 #   1. matrix        -- 4 configs x 4 reflectors, centre/edge/corner
 #   2. whole-slab    -- 4 configs x 4 reflectors, full 250 x 250 mm^2 plate
-#   3. contact scan  -- bare plate, effective holder contact f=0..0.03
+#   3. contact scan  -- bare plate, effective holder contact f=0..0.05
+#                       (v6 nominal f=0.045; f=0 is the clean-air reference)
 #   4. Al backing    -- Al foil with grease (n=1.46) vs air (n=1.0003)
+#
+# The contact/Al arrays are calibration scans: skip them once the nominal
+# surface parameters are locked.  Use SKIP_AL=1 for Al only, or
+# SKIP_CALIBRATION=1 to skip both and run only matrix + whole-slab.
 #
 # Differences vs run_all.sh:
 #   * matrix + characterization flux map OFF (3x faster; efficiency comes from
@@ -42,12 +47,15 @@
 # Characterization arrays (environment):
 #   CONTACT_EVENTS  (default 1000)      events per beam position
 #   CONTACT_THREADS (default MATRIX_THREADS)
-#   CONTACT_FRACTIONS (default "0.000 0.005 0.010 0.015 0.020 0.025 0.030")
+#   CONTACT_FRACTIONS (default "0.000 0.005 ... 0.050", eleven values)
 #   CONTACT_CFGS    (default "1 2 3"; Config 4 has no black holder)
 #   AL_EVENTS       (default 1000)
 #   AL_THREADS      (default MATRIX_THREADS)
 #   AL_BACKINGS     (default "grease air")
 #   AL_CFGS         (default "1 2 3"; Config 4 is WLS-dominated)
+#   SKIP_CONTACT    (default 0)         1 = skip the contact scan
+#   SKIP_AL         (default 0)         1 = skip the Al backing scan
+#   SKIP_CALIBRATION(default 0)         1 = skip both calibration scans
 #
 # Routing/resource knobs (environment, all optional):
 #   MATRIX_PARTITION (default low)      MATRIX_ACCOUNT (default low)
@@ -66,6 +74,8 @@
 #   BIN              (default pre-built HZDR binary, else ../build/G4DCSmonitor)
 #
 # Examples:
+#   # main production phase after the surface calibration is locked:
+#   SKIP_CALIBRATION=1 ./run_fast.sh 2500 25000
 #   # 500 matrix / 20000 whole-slab events, 16 threads, 8 GB/task, to CWD:
 #   MATRIX_THREADS=16 WHOLE_THREADS=16 MATRIX_MEM=8G WHOLE_MEM=8G ./run_fast.sh 500 20000
 #   # 2000 events/position for the contact and Al characterization scans:
@@ -109,7 +119,7 @@ CONTACT_ACCOUNT="${CONTACT_ACCOUNT:-low}"
 CONTACT_TIME="${CONTACT_TIME:-01:00:00}"
 CONTACT_ARRAY="${CONTACT_ARRAY:-}"
 CONTACT_MEM="${CONTACT_MEM:-4G}"
-CONTACT_FRACTIONS="${CONTACT_FRACTIONS:-0.000 0.005 0.010 0.015 0.020 0.025 0.030}"
+CONTACT_FRACTIONS="${CONTACT_FRACTIONS:-0.000 0.005 0.010 0.015 0.020 0.025 0.030 0.035 0.040 0.045 0.050}"
 CONTACT_CFGS="${CONTACT_CFGS:-1 2 3}"
 
 AL_EVENTS="${AL_EVENTS:-1000}"
@@ -123,6 +133,13 @@ AL_BACKINGS="${AL_BACKINGS:-grease air}"
 AL_CFGS="${AL_CFGS:-1 2 3}"
 
 SKIP_CONTACT="${SKIP_CONTACT:-0}"
+SKIP_AL="${SKIP_AL:-0}"
+SKIP_CALIBRATION="${SKIP_CALIBRATION:-0}"
+
+if [[ "${SKIP_CALIBRATION}" == "1" ]]; then
+    SKIP_CONTACT=1
+    SKIP_AL=1
+fi
 
 export CONTACT_FRACTIONS CONTACT_CFGS AL_BACKINGS AL_CFGS
 
@@ -162,13 +179,19 @@ if [[ "${SKIP_CONTACT}" == "1" ]]; then
 else
     echo "  contact events: ${CONTACT_EVENTS}  (threads ${CONTACT_THREADS}; f='${CONTACT_FRACTIONS}'; cfg='${CONTACT_CFGS}')"
 fi
-echo "  Al events     : ${AL_EVENTS}  (threads ${AL_THREADS}; backings='${AL_BACKINGS}'; cfg='${AL_CFGS}')"
+if [[ "${SKIP_AL}" == "1" ]]; then
+    echo "  Al events     : skipped"
+else
+    echo "  Al events     : ${AL_EVENTS}  (threads ${AL_THREADS}; backings='${AL_BACKINGS}'; cfg='${AL_CFGS}')"
+fi
 echo "  matrix route  : -p ${MATRIX_PARTITION} -A ${MATRIX_ACCOUNT} -t ${MATRIX_TIME} --array=${MATRIX_ARRAY} --mem=${MATRIX_MEM}"
 echo "  whole  route  : -p ${WHOLE_PARTITION} -A ${WHOLE_ACCOUNT} -t ${WHOLE_TIME} --array=${WHOLE_ARRAY} --mem=${WHOLE_MEM}"
 if [[ "${SKIP_CONTACT}" != "1" ]]; then
     echo "  contact route : -p ${CONTACT_PARTITION} -A ${CONTACT_ACCOUNT} -t ${CONTACT_TIME} --array=${CONTACT_ARRAY:-auto} --mem=${CONTACT_MEM}"
 fi
-echo "  Al route      : -p ${AL_PARTITION} -A ${AL_ACCOUNT} -t ${AL_TIME} --array=${AL_ARRAY:-auto} --mem=${AL_MEM}"
+if [[ "${SKIP_AL}" != "1" ]]; then
+    echo "  Al route      : -p ${AL_PARTITION} -A ${AL_ACCOUNT} -t ${AL_TIME} --array=${AL_ARRAY:-auto} --mem=${AL_MEM}"
+fi
 echo "  throttle      : ${ARRAY_LIMIT:-<none>}"
 echo "  binary        : ${BIN}"
 echo "  data root     : ${DATAROOT}/data_${VERSION}"
@@ -189,8 +212,14 @@ for f in "${MATRIX_TEMPLATE}" "${WHOLE_TEMPLATE}" "${CHARACTERIZATION_TEMPLATE}"
     [[ -f "${f}" ]] || { echo "ERROR: template missing: ${f}" >&2; exit 1; }
 done
 
-mkdir -p "${HERE}/logs" "${MATRIX_OUT}" "${WHOLE_OUT}" "${CONTACT_OUT}" "${AL_OUT}" \
-         "${MATRIX_DATA}" "${WHOLE_DATA}" "${CONTACT_DATA}" "${AL_DATA}"
+mkdir -p "${HERE}/logs" "${MATRIX_OUT}" "${WHOLE_OUT}" \
+         "${MATRIX_DATA}" "${WHOLE_DATA}"
+if [[ "${SKIP_CONTACT}" != "1" ]]; then
+    mkdir -p "${CONTACT_OUT}" "${CONTACT_DATA}"
+fi
+if [[ "${SKIP_AL}" != "1" ]]; then
+    mkdir -p "${AL_OUT}" "${AL_DATA}"
+fi
 cd "${HERE}"
 
 # ---- generate matrix macros (flux map OFF, fast template) -------------------
@@ -249,10 +278,12 @@ if [[ "${SKIP_CONTACT}" != "1" ]]; then
         "${HERE}/generate_contact_scan.sh" "${CONTACT_EVENTS}" "${CONTACT_THREADS}" "${CONTACT_DATA}"
 fi
 
-echo
-echo "--- generating FAST Al-backing macros (${AL_EVENTS} ev/position) ---"
-FLUXMAP=off AL_BACKINGS="${AL_BACKINGS}" AL_CFGS="${AL_CFGS}" \
-    "${HERE}/generate_al_backing.sh" "${AL_EVENTS}" "${AL_THREADS}" "${AL_DATA}"
+if [[ "${SKIP_AL}" != "1" ]]; then
+    echo
+    echo "--- generating FAST Al-backing macros (${AL_EVENTS} ev/position) ---"
+    FLUXMAP=off AL_BACKINGS="${AL_BACKINGS}" AL_CFGS="${AL_CFGS}" \
+        "${HERE}/generate_al_backing.sh" "${AL_EVENTS}" "${AL_THREADS}" "${AL_DATA}"
+fi
 
 # Auto array bounds unless the user asked for a subset via CONTACT_ARRAY /
 # AL_ARRAY.  The manifest is the single source of truth.
@@ -262,12 +293,14 @@ if [[ "${SKIP_CONTACT}" != "1" ]]; then
         CONTACT_ARRAY="0-$((n - 1))"
     fi
 fi
-if [[ -z "${AL_ARRAY}" ]]; then
-    n=$(wc -l < "${AL_OUT}/manifest.txt")
-    AL_ARRAY="0-$((n - 1))"
+if [[ "${SKIP_AL}" != "1" ]]; then
+    if [[ -z "${AL_ARRAY}" ]]; then
+        n=$(wc -l < "${AL_OUT}/manifest.txt")
+        AL_ARRAY="0-$((n - 1))"
+    fi
 fi
 
-# ---- submit all four arrays with routing overrides --------------------------
+# ---- submit requested arrays with routing overrides ------------------------
 echo
 echo "--- submitting FAST job arrays ---"
 
@@ -281,7 +314,9 @@ if [[ -n "${ARRAY_LIMIT}" ]]; then
     if [[ "${SKIP_CONTACT}" != "1" ]]; then
         ct_array="${CONTACT_ARRAY%%%*}%${ARRAY_LIMIT}"
     fi
-    at_array="${AL_ARRAY%%%*}%${ARRAY_LIMIT}"
+    if [[ "${SKIP_AL}" != "1" ]]; then
+        at_array="${AL_ARRAY%%%*}%${ARRAY_LIMIT}"
+    fi
 fi
 
 jid_matrix="$(sbatch --parsable \
@@ -306,11 +341,28 @@ else
     jid_contact="(skipped)"
 fi
 
-jid_al="$(sbatch --parsable \
-    -p "${AL_PARTITION}" -A "${AL_ACCOUNT}" \
-    -t "${AL_TIME}" --array="${at_array}" \
-    --cpus-per-task="${AL_THREADS}" --mem="${AL_MEM}" \
-    "${HERE}/run_al.sbatch")"
+if [[ "${SKIP_AL}" != "1" ]]; then
+    jid_al="$(sbatch --parsable \
+        -p "${AL_PARTITION}" -A "${AL_ACCOUNT}" \
+        -t "${AL_TIME}" --array="${at_array}" \
+        --cpus-per-task="${AL_THREADS}" --mem="${AL_MEM}" \
+        "${HERE}/run_al.sbatch")"
+else
+    jid_al="(skipped)"
+fi
+
+if [[ "${SKIP_CONTACT}" == "1" ]]; then
+    contact_summary="  contact array    : skipped"
+else
+    contact_summary="  contact array    : job ${jid_contact}   (${CONTACT_EVENTS} ev/pos, ${CONTACT_THREADS} threads, ${CONTACT_MEM}, -p ${CONTACT_PARTITION})
+                     output: ${CONTACT_DATA}/"
+fi
+if [[ "${SKIP_AL}" == "1" ]]; then
+    al_summary="  Al-backing array : skipped"
+else
+    al_summary="  Al-backing array : job ${jid_al}   (${AL_EVENTS} ev/pos, ${AL_THREADS} threads, ${AL_MEM}, -p ${AL_PARTITION})
+                     output: ${AL_DATA}/"
+fi
 
 cat <<EOF
 
@@ -319,10 +371,8 @@ cat <<EOF
                      output: ${MATRIX_DATA}/
   whole-slab array : job ${jid_whole}   (${WHOLE_EVENTS} ev, ${WHOLE_THREADS} threads, ${WHOLE_MEM}, -p ${WHOLE_PARTITION})
                      output: ${WHOLE_DATA}/
-  contact array    : job ${jid_contact}   (${CONTACT_EVENTS} ev/pos, ${CONTACT_THREADS} threads, ${CONTACT_MEM}, -p ${CONTACT_PARTITION})
-                     output: ${CONTACT_DATA}/
-  Al-backing array : job ${jid_al}   (${AL_EVENTS} ev/pos, ${AL_THREADS} threads, ${AL_MEM}, -p ${AL_PARTITION})
-                     output: ${AL_DATA}/
+${contact_summary}
+${al_summary}
 
 Watch:   squeue -u \$USER -o "%.10i %.14P %.13j %.2t %.10M %.6D %R"
 Logs:    ${HERE}/logs/muonscanfast_*_*.out
