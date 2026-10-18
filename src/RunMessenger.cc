@@ -34,7 +34,32 @@
 #include "RunAction.hh"
 
 #include "G4UIcmdWithABool.hh"
+#include "G4UIcmdWithADouble.hh"
 #include "G4UIdirectory.hh"
+
+#include "G4VisManager.hh"
+#include "G4VViewer.hh"
+#include "G4ViewParameters.hh"
+#include "G4Scene.hh"
+#include "G4Point3D.hh"
+#include "G4Vector3D.hh"
+#include "G4SystemOfUnits.hh"
+#include "G4Threading.hh"
+
+#include <algorithm>
+#include <cmath>
+
+namespace {
+// Movie camera schedule: hold the wide muon view, then ease into the
+// fibre/SiPM close-up while the optical photons bounce and WLS-shift.
+constexpr G4double kPanStart = 1.5;   // ns
+constexpr G4double kPanEnd   = 12.0;  // ns
+constexpr G4double kWideTheta  = 55.; // deg
+constexpr G4double kCloseTheta = 80.; // deg
+constexpr G4double kViewPhi    = 250.;// deg
+constexpr G4double kWideZoom  = 1.0;
+constexpr G4double kCloseZoom = 3.5;
+}
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
@@ -61,6 +86,17 @@ RunMessenger::RunMessenger(RunAction* run) : fRun(run)
     fWriteOpticalFluxMapCmd->SetDefaultValue(false);
     fWriteOpticalFluxMapCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
 
+    fShowDetectedPhotonsOnlyCmd = new G4UIcmdWithABool("/dcs-monitor/run/showDetectedPhotonsOnly", this);
+    fShowDetectedPhotonsOnlyCmd->SetGuidance("Visualization-only: after each event keep the detected optical photons plus their full ancestor chain (creator photons and muon) (requires /tracking/storeTrajectory 1; default OFF)");
+    fShowDetectedPhotonsOnlyCmd->SetParameterName("show", true);
+    fShowDetectedPhotonsOnlyCmd->SetDefaultValue(false);
+    fShowDetectedPhotonsOnlyCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+
+    fMovieCameraCmd = new G4UIcmdWithADouble("/dcs-monitor/run/movieCamera", this);
+    fMovieCameraCmd->SetGuidance("Set the movie camera for a given head time (ns): wide muon view -> fibre/SiPM close-up");
+    fMovieCameraCmd->SetParameterName("time", false);
+    fMovieCameraCmd->AvailableForStates(G4State_Idle);
+
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -71,6 +107,8 @@ RunMessenger::~RunMessenger()
     delete fWritePrimaryCmd;
     delete fWriteCASTOR440SurfaceFluxCmd;
     delete fWriteOpticalFluxMapCmd;
+    delete fShowDetectedPhotonsOnlyCmd;
+    delete fMovieCameraCmd;
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -86,6 +124,47 @@ void RunMessenger::SetNewValue(G4UIcommand* command, G4String newValue)
     if (command == fWriteOpticalFluxMapCmd) {
         RunAction::WriteOpticalFluxMap = fWriteOpticalFluxMapCmd->GetNewBoolValue(newValue);
     }
+    if (command == fShowDetectedPhotonsOnlyCmd) {
+        RunAction::ShowDetectedPhotonsOnly = fShowDetectedPhotonsOnlyCmd->GetNewBoolValue(newValue);
+    }
+    if (command == fMovieCameraCmd) {
+        SetMovieCamera(fMovieCameraCmd->GetNewDoubleValue(newValue));
+    }
+}
+
+void RunMessenger::SetMovieCamera(G4double time)
+{
+    // /control/loop is broadcast to the worker command stack as well as the
+    // master; the visualization manager exists only on the master.
+    if (!G4Threading::IsMasterThread()) return;
+
+    G4VisManager* vis = G4VisManager::GetInstance();
+    if (!vis) return;
+    G4VViewer* viewer = vis->GetCurrentViewer();
+    G4Scene* scene = vis->GetCurrentScene();
+    if (!viewer || !scene) return;
+
+    G4double u = (time - kPanStart) / (kPanEnd - kPanStart);
+    u = std::clamp(u, 0., 1.);
+    u = u*u*(3. - 2.*u);   // smoothstep
+
+    const G4double theta = (kWideTheta + u*(kCloseTheta - kWideTheta)) * deg;
+    const G4double phi   = kViewPhi * deg;
+    const G4double zoom  = kWideZoom + u*(kCloseZoom - kWideZoom);
+    const G4ThreeVector target = G4ThreeVector(0., 0., 0.)
+        + u*(G4ThreeVector(-110.*mm, 0., 0.) - G4ThreeVector(0., 0., 0.));
+
+    const G4Vector3D dir(std::sin(theta)*std::cos(phi),
+                         std::sin(theta)*std::sin(phi),
+                         std::cos(theta));
+
+    G4ViewParameters vp = viewer->GetViewParameters();
+    vp.SetViewpointDirection(dir);
+    vp.SetUpVector(G4Vector3D(0., 0., 1.));
+    vp.SetZoomFactor(zoom);
+    vp.SetCurrentTargetPoint(G4Point3D(target.x(), target.y(), target.z())
+                             - scene->GetStandardTargetPoint());
+    viewer->SetViewParameters(vp);
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

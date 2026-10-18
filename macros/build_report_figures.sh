@@ -23,9 +23,13 @@
 #   report/figures/fig_whole_polar.{pdf,png}
 #   report/figures/fig_eff_bars.{pdf,png}
 #   report/figures/fig_whole_uniformity_map_cfg<C>.{pdf,png}   (cfg 1..4)
+#   report/figures/{wls_process,reflector_reflectivity,refractive_index,
+#                   scint_timing}.{pdf,png}
 #   report/figures/fig_persistence_grid.{pdf,png}
+#   report/figures/fig_avg_waveform.{pdf,png}
 #   report/figures/fig_wavelength_time_grid.{pdf,png}
 #   report/figures/whole_uniformity.csv
+#   report/figures/whole_yield.csv
 #   report/matrix_report.pdf
 # =============================================================================
 set -uo pipefail
@@ -54,6 +58,18 @@ echo "=== irradiation sites ==="
 echo "=== optical property tables (scint / WLS / SiPM) ==="
 "${ROOT_BIN}" -l -b -q "macros/optical_spectra.C(\"${FIGDIR}\")"
 
+echo "=== WLS absorption/emission and re-emission delay ==="
+"${ROOT_BIN}" -l -b -q "macros/wls_process.C(\"${FIGDIR}\")"
+
+echo "=== reflector reflectivity tables ==="
+"${ROOT_BIN}" -l -b -q "macros/reflector_reflectivity.C(\"${FIGDIR}\")"
+
+echo "=== refractive-index structure ==="
+"${ROOT_BIN}" -l -b -q "macros/refractive_index.C(\"${FIGDIR}\")"
+
+echo "=== scintillator pulse shape ==="
+"${ROOT_BIN}" -l -b -q "macros/scint_timing.C(\"${FIGDIR}\")"
+
 echo "=== report figures (yield/wavelength) ==="
 "${ROOT_BIN}" -l -b -q "macros/report_figures.C(\"${MATRIX_DIR}\",\"${FIGDIR}\")"
 
@@ -81,9 +97,13 @@ done
 echo "=== whole-slab uniformity (polar + 2-D cell) ==="
 "${ROOT_BIN}" -l -b -q "macros/whole_slab_uniformity.C(\"${WHOLE_DIR}\",\"${FIGDIR}\")"
 
+echo "=== whole-plate yield table (p.e. per event, config x wrapper) ==="
+"${ROOT_BIN}" -l -b -q "macros/whole_yield_table.C(\"${WHOLE_DIR}\",\"${FIGDIR}\")"
+
 echo "=== arrival-time persistence and wavelength-vs-time (glossy, cfg 1-4) ==="
 "${ROOT_BIN}" -l -b -q "macros/persistence_map_grid.C(\"${WHOLE_DIR}\",\"${FIGDIR}\",3)"
 "${ROOT_BIN}" -l -b -q "macros/wavelength_time_grid.C(\"${WHOLE_DIR}\",\"${FIGDIR}\",3)"
+"${ROOT_BIN}" -l -b -q "macros/avg_waveform.C(\"${WHOLE_DIR}\",\"${FIGDIR}\",3)"
 
 echo "=== LaTeX (two passes for refs/toc) ==="
 ( cd "${ROOTDIR}/report" && pdflatex -interaction=nonstopmode matrix_report.tex >/dev/null 2>&1 )

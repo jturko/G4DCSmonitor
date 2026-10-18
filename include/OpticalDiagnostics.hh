@@ -29,6 +29,12 @@ struct OpticalDiag {
     std::vector<G4int> nProducedPerSlab;
     std::vector<G4int> nDetectedPerSlab;
 
+    // Track IDs of the optical photons that produced a SiPM hit in this event.
+    // Used by the visualization-only "detected photons only" mode: EventAction
+    // prunes the trajectory container to exactly these tracks before the vis
+    // manager draws the event. Cleared by Reset().
+    std::vector<G4int> detectedTrackIDs;
+
     void EnsureSlabs(std::size_t n)
     {
         if (muonEntrySet.size() < n) {
@@ -50,6 +56,7 @@ struct OpticalDiag {
         }
         std::fill(nProducedPerSlab.begin(),  nProducedPerSlab.end(),  0);
         std::fill(nDetectedPerSlab.begin(),  nDetectedPerSlab.end(),  0);
+        detectedTrackIDs.clear();
     }
 
     G4int NGenerated() const { return nScint + nCerenkov; }

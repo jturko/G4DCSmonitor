@@ -73,6 +73,10 @@ class RunAction : public G4UserRunAction
     static std::atomic<G4bool> WritePrimaryTree;
     static std::atomic<G4bool> WriteCASTOR440SurfaceFluxTree;
     static std::atomic<G4bool> WriteOpticalFluxMap;
+    // Visualization-only: keep the optical photons that produced a SiPM hit
+    // this event plus their full ancestor chain. Requires
+    // /tracking/storeTrajectory 1.
+    static std::atomic<G4bool> ShowDetectedPhotonsOnly;
 
   private:
     DetectorConstruction* fDetector = nullptr;

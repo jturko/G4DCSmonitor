@@ -1,0 +1,141 @@
+# =============================================================================
+# muon_movie_wls.mac -- time-sliced animation of the optical photons that
+# produce a SiPM hit plus their ancestry (pre-WLS creator photons and the muon),
+# for the Config-4 WLS fibre-clamp layout.
+#
+# Default geometry: preset 7, the production analytic G4CutTubs fibres.  Set
+# WLS_PRESET=5 for the legacy G4TessellatedSolid swept fibres (vis-only); note
+# that the tessellated multi-clad variant can fail to draw the two lower fibre
+# cores in the OGL viewer, so preset 7 is preferred for this movie.
+#
+#   macros/build_movie_wls.sh          # -> report/movie_wls/muon_movie_wls.{gif,mp4}
+#
+# This is the "third movie" mode: the event's trajectory container is pruned in
+# EventAction::EndOfEventAction to the track IDs recorded by MuonScintSiPMSD and
+# their full parent chain.  G4OpWLS kills the creator photon, so only the chain
+# keeps the pre-WLS optical photons (and the muon) in the event; unrelated
+# undetected photons are still removed.  Toggle:
+#
+#   /dcs-monitor/run/showDetectedPhotonsOnly true
+#
+# WLS photons are re-emitted with an exponential time profile (tau ~ 7 ns), so
+# detection times range from a few ns to ~60-70 ns.  The sweep is therefore much
+# longer than the scintillation movie, with a wide comet tail so the sparse
+# detected tracks stay visible for a while.  Colour: optical photons green
+# (pre-WLS creators and detected WLS secondaries), muon red, delta electrons
+# orange.  The camera starts wide to show the muon crossing and the scintillation
+# flash, then eases into the fibre/SiPM close-up via
+# /dcs-monitor/run/movieCamera (see macros/muon_movie_wls.loop).
+#
+# Do NOT run this macro directly: every value comes from an environment variable
+# via /control/getEnv, and an UNSET variable ABORTS the macro.  Use
+# macros/build_movie_wls.sh, or drive it by hand, e.g.:
+#
+#   WLS_DIR=report/movie_wls WLS_STEM=wframe MOVIE_END=80 MOVIE_STEP=0.25 \
+#   MOVIE_TAIL=10 USE_SEED=1 SEED1=12345 SEED2=67890 MUON_REFLECTOR=3 \
+#   LY_SCALE=0.1 WLS_PRESET=7 ./build/G4DCSmonitor macros/muon_movie_wls.mac
+#
+# Display-only: LY_SCALE is a light-yield reduction, never use it in production.
+# =============================================================================
+
+# ---- parameters (mandatory env vars; unset -> macro aborts) -----------------
+/control/getEnv WLS_DIR
+/control/getEnv WLS_STEM
+/control/getEnv MOVIE_END
+/control/getEnv MOVIE_STEP
+/control/getEnv MOVIE_TAIL
+/control/getEnv USE_SEED
+/control/getEnv SEED1
+/control/getEnv SEED2
+/control/getEnv MUON_REFLECTOR
+/control/getEnv LY_SCALE
+/control/getEnv WLS_PRESET
+
+# ---- reproducibility (same WLS event on every run) --------------------------
+/control/doif {USE_SEED} == 1 /random/setSeeds {SEED1} {SEED2}
+
+# ---- single-threaded: visualization runs on the master thread ---------------
+/run/numberOfThreads 1
+
+# ---- geometry: plate + Config-4 WLS fibre clamp -----------------------------
+/dcs-monitor/det/setPosition 0 0 0 mm
+/dcs-monitor/det/setRotation 0 0 0
+/dcs-monitor/det/muonScint/add
+/dcs-monitor/det/muonScint/setSize 250 250 10 mm
+/dcs-monitor/det/muonScint/preset {WLS_PRESET}
+/dcs-monitor/det/muonScint/setReflector {MUON_REFLECTOR}
+/dcs-monitor/det/muonScint/setWrap true
+
+# Display-only light-yield reduction.  Config 4 has ~0.3 % collection
+# efficiency, so a higher scale than the scintillation movie is needed to get a
+# handful of detected photons per event.  build_movie_wls.sh defaults to 0.1
+# for the analytic preset 7 (the production geometry); use 0.4 for the legacy
+# tessellated preset 5, which collects fewer p.e.
+/dcs-monitor/det/muonScint/setLightYieldScale {LY_SCALE}
+
+/run/initialize
+
+# ---- visualization-only: prune to detected optical photons ------------------
+/dcs-monitor/run/showDetectedPhotonsOnly true
+
+# ---- one vertical 30 MeV muon at the plate centre ---------------------------
+/dcs-monitor/gun/sourceMode GPS
+/gps/particle mu-
+/gps/ene/type Mono
+/gps/ene/mono 30 MeV
+/gps/pos/type Point
+/gps/pos/centre 0 0 100 mm
+/gps/ang/type planar
+
+/tracking/storeTrajectory 1
+
+# ---- stored OpenGL viewer (X11 fallback), transparent + surface style -------
+/vis/open OGL 800x600
+/vis/verbose errors
+/vis/viewer/set/autoRefresh false
+/vis/viewer/set/background white
+/vis/drawVolume
+/vis/viewer/set/style surface
+/vis/viewer/set/edge true
+/vis/viewer/set/viewpointThetaPhi 80 250
+/vis/viewer/set/upVector 0 0 1
+/vis/viewer/set/targetPoint -110 0 0 mm
+/vis/viewer/zoomTo 3.5
+
+# Hide the black plastic clamp bar and the coupling grease.  The clamp hides the
+# fibres; the grease film/pads are G4SubtractionSolid booleans whose grooved,
+# transparent surfaces render as a cloud of stipple dots.  Geometry/physics are
+# unchanged; this is visualization only.
+/vis/geometry/set/visibility WLSClampLV 0 false
+/vis/geometry/set/visibility WLSCoupleFilmLV 0 false
+/vis/geometry/set/visibility GreaseLV 0 false
+
+# ---- trajectories: detected optical photons only, time-sliced ---------------
+/vis/scene/add/trajectories rich
+/vis/modeling/trajectories/create/drawByParticleID
+/vis/modeling/trajectories/drawByParticleID-0/set opticalphoton green
+/vis/modeling/trajectories/drawByParticleID-0/set mu- red
+/vis/modeling/trajectories/drawByParticleID-0/set e- orange
+/vis/modeling/trajectories/drawByParticleID-0/default/setTimeSliceInterval 0.01 ns
+/vis/scene/endOfEventAction accumulate
+
+# ---- frame export: non-vector EPS (rasterised glReadPixels), one per step ----
+/vis/ogl/set/exportFormat eps
+/vis/ogl/set/printMode pixmap
+/vis/ogl/set/printSize 800 600
+
+# ---- time window / fade (the "decaying tail" effect) ------------------------
+/vis/viewer/set/timeWindow/fadeFactor 1
+/vis/viewer/set/timeWindow/displayHeadTime true -0.9 0.9 24 0 0 0
+# (No light front: WLS re-emission is delayed, so a light front launched at the
+#  muon entry would not trace the detected photons.)
+
+# ---- one event, then a single constant-step sweep to the hard cap -----------
+/control/alias frameDir  {WLS_DIR}
+/control/alias frameStem {WLS_STEM}
+/control/alias tailRange {MOVIE_TAIL}
+/control/shell mkdir -p {WLS_DIR}
+/run/beamOn 1
+/control/loop macros/muon_movie_wls.loop endTime 0.00 {MOVIE_END} {MOVIE_STEP}
+
+/vis/verbose confirmations

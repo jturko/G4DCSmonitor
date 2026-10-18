@@ -182,6 +182,11 @@ G4bool MuonScintSiPMSD::ProcessHits(G4Step* step, G4TouchableHistory*)
         ++gOpticalDiag.nDetectedPerSlab[detCopy];
     }
 
+    // Remember which optical-photon track produced this hit. The
+    // visualization-only "detected photons only" mode uses this list to prune
+    // the event's trajectory container in EventAction.
+    gOpticalDiag.detectedTrackIDs.push_back(track->GetTrackID());
+
     const G4double E = edep;
     const G4double lam_nm =
         (E > 0.) ? (CLHEP::h_Planck * CLHEP::c_light / E) / CLHEP::nanometer : 0.;

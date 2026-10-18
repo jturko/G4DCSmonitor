@@ -176,6 +176,42 @@ offline pulse-shape and process-mix studies).
 For pe/evt, sum `nDetected` over all SiPMs and divide by the number of events (`evtNb`),
 **not** by row count — dividing by rows gives per-SiPM pe/evt (the two differ by the SiPM count).
 
+**Detected-photon visualization**: `/dcs-monitor/run/showDetectedPhotonsOnly true` (default
+**off**, `RunMessenger`) makes `EventAction::EndOfEventAction` prune the event's
+`G4TrajectoryContainer` to the track IDs recorded by `MuonScintSiPMSD::ProcessHits`
+(`gOpticalDiag.detectedTrackIDs`, cleared per event) **plus their full ancestor chain**
+(walk `G4VTrajectory::GetParentID`). The ancestor walk matters for WLS: `G4OpWLS` kills the
+creator optical photon, so its track ID is not in `detectedTrackIDs`; including parents keeps
+that pre-WLS photon (and the primary muon) in the event. It is vis-only and requires
+`/tracking/storeTrajectory 1`; G4VisManager draws the event *after* `EndOfEventAction`, so
+the stored viewer sees the detected WLS photons, their creator optical photons and the muon;
+unrelated undetected photons are removed. `macros/muon_movie_wls.mac` +
+`macros/build_movie_wls.sh` use it for Config 4 (preset **7 analytic** fibres by default;
+`WLS_PRESET=5` selects the legacy tessellated fibres, but their nested multi-clad cores 2/3
+can be culled by the OpenGL viewer — the clads still draw, so prefer preset 7;
+the black `WLSClampLV` is hidden, together with the coupling grease film
+(`WLSCoupleFilmLV`) and read-out grease pads (`GreaseLV`): those `G4SubtractionSolid`
+booleans render as a stipple-dot cloud over the fibres in the OGL viewer.
+The camera is animated by `/dcs-monitor/run/movieCamera <time>` (master-only; worker copies
+are skipped): it holds a wide view (target `0 0 0`, theta 55, zoom 1.0) through the muon
+crossing, then eases over 1.5–12 ns to the fibre/SiPM close-up (target `-110 0 0 mm`, theta
+80, zoom 3.5). The loop body is `macros/muon_movie_wls.loop` (separate from the shared quad
+loop), glossy reflector, seed 12345/67890, display-only `LY_SCALE=0.4` for preset 5 / `0.1`
+for preset 7, 0–80 ns, step 0.25 ns, tail 10 ns) →
+`report/movie_wls/muon_movie_wls.{gif,mp4}` (270 frames after trimming). Detected photons
+and their pre-WLS creators are drawn green, the muon red, delta electrons orange; all
+detections are WLS secondaries except rare direct scintillation hits. WLS re-emission is
+exponential (τ≈7 ns), so detections occur out to ~60–70 ns.
+`macros/movie_trim.py` now takes `[pad] [color]`; use `green` for these frames (the
+fibre geometry is pale/dark green and does not satisfy the pure-green mask; a moving camera
+also invalidates the first-frame `green-delta` baseline). `green-delta` remains for
+static-camera movies.
+
+**Movies**: `macros/build_movie.sh` (single pane, Config 1/glossy, blue optical photons) and
+`macros/build_movie_quad.sh` (2×2 Config 1 × reflectors 0–3) are the older modes; both need
+the X11 OpenGL stored viewer (`DISPLAY=:0`, Xwayland auth on this login node). Frames are
+raster EPS → PNG via GraphicsMagick and assembled by `convert`/`ffmpeg`.
+
 **Tooling**: `macros/{muon_scint_template.mac,generate_muon_matrix.sh,run_muon_matrix.sh}`,
 `macros/plot_muon.C`, `macros/analyze_muon.C`, `macros/plot_collection_efficiency.C`
 (tree-based collection-efficiency maps; `plot_light_efficiency.C` is a thin forwarder
@@ -208,9 +244,12 @@ copies figures into `report/figures/`, then `pdflatex` twice).
 `macros/wavelength_time_grid.C [WHOLE_DIR] [OUTDIR] [REFL]` (default REFL 3 = glossy) consume
 the per-photoelectron `tDetected`/`wlDetected_nm` vector branches of `sipmHits`: a 2×2 grid
 over cfg 1–4 (whole-plate data), shared log-z, from the pooled per-SiPM times of each layout.
-`persistence_map_grid` bins each event's summed arrival times into 0.5 ns bins and fills a map
+`persistence_map_grid` bins each event's summed arrival times into 0.1 ns bins and fills a map
 (x = arrival time, y = p.e./bin, z = number of events); `wavelength_time_grid` fills
-(x = arrival time, y = wavelength, z = p.e.).
+(x = arrival time, y = wavelength, z = p.e.). `macros/avg_waveform.C [WHOLE_DIR] [OUTDIR] [REFL]`
+reuses the same per-event traces and averages them over events, overlaying cfg 1–4 as
+mean p.e./0.1 ns vs arrival time (left linear, right log) → `fig_avg_waveform.{pdf,png}`
+(report `fig:avgwaveform`).
 **Per-panel titles:** the shared `style.h` calls `SetOptTitle(0)`, so a macro that wants the
 histogram/panel title drawn must re-enable `gStyle->SetOptTitle(1)` *after* `style(...)`.
 `whole_slab_uniformity.C` always did; `plot_whole_slab.C` and `plot_collection_efficiency.C`
@@ -261,6 +300,11 @@ two fit per page). The polar `(r,φ)` `fig_whole_polar` map and its radial defen
 by the report). `whole_uniformity.csv` is retained. The 3-patch κ figure/table and the matrix
 2D efficiency grids were **removed from the report** (the macros still exist); the position
 contrast is now carried by the full-slab `kappa_2d`.
+`macros/whole_yield_table.C [WHOLE_DIR] [OUTDIR]` writes `whole_yield.csv` — the absolute
+mean p.e./event (and /detected-event, plus detection probability) for every config × wrapper
+from the whole-plate run; every whole-plate event detects ≥1 p.e. (eps = 1), so the two means
+coincide. It backs report Table 5 (`tab:wholeyield`); the p.e./event columns are just the
+`tab:eff` plate-averaged ε scaled by the ~19700 photons/event produced.
 
 **G4OpBoundaryProcess ground truth** (`.refs/source/processes/optical`): a
 `G4LogicalBorderSurface` overrides a `G4LogicalSkinSurface` at the same boundary;

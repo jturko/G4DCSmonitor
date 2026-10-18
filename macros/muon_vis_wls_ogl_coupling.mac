@@ -1,0 +1,118 @@
+# =============================================================================
+# muon_vis_wls_ogl_coupling.mac -- candidate close-up views of the config-4
+# fibre -> SiPM read-out coupling, rendered from the *analytic production*
+# geometry (preset 7, multi-clad fibres, white clamp).
+#
+#   ./build/G4DCSmonitor macros/muon_vis_wls_ogl_coupling.mac
+#
+# Why hide the clamp/grease: the OpenGL/TSG renderer can only draw a Boolean
+# solid whose cutter implements CreatePolyhedron().  In the analytic build the
+# clamp and grease film are G4SubtractionSolids cut by G4CutTubs tools, which
+# render as a point cloud.  Hiding just those two volumes (the ONLY Boolean
+# solids here) leaves the fibres--which are plain G4CutTubs and DO render as
+# solids--fully visible, so the fibre bundle, the read-out pad and the single
+# SiPM can be seen coupling.  Everything else is the production model.
+#
+# Renders seven view directions around the read-out corner into
+# report/figures/wls_ogl_coupling_<A..G>.png (direction = viewpointVector,
+# i.e. target->eye in global coordinates):
+#   A  -1 -1  0   level 45 deg from the -x/-y corner
+#   B  -1  0  1   -x side, from above
+#   C   0 -1  0   straight down the fibre axis (SiPM face only)
+#   D  -1 -1  1   -x/-y corner, from above (3/4 bird's-eye)
+#   E   1 -1  0   +x/-y corner
+#   F  -1  0  0   -x side, head-on
+#   G   0 -1  1   -y end, from above
+# No beam-on.
+# =============================================================================
+
+/run/numberOfThreads 1
+
+# ---- geometry: plate + Config 4 WLS fibre clamp (production analytic, preset 7)
+/dcs-monitor/det/setPosition 0 0 0 mm
+/dcs-monitor/det/setRotation 0 0 0
+/dcs-monitor/det/muonScint/add
+/dcs-monitor/det/muonScint/setSize 250 250 10 mm
+/dcs-monitor/det/muonScint/preset 7
+/dcs-monitor/det/muonScint/setReflector 3
+/dcs-monitor/det/muonScint/setWrap true
+
+/run/initialize
+
+# ---- head-less offscreen rendering (no GUI) ---------------------------------
+/vis/open TSG_OFFSCREEN 2000x1500
+/vis/tsg/offscreen/set/format zb_png
+/vis/tsg/offscreen/set/size 1200 1200
+
+/vis/verbose errors
+/vis/viewer/set/autoRefresh false
+/vis/viewer/set/background white
+/vis/drawVolume
+/vis/viewer/set/style surface
+/vis/viewer/set/edge false
+/vis/viewer/set/auxiliaryEdge false
+/vis/viewer/set/upVector 0 0 1
+/vis/tsg/offscreen/set/transparency true
+
+# Hide only the two Boolean solids (clamp body + grease film); the fibres are
+# plain G4CutTubs and render as solids.
+/vis/geometry/set/visibility WLSClampLV 0 false
+/vis/geometry/set/visibility WLSCoupleFilmLV 0 false
+
+/vis/viewer/set/targetPoint -125.5 -124 0 mm
+/vis/viewer/zoomTo 35
+
+/vis/tsg/offscreen/set/file report/figures/wls_ogl_coupling_A.png
+/vis/viewer/set/viewpointVector -1 -1 0
+/vis/viewer/flush
+
+/vis/tsg/offscreen/set/file report/figures/wls_ogl_coupling_B.png
+/vis/viewer/set/viewpointVector -1 0 1
+/vis/viewer/flush
+
+/vis/tsg/offscreen/set/file report/figures/wls_ogl_coupling_C.png
+/vis/viewer/set/viewpointVector 0 -1 0
+/vis/viewer/flush
+
+/vis/tsg/offscreen/set/file report/figures/wls_ogl_coupling_D.png
+/vis/viewer/set/viewpointVector -1 -1 1
+/vis/viewer/flush
+
+/vis/tsg/offscreen/set/file report/figures/wls_ogl_coupling_E.png
+/vis/viewer/set/viewpointVector 1 -1 0
+/vis/viewer/flush
+
+/vis/tsg/offscreen/set/file report/figures/wls_ogl_coupling_F.png
+/vis/viewer/set/viewpointVector -1 0 0
+/vis/viewer/flush
+
+/vis/tsg/offscreen/set/file report/figures/wls_ogl_coupling_G.png
+/vis/viewer/set/viewpointVector 0 -1 1
+/vis/viewer/flush
+
+# --- D-variants rotated from the clamp side (-x) toward the slab side (+x) ----
+# azimuth fan at the D elevation (D itself is -1 -1 1):
+/vis/tsg/offscreen/set/file report/figures/wls_ogl_coupling_H.png
+/vis/viewer/set/viewpointVector 0.4 -1 1
+/vis/viewer/flush
+
+/vis/tsg/offscreen/set/file report/figures/wls_ogl_coupling_I.png
+/vis/viewer/set/viewpointVector 0.8 -0.8 1
+/vis/viewer/flush
+
+/vis/tsg/offscreen/set/file report/figures/wls_ogl_coupling_J.png
+/vis/viewer/set/viewpointVector 1 -0.4 1
+/vis/viewer/flush
+
+/vis/tsg/offscreen/set/file report/figures/wls_ogl_coupling_K.png
+/vis/viewer/set/viewpointVector 1 0 1
+/vis/viewer/flush
+
+# D elevation variants (same azimuth as D):
+/vis/tsg/offscreen/set/file report/figures/wls_ogl_coupling_L.png
+/vis/viewer/set/viewpointVector -1 -1 0.5
+/vis/viewer/flush
+
+/vis/tsg/offscreen/set/file report/figures/wls_ogl_coupling_M.png
+/vis/viewer/set/viewpointVector -1 -1 1.7
+/vis/viewer/flush

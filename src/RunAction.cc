@@ -60,6 +60,7 @@
 std::atomic<G4bool> RunAction::WritePrimaryTree{false};
 std::atomic<G4bool> RunAction::WriteCASTOR440SurfaceFluxTree{false};
 std::atomic<G4bool> RunAction::WriteOpticalFluxMap{false};
+std::atomic<G4bool> RunAction::ShowDetectedPhotonsOnly{false};
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 

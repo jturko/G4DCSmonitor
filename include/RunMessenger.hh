@@ -39,6 +39,7 @@
 class RunAction;
 class G4UIdirectory;
 class G4UIcmdWithABool;
+class G4UIcmdWithADouble;
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
@@ -51,12 +52,16 @@ class RunMessenger : public G4UImessenger
     void SetNewValue(G4UIcommand*, G4String) override;
 
   private:
+    void SetMovieCamera(G4double time);
+
     RunAction* fRun = nullptr;
     
     G4UIdirectory* fRunDir = nullptr;
     G4UIcmdWithABool* fWritePrimaryCmd = nullptr;
     G4UIcmdWithABool* fWriteCASTOR440SurfaceFluxCmd = nullptr;
     G4UIcmdWithABool* fWriteOpticalFluxMapCmd = nullptr;
+    G4UIcmdWithABool* fShowDetectedPhotonsOnlyCmd = nullptr;
+    G4UIcmdWithADouble* fMovieCameraCmd = nullptr;
 };
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
