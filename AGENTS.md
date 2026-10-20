@@ -3,6 +3,29 @@
 Geant4 + ROOT 6 simulation of a CASTOR 440/84 spent-fuel storage cask monitored
 by CLYC / plastic detectors. See `README.md` for physics, geometry, and macros.
 
+## Two-worktree layout (this machine)
+This tree is the `main` branch of a two-worktree checkout; the MuonScint work lives
+in a second worktree next to it.
+
+| path | branch | content |
+|---|---|---|
+| `/home/turko46/geant4-sims/G4DCSmonitor` | `main` | CASTOR 440/84 + biasing code (this tree) |
+| `/home/turko46/geant4-sims/G4DCSmonitor_muon` | `1-muon-trigger-detector` | MuonScint detector, report and SLURM drivers |
+
+- `git worktree list` shows both; each tree keeps its **own** `build/` (a build dir
+  cannot be moved: `CMakeCache.txt` pins `CMAKE_HOME_DIRECTORY` to its tree) and its
+  own `report/` output tree.
+- Configure here with
+  `cmake -S . -B build -DGeant4_DIR=$HOME/programs/geant4/install/lib/cmake/Geant4
+  -DROOT_DIR=$HOME/programs/root/build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON`
+  (`cmake --fresh` re-configures from scratch without deleting the directory).
+- There is **no global install** of the binary and nothing is taken from `$PATH`;
+  the drivers resolve `build/G4DCSmonitor` relative to their own location and exec
+  the absolute path. `BIN=/abs/path/G4DCSmonitor` overrides it.
+- `main` has no `report/`, no `macros/muon/` and no `slurm/` drivers; its
+  `macros/run.mac` needs **both** `--biasing gamma` on the command line and
+  `/dcs-monitor/det/useBiasing true` in the macro (see *CLI / biasing*).
+
 ## READ-ONLY Geant4 reference tree (`.refs/`) — hard rule
 - **Never modify anything reachable under `.refs/` or the Geant4 install/source
   trees it points at.** `.refs/` is a read-only reference for understanding Geant4;
