@@ -1,0 +1,65 @@
+wrapper,population,sipm,value
+glossy,central muon, light share - 12.5 [pp],B1,-0.0421948
+glossy,corner muon, light share - 12.5 [pp],B1,0.392613
+glossy,central muon, light share - 12.5 [pp],B2,-0.0549328
+glossy,corner muon, light share - 12.5 [pp],B2,1.10563
+glossy,central muon, light share - 12.5 [pp],T2,0.0697939
+glossy,corner muon, light share - 12.5 [pp],T2,-1.37849
+glossy,central muon, light share - 12.5 [pp],T1,0.0538713
+glossy,corner muon, light share - 12.5 [pp],T1,-0.0440365
+glossy,central muon, light share - 12.5 [pp],R2,-0.00398064
+glossy,corner muon, light share - 12.5 [pp],R2,-0.132411
+glossy,central muon, light share - 12.5 [pp],R1,-0.033172
+glossy,corner muon, light share - 12.5 [pp],R1,-1.38572
+glossy,central muon, light share - 12.5 [pp],L1,-0.037418
+glossy,corner muon, light share - 12.5 [pp],L1,1.0028
+glossy,central muon, light share - 12.5 [pp],L2,0.048033
+glossy,corner muon, light share - 12.5 [pp],L2,0.439612
+glossy,central muon, first-arrival offset [ns],B1,0.0140262
+glossy,corner muon, first-arrival offset [ns],B1,-0.178934
+glossy,central muon, first-arrival offset [ns],B2,-0.00657339
+glossy,corner muon, first-arrival offset [ns],B2,-0.451559
+glossy,central muon, first-arrival offset [ns],T2,-0.0149059
+glossy,corner muon, first-arrival offset [ns],T2,0.704634
+glossy,central muon, first-arrival offset [ns],T1,-0.000760012
+glossy,corner muon, first-arrival offset [ns],T1,-0.135223
+glossy,central muon, first-arrival offset [ns],R2,-0.012919
+glossy,corner muon, first-arrival offset [ns],R2,-0.0777869
+glossy,central muon, first-arrival offset [ns],R1,0.0172439
+glossy,corner muon, first-arrival offset [ns],R1,0.72015
+glossy,central muon, first-arrival offset [ns],L1,0.00588591
+glossy,corner muon, first-arrival offset [ns],L1,-0.417175
+glossy,central muon, first-arrival offset [ns],L2,-0.00199761
+glossy,corner muon, first-arrival offset [ns],L2,-0.164106
+TiO2,central muon, light share - 12.5 [pp],B1,-0.317159
+TiO2,corner muon, light share - 12.5 [pp],B1,-9.1087
+TiO2,central muon, light share - 12.5 [pp],B2,-0.112301
+TiO2,corner muon, light share - 12.5 [pp],B2,-7.78863
+TiO2,central muon, light share - 12.5 [pp],T2,0.238178
+TiO2,corner muon, light share - 12.5 [pp],T2,-7.6235
+TiO2,central muon, light share - 12.5 [pp],T1,-0.0135749
+TiO2,corner muon, light share - 12.5 [pp],T1,24.2001
+TiO2,central muon, light share - 12.5 [pp],R2,0.122174
+TiO2,corner muon, light share - 12.5 [pp],R2,24.6341
+TiO2,central muon, light share - 12.5 [pp],R1,0.243114
+TiO2,corner muon, light share - 12.5 [pp],R1,-7.49562
+TiO2,central muon, light share - 12.5 [pp],L1,-0.109833
+TiO2,corner muon, light share - 12.5 [pp],L1,-7.71311
+TiO2,central muon, light share - 12.5 [pp],L2,-0.0505973
+TiO2,corner muon, light share - 12.5 [pp],L2,-9.10467
+TiO2,central muon, first-arrival offset [ns],B1,-0.028701
+TiO2,corner muon, first-arrival offset [ns],B1,1.05417
+TiO2,central muon, first-arrival offset [ns],B2,-0.00643974
+TiO2,corner muon, first-arrival offset [ns],B2,0.281046
+TiO2,central muon, first-arrival offset [ns],T2,0.0350516
+TiO2,corner muon, first-arrival offset [ns],T2,0.402368
+TiO2,central muon, first-arrival offset [ns],T1,-0.00606135
+TiO2,corner muon, first-arrival offset [ns],T1,-1.64421
+TiO2,central muon, first-arrival offset [ns],R2,0.041624
+TiO2,corner muon, first-arrival offset [ns],R2,-1.66817
+TiO2,central muon, first-arrival offset [ns],R1,-0.00615332
+TiO2,corner muon, first-arrival offset [ns],R1,0.322556
+TiO2,central muon, first-arrival offset [ns],L1,-0.00767099
+TiO2,corner muon, first-arrival offset [ns],L1,0.320791
+TiO2,central muon, first-arrival offset [ns],L2,-0.0216493
+TiO2,corner muon, first-arrival offset [ns],L2,0.931459

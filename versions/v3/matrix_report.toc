@@ -1,0 +1,58 @@
+\contentsline {section}{\numberline {1}Introduction and motivation}{3}{section.1}%
+\contentsline {section}{\numberline {2}The measurement being reproduced}{4}{section.2}%
+\contentsline {subsection}{\numberline {2.1}What was measured}{4}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}The statements this simulation is tested against}{5}{subsection.2.2}%
+\contentsline {subsection}{\numberline {2.3}Where the model deliberately departs from the experiment}{5}{subsection.2.3}%
+\contentsline {section}{\numberline {3}The detector and its optical model}{6}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Scintillator plate}{6}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}SiPM readout and coupling}{6}{subsection.3.2}%
+\contentsline {subsection}{\numberline {3.3}Reflector treatments}{7}{subsection.3.3}%
+\contentsline {subsubsection}{\numberline {3.3.1}Bare plate in its black holder}{8}{subsubsection.3.3.1}%
+\contentsline {subsubsection}{\numberline {3.3.2}Titanium-dioxide paint (EJ-510)}{9}{subsubsection.3.3.2}%
+\contentsline {subsubsection}{\numberline {3.3.3}Aluminium foil}{9}{subsubsection.3.3.3}%
+\contentsline {subsubsection}{\numberline {3.3.4}High-gloss photo paper}{9}{subsubsection.3.3.4}%
+\contentsline {subsection}{\numberline {3.4}Config 4: wavelength-shifting fibre clamp}{10}{subsection.3.4}%
+\contentsline {subsection}{\numberline {3.5}Summary of detector parameters}{13}{subsection.3.5}%
+\contentsline {subsection}{\numberline {3.6}Optical property tables}{13}{subsection.3.6}%
+\contentsline {subsection}{\numberline {3.7}Optical physics implementation}{16}{subsection.3.7}%
+\contentsline {subsection}{\numberline {3.8}Wavelength shifting}{16}{subsection.3.8}%
+\contentsline {subsection}{\numberline {3.9}Photodetection: the SiPM photocathode}{17}{subsection.3.9}%
+\contentsline {subsection}{\numberline {3.10}Per-event optical accounting}{17}{subsection.3.10}%
+\contentsline {section}{\numberline {4}Simulation campaigns and surface calibration}{18}{section.4}%
+\contentsline {subsection}{\numberline {4.1}Beam, irradiation patches, and efficiency definition}{18}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}Bare-plate holder contact}{20}{subsection.4.2}%
+\contentsline {subsection}{\numberline {4.3}Aluminium backing: grease versus air}{22}{subsection.4.3}%
+\contentsline {section}{\numberline {5}Light collection: yield and the wrapper ordering}{24}{section.5}%
+\contentsline {subsection}{\numberline {5.1}The three-patch matrix scan}{24}{subsection.5.1}%
+\contentsline {subsection}{\numberline {5.2}The whole-plate average}{30}{subsection.5.2}%
+\contentsline {subsection}{\numberline {5.3}Survival versus mixing: the two axes that organise every result}{32}{subsection.5.3}%
+\contentsline {section}{\numberline {6}The uniformity of the response over the plate}{33}{section.6}%
+\contentsline {subsection}{\numberline {6.1}Full-plate maps}{33}{subsection.6.1}%
+\contentsline {subsection}{\numberline {6.2}A single number for the spread: $\kappa _{\rm 2D}$}{37}{subsection.6.2}%
+\contentsline {subsection}{\numberline {6.3}The shape of the field: distance to the nearest sensor}{39}{subsection.6.3}%
+\contentsline {section}{\numberline {7}The spectral and temporal signature of the detected light}{40}{section.7}%
+\contentsline {subsection}{\numberline {7.1}Wavelength of detected photons}{40}{subsection.7.1}%
+\contentsline {subsection}{\numberline {7.2}Arrival times and pulse persistence}{42}{subsection.7.2}%
+\contentsline {section}{\numberline {8}Position reconstruction from the SiPM pattern}{45}{section.8}%
+\contentsline {subsection}{\numberline {8.1}The observables and the estimator}{45}{subsection.8.1}%
+\contentsline {subsection}{\numberline {8.2}What the eight channels see}{46}{subsection.8.2}%
+\contentsline {subsection}{\numberline {8.3}A single linear combination is not enough}{48}{subsection.8.3}%
+\contentsline {subsection}{\numberline {8.4}A learned response function}{49}{subsection.8.4}%
+\contentsline {subsection}{\numberline {8.5}Response and resolution map}{50}{subsection.8.5}%
+\contentsline {subsection}{\numberline {8.6}What this would require in practice}{52}{subsection.8.6}%
+\contentsline {section}{\numberline {9}Comparison with the measurement}{53}{section.9}%
+\contentsline {subsection}{\numberline {9.1}The bare configuration and the detection-efficiency threshold}{54}{subsection.9.1}%
+\contentsline {subsection}{\numberline {9.2}The one disagreement: the position trend of the diffuse paint}{55}{subsection.9.2}%
+\contentsline {section}{\numberline {10}Caveats and open items}{56}{section.10}%
+\contentsline {paragraph}{Config 4 collects less light than config 3, the opposite of the measurement.}{56}{section.10}%
+\contentsline {paragraph}{Two of the three reflector reflectances are fitted, not measured.}{56}{section.10}%
+\contentsline {paragraph}{The WLS absorption length is a systematic band, not a scanned parameter.}{56}{section.10}%
+\contentsline {paragraph}{Bare-holder contact is effective, not measured.}{57}{section.10}%
+\contentsline {paragraph}{Position trend of the diffuse paint.}{57}{section.10}%
+\contentsline {paragraph}{Position reconstruction is limited by the optics, not by the estimator.}{57}{section.10}%
+\contentsline {paragraph}{Scale and normalisation.}{57}{section.10}%
+\contentsline {paragraph}{Optical-track stall (resolved).}{57}{section.10}%
+\contentsline {section}{\numberline {11}Summary}{57}{section.11}%
+\contentsline {section}{\numberline {A}Geant4\ optical-physics implementation notes}{58}{appendix.A}%
+\contentsline {subsection}{\numberline {A.1}The boundary process and the unified surface model}{58}{subsection.A.1}%
+\contentsline {subsection}{\numberline {A.2}Reflector finishes}{59}{subsection.A.2}%
