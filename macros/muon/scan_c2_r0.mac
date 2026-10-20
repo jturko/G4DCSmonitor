@@ -51,7 +51,7 @@
 /gps/ang/type planar
 
 # ---- position 1/3: centre ---------------------------------------------------
-/analysis/setFileName /home/turko46/geant4-sims/G4DCSmonitor/data_v2.2/matrix/muon_out_c2_r0_centre.root
+/analysis/setFileName /home/turko46/geant4-sims/G4DCSmonitor_muon/data_v2.2/matrix/muon_out_c2_r0_centre.root
 /gps/pos/centre 0 0 100 mm
 /run/beamOn 1000
 
@@ -59,11 +59,11 @@
 # The 50x50 mm beam is centred 25 mm inside the +X edge so the illuminated
 # 50x50 mm patch lies entirely on the plate ([75,125] mm), matching the MCD
 # active area and the equal-area centre region.
-/analysis/setFileName /home/turko46/geant4-sims/G4DCSmonitor/data_v2.2/matrix/muon_out_c2_r0_edge.root
+/analysis/setFileName /home/turko46/geant4-sims/G4DCSmonitor_muon/data_v2.2/matrix/muon_out_c2_r0_edge.root
 /gps/pos/centre 100 0 100 mm
 /run/beamOn 1000
 
 # ---- position 3/3: corner (+X/+Y, fully on the slab) ------------------------
-/analysis/setFileName /home/turko46/geant4-sims/G4DCSmonitor/data_v2.2/matrix/muon_out_c2_r0_corner.root
+/analysis/setFileName /home/turko46/geant4-sims/G4DCSmonitor_muon/data_v2.2/matrix/muon_out_c2_r0_corner.root
 /gps/pos/centre 100 100 100 mm
 /run/beamOn 1000
