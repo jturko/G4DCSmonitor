@@ -17,6 +17,9 @@
 #   clean      - remove generated figures, aux files, and the PDF
 #   clean-figs - figures only
 #
+# The groups mirror macros/build_report_figures.sh one-to-one, so both entry
+# points produce the same figure set.
+#
 # ROOT binary: override with ROOT=/abs/path/to/root.
 # style.h:    override with STYLE_DIR=/abs/path (must contain style.h).
 
@@ -92,12 +95,31 @@ F_persistence      := $(FIGDIR)/fig_persistence_grid.pdf
 F_wavelength-time  := $(FIGDIR)/fig_wavelength_time_grid.pdf
 F_avg-waveform     := $(FIGDIR)/fig_avg_waveform.pdf
 
+# Group 8: nearest-sensor collapse (the organising coordinate of the response)
+F_nearest-sensor  := $(FIGDIR)/fig_nearest_sensor.pdf $(FIGDIR)/nearest_sensor.csv \
+                      $(FIGDIR)/nearest_sensor_maps.txt
+
+# Group 9: detection-efficiency vs. threshold
+F_de-threshold    := $(FIGDIR)/fig_de_threshold.pdf $(FIGDIR)/de_threshold.csv \
+                      $(FIGDIR)/de_threshold_window.csv
+
+# Group 10: position reconstruction from the SiPM pattern (ACLiC, k-NN)
+F_reconstruction  := $(FIGDIR)/fig_recon_waveforms.pdf \
+                      $(FIGDIR)/fig_recon_observables.pdf \
+                      $(FIGDIR)/fig_recon_features.pdf \
+                      $(FIGDIR)/fig_recon_response.pdf \
+                      $(FIGDIR)/fig_recon_map.pdf \
+                      $(FIGDIR)/position_reconstruction.csv \
+                      $(FIGDIR)/position_observables.csv \
+                      $(FIGDIR)/position_class_observables.csv
+
 ALL_FIGURES := $(F_sipm-layouts) $(F_irradiation) \
                $(F_optical-spectra) $(F_optical-timing) $(F_reflector) $(F_refractive) \
                $(F_report-figs) $(F_pe-grid) $(F_matrix-positions) \
                $(F_contact) $(F_al) $(F_efficiency-grids) \
                $(F_whole-slabs) $(F_whole-uniformity) $(F_whole-yield) \
-               $(F_persistence) $(F_wavelength-time) $(F_avg-waveform)
+               $(F_persistence) $(F_wavelength-time) $(F_avg-waveform) \
+               $(F_nearest-sensor) $(F_de-threshold) $(F_reconstruction)
 
 # ----- rules -------------------------------------------------------------
 .PHONY: all figures pdf clean clean-figs help
@@ -113,7 +135,8 @@ help:
 	@echo "  sipm-layouts, irradiation, optical-spectra, optical-timing,"
 	@echo "  reflector, refractive, report-figs, pe-grid, matrix-positions,"
 	@echo "  contact, al, efficiency-grids, whole-slabs, whole-uniformity,"
-	@echo "  whole-yield, persistence, wavelength-time, avg-waveform"
+	@echo "  whole-yield, persistence, wavelength-time, avg-waveform,"
+	@echo "  nearest-sensor, de-threshold, reconstruction"
 	@echo "  clean                remove generated figures + aux + PDF"
 	@echo "  clean-figs           figures only"
 	@echo ""
@@ -121,6 +144,36 @@ help:
 	@echo "  make -f macros/Makefile.report MATRIX_DIR=/path/to/matrix"
 
 figures: $(ALL_FIGURES)
+
+# Group aliases: "make -f macros/Makefile.report <group>" builds one group
+# (the names listed in the help text below).
+.PHONY: sipm-layouts irradiation optical-spectra optical-timing reflector \
+        refractive report-figs pe-grid matrix-positions contact al \
+        efficiency-grids whole-slabs whole-uniformity whole-yield \
+        persistence wavelength-time avg-waveform nearest-sensor \
+        de-threshold reconstruction
+
+sipm-layouts:    $(F_sipm-layouts)
+irradiation:     $(F_irradiation)
+optical-spectra: $(F_optical-spectra)
+optical-timing: $(F_optical-timing)
+reflector:       $(F_reflector)
+refractive:      $(F_refractive)
+report-figs:     $(F_report-figs)
+pe-grid:         $(F_pe-grid)
+matrix-positions: $(F_matrix-positions)
+contact:         $(F_contact)
+al:              $(F_al)
+efficiency-grids: $(F_efficiency-grids)
+whole-slabs:     $(F_whole-slabs)
+whole-uniformity: $(F_whole-uniformity)
+whole-yield:     $(F_whole-yield)
+persistence:     $(F_persistence)
+wavelength-time: $(F_wavelength-time)
+avg-waveform:    $(F_avg-waveform)
+nearest-sensor:  $(F_nearest-sensor)
+de-threshold:    $(F_de-threshold)
+reconstruction:  $(F_reconstruction)
 
 # ensure FIGDIR exists before any rule fires
 $(FIGDIR):
@@ -210,6 +263,19 @@ $(F_wavelength-time) &: $(MACROS)/wavelength_time_grid.C $(STYLE_H) | $(FIGDIR)
 $(F_avg-waveform) &: $(MACROS)/avg_waveform.C $(STYLE_H) | $(FIGDIR)
 	@echo "=== avg_waveform ==="
 	$(ROOT_RUN) "$(MACROS)/avg_waveform.C(\"$(WHOLE_DIR)\",\"$(@D)\",3)"
+
+$(F_nearest-sensor) &: $(MACROS)/nearest_sensor_collapse.C $(STYLE_H) | $(FIGDIR)
+	@echo "=== nearest_sensor_collapse ==="
+	$(ROOT_RUN) "$(MACROS)/nearest_sensor_collapse.C(\"$(WHOLE_DIR)\",\"$(@D)\")"
+
+$(F_de-threshold) &: $(MACROS)/de_threshold.C $(STYLE_H) | $(FIGDIR)
+	@echo "=== de_threshold ==="
+	$(ROOT_RUN) "$(MACROS)/de_threshold.C(\"$(WHOLE_DIR)\",\"$(@D)\")"
+
+# Compute-bound: ACLiC-compiled, k-NN over the whole-slab events.
+$(F_reconstruction) &: $(MACROS)/position_reconstruction.C $(STYLE_H) | $(FIGDIR)
+	@echo "=== position_reconstruction (ACLiC, k-NN) ==="
+	$(ROOT_RUN) "$(MACROS)/position_reconstruction.C+(\"$(WHOLE_DIR)\",\"$(@D)\",25000)"
 
 # ---- PDF rule ---------------------------------------------------------
 # pdflatex needs the .aux/.toc from the first pass to resolve refs/toc.
