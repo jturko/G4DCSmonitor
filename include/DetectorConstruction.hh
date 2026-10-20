@@ -131,6 +131,7 @@ class DetectorConstruction : public G4VUserDetectorConstruction
         void SetMuonScintWLSAbsLength(G4double l);    // Y-11 WLS abs. length at 430 nm
         void SetMuonScintClampSurface(ClampSurfaceMode m); // Config-4 clamp body surface
         void SetMuonScintFibreMultiClad(G4bool on);       // Config-4 WLS fibre multi-clad
+        void SetMuonScintWLSPadSlabContact(G4bool on);    // Config-4 direct slab<->pad optical contact
 
     private:
         DetectorMessenger* fDetectorMessenger = nullptr;

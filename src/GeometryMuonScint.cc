@@ -1651,15 +1651,25 @@ void GeometryMuonScint::PlaceWLSFibres(G4LogicalVolume* worldLV,
         new G4LogicalBorderSurface("MuonScint_FilmSlab", filmPV, fScintPV,
                                    fCouplingSurface);
     }
-    // ---- Bare direct-path fix (P4a) ----
-    // The read-out grease pad overshoots onto the slab's -Y face (x in
-    // [-125.0,-123.55], z in [-2,2]).  With a wrap the slab skin reflects
-    // there, but for bare (kNoReflector) the slab has NO skin, so scintillation
-    // light crossed the real air gap straight into the pad and was detected
-    // (bare cfg4 centre: 21.8 % of p.e. at lambda<440 nm, reading higher than
-    // glossy).  Model that gap explicitly for bare only: Fresnel/TIR into an
-    // n=1.0003 air backing, then absorb whatever is transmitted (REFLECTIVITY=0).
-    if (fReflectorType == kNoReflector && fScintPV && padPV) {
+    // ---- Slab <-> read-out grease pad contact ----
+    // The 4x4 mm read-out grease pad (x in [-127.55,-123.55], z in [-2,2])
+    // overlaps the slab's -Y face over x in [-125.0,-123.55], z in [-2,2].
+    // In the experimental setup (Rao et al. 2025) this portion of the SiPM
+    // active face is in direct optical contact with the slab via optical grease
+    // (fWLSPadSlabContact = true, default): register fCouplingSurface in both
+    // directions so it overrides the reflector skin and couples light through
+    // a polished Fresnel interface.
+    // When fWLSPadSlabContact is false (legacy fibre-only study mode), wrapped
+    // slabs fall back to MuonScintSkin and the bare slab uses an explicit
+    // air-gap absorber border (P4a) so no direct slab light enters the pad.
+    if (fWLSPadSlabContact) {
+        if (fScintPV && padPV && fCouplingSurface) {
+            new G4LogicalBorderSurface("MuonScint_SlabPad", fScintPV, padPV,
+                                       fCouplingSurface);
+            new G4LogicalBorderSurface("MuonScint_PadSlab", padPV, fScintPV,
+                                       fCouplingSurface);
+        }
+    } else if (fReflectorType == kNoReflector && fScintPV && padPV) {
         auto* gap = new G4OpticalSurface("MuonScintPadAirGap");
         gap->SetModel(unified);
         gap->SetType(dielectric_dielectric);

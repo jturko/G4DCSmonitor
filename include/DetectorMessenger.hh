@@ -126,6 +126,7 @@ class DetectorMessenger : public G4UImessenger
     G4UIcmdWithADoubleAndUnit* fSetMuonScintWLSAbsLengthCmd    = nullptr;    // Y-11 WLS L(430 nm)
     G4UIcmdWithAString*        fSetMuonScintClampSurfaceCmd    = nullptr;    // white|black|mirror
     G4UIcmdWithABool*          fSetMuonScintFibreMultiCladCmd = nullptr;    // outer n=1.42 sheath
+    G4UIcmdWithABool*          fSetMuonScintWLSPadSlabContactCmd = nullptr; // direct slab<->pad contact
 
 
 };

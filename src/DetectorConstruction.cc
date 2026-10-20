@@ -429,6 +429,11 @@ void DetectorConstruction::SetMuonScintFibreMultiClad(G4bool on)
     if (!fMuonScints.empty()) fMuonScints.back()->SetFibreMultiClad(on);
 }
 
+void DetectorConstruction::SetMuonScintWLSPadSlabContact(G4bool on)
+{
+    if (!fMuonScints.empty()) fMuonScints.back()->SetWLSPadSlabContact(on);
+}
+
 void DetectorConstruction::SetMuonScintSiPMSize(G4double sx, G4double sy)
 {
     if (!fMuonScints.empty()) fMuonScints.back()->SetSiPMSize(sx, sy);

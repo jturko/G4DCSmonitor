@@ -267,6 +267,15 @@ DetectorMessenger::DetectorMessenger(DetectorConstruction* Det) : fDetector(Det)
     fSetMuonScintFibreMultiCladCmd->SetParameterName("on", false);
     fSetMuonScintFibreMultiCladCmd->AvailableForStates(G4State_PreInit);
 
+    fSetMuonScintWLSPadSlabContactCmd = new G4UIcmdWithABool("/dcs-monitor/det/muonScint/setWLSPadSlabContact", this);
+    fSetMuonScintWLSPadSlabContactCmd->SetGuidance("Config-4 read-out grease pad: enable direct optical contact");
+    fSetMuonScintWLSPadSlabContactCmd->SetGuidance("with the slab where the 4x4 mm pad overlaps the slab edge.");
+    fSetMuonScintWLSPadSlabContactCmd->SetGuidance("Default true (polished Fresnel coupling); false blocks direct");
+    fSetMuonScintWLSPadSlabContactCmd->SetGuidance("slab<->pad light so the SiPM only views the WLS fibres.");
+    fSetMuonScintWLSPadSlabContactCmd->SetParameterName("on", true);
+    fSetMuonScintWLSPadSlabContactCmd->SetDefaultValue(true);
+    fSetMuonScintWLSPadSlabContactCmd->AvailableForStates(G4State_PreInit);
+
 
 }
 
@@ -340,6 +349,7 @@ DetectorMessenger::~DetectorMessenger()
     delete fSetMuonScintWLSAbsLengthCmd;
     delete fSetMuonScintClampSurfaceCmd;
     delete fSetMuonScintFibreMultiCladCmd;
+    delete fSetMuonScintWLSPadSlabContactCmd;
 
 }
 
@@ -434,6 +444,7 @@ void DetectorMessenger::SetNewValue(G4UIcommand* command, G4String value)
                     << "' (use white|black|mirror)" << G4endl;
     }
     if (command == fSetMuonScintFibreMultiCladCmd) fDetector->SetMuonScintFibreMultiClad(fSetMuonScintFibreMultiCladCmd->GetNewBoolValue(value));
+    if (command == fSetMuonScintWLSPadSlabContactCmd) fDetector->SetMuonScintWLSPadSlabContact(fSetMuonScintWLSPadSlabContactCmd->GetNewBoolValue(value));
 
 
 }

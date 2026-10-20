@@ -128,6 +128,12 @@ class GeometryMuonScint
     // Config-4 clamp body surface (white / black / mirror).
     void SetClampSurfaceMode(ClampSurfaceMode m) { fClampSurfaceMode = m; }
     ClampSurfaceMode ClampSurfaceMode_() const   { return fClampSurfaceMode; }
+    // Config-4 direct optical contact between the slab's -Y face and the
+    // read-out SiPM grease pad where the 4x4 mm pad overlaps the slab edge.
+    // Default true (polished Fresnel coupling via fCouplingSurface); false
+    // blocks direct slab<->pad transmission so the SiPM only views the fibres.
+    void SetWLSPadSlabContact(G4bool on)         { fWLSPadSlabContact = on; }
+    G4bool WLSPadSlabContact() const             { return fWLSPadSlabContact; }
 
     // Presets
     void PresetConfig_8SiPM_AllSides();
@@ -239,6 +245,7 @@ class GeometryMuonScint
     G4bool fFibreMultiClad   = true;          // outer n=1.42 sheath over the n=1.49 clad
     G4double fWLSAbsLength430 = 1.0 * CLHEP::mm; // Y-11 WLS absorption length at 430 nm
     ClampSurfaceMode fClampSurfaceMode = kClampWhite; // clamp body surface (white default)
+    G4bool   fWLSPadSlabContact = true;          // direct slab<->read-out grease pad contact (default on)
     G4double fFibreRadius   = 0.5 * CLHEP::mm; // Ø1.0 mm core+clad
     G4double fFibreCladFrac = 0.03;            // cladding thickness fraction
     G4double fClampGap      = 0.10 * CLHEP::mm;// thin grease film slab<->clamp
