@@ -405,7 +405,10 @@ for bare (long multi-bounce tracks). TTree writer leaves a <2 kB partial file fo
 position *currently* being written — **not** an abort. Regenerate the report with
 `macros/build_report_figures.sh [MATRIX_DIR] [WHOLE_DIR] [CONTACT_DIR] [AL_DIR]`
 (defaults `slurm/data_v5/{matrix,whole,contact,al}`; pass absolute dirs when the data
-live outside the repo). The v6 report uses `data_v6/{matrix,whole,contact}` plus
+live outside the repo) or, equivalently, with the make target
+`make -f macros/Makefile.report` (same 21 macros, one target per figure group —
+`make -f macros/Makefile.report help` lists them; `figures` skips the LaTeX pass,
+`pdf` runs it alone). The v6 report uses `data_v6/{matrix,whole,contact}` plus
 `data_v5/al`, with `AL_MATRIX_DIR=<...>/data_v5/matrix` so the Al curves stay paired with
 their v5 matrix references (the Al model is unchanged; v6 Al is incomplete). It runs `sipm_layouts.C`, `irradiation_sites.C`,
 `optical_spectra.C`, `report_figures.C`, `pe_spectra_grid.C`, `matrix_positions.C`,
