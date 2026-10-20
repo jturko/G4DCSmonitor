@@ -3,6 +3,47 @@
 Geant4 + ROOT 6 simulation of a CASTOR 440/84 spent-fuel storage cask monitored
 by CLYC / plastic detectors. See `README.md` for physics, geometry, and macros.
 
+## Two-worktree layout (this machine)
+Two `git worktree`s of the same repo live side by side; both are buildable and
+runnable, and each has its **own** `build/` and its own `report/` output tree.
+
+| path | branch | build | content |
+|---|---|---|---|
+| `/home/turko46/geant4-sims/G4DCSmonitor` | `main` | `build/G4DCSmonitor` | CASTOR 440/84 + biasing code (upstream `origin/main`) |
+| `/home/turko46/geant4-sims/G4DCSmonitor_muon` | `1-muon-trigger-detector` | `build/G4DCSmonitor` | MuonScint work (this branch) |
+
+- `git worktree list` shows both; `git worktree remove <path>` detaches one.
+- **A build dir cannot be moved between trees**: `build/CMakeCache.txt` pins
+  `CMAKE_HOME_DIRECTORY` to the tree it was configured in. Configure each tree on its
+  own: `cmake -S . -B build -DGeant4_DIR=$HOME/programs/geant4/install/lib/cmake/Geant4
+  -DROOT_DIR=$HOME/programs/root/build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON`
+  (`cmake --fresh` re-configures from scratch without deleting the directory).
+- `.refs/` is gitignored and machine-specific — re-create the three symlinks
+  (`examples`, `include`, `source`) in any new worktree.
+- **The binary is never taken from `$PATH`** and there is no global install of it.
+  Every driver resolves it from its own location (`slurm/run_*.sh`/`*.sbatch` →
+  `${HERE}/../build/G4DCSmonitor`; `slurm/run_local.sh`, `macros/build_movie*.sh` →
+  `${ROOTDIR}/build/G4DCSmonitor`) and always execs the absolute path;
+  `command -v G4DCSmonitor` is only used to print a warning. To pin a build, export
+  `BIN=/abs/path/G4DCSmonitor`. The SLURM drivers first probe the cluster-only path
+  `/home/turko46/geant4/muon_trigger_test/build/G4DCSmonitor` — it does not exist on
+  the login node (so they fall back to the worktree build), but on the HPC always
+  export `BIN`.
+- Report inputs are **not** in the repo: `slurm/data_*`, `report/refs/*.pdf` and
+  `vrml/` are gitignored. The production trees live in
+  `/home/turko46/bigdata/DCS-Monitor-II/turko46/MuonScinti` (HPC native path:
+  `/bigdata/DCS-Monitor-II/turko46/MuonScinti`); point the report at them with
+  `DATA_ROOT=...` or the positional dirs of `macros/build_report_figures.sh`, or the
+  `MATRIX_DIR`/`WHOLE_DIR`/… overrides of `make -f macros/Makefile.report`.
+- Generated macros bake in absolute `/analysis/setFileName` paths for the tree they
+  were generated in (`macros/muon/scan_c*.mac`, `slurm/muon*/`). After moving or
+  re-creating a tree, regenerate them: `macros/generate_muon_matrix.sh` (writes
+  `macros/muon/` and `data_<VERSION>/matrix/`).
+- The `main` tree is the smaller CASTOR codebase: no `report/`, no `macros/muon/`, no
+  `slurm/` drivers, and its `macros/run.mac` requires **both** `--biasing gamma` on
+  the command line and `/dcs-monitor/det/useBiasing true` in the macro (see
+  *CLI / biasing*).
+
 ## READ-ONLY Geant4 reference tree (`.refs/`) — hard rule
 - **Never modify anything under `.refs/` or the Geant4 install/source trees it points
   at.** It is a read-only reference: read and search only. Use it to look up G4 APIs,
