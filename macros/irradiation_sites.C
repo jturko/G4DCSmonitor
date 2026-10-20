@@ -59,13 +59,13 @@ void irradiation_sites(const char* outdir = "report/figures")
 
     const double span = kHalf + 20.0;
     TH1F* frame = gPad->DrawFrame(-span, -span, span, span,
-                                  "Irradiation sites;x [mm];y [mm]");
+                                  "Irradiation sites;#font[132]{#it{x}} [mm];#font[132]{#it{y}} [mm]");
     frame->GetXaxis()->SetTitleSize(0.045);
     frame->GetYaxis()->SetTitleSize(0.045);
     frame->GetXaxis()->SetLabelSize(0.040);
     frame->GetYaxis()->SetLabelSize(0.040);
-    frame->GetXaxis()->SetTitleOffset(1.05);
-    frame->GetYaxis()->SetTitleOffset(1.05);
+    frame->GetXaxis()->SetTitleOffset(1.30);
+    frame->GetYaxis()->SetTitleOffset(1.45);
 
     TBox* slab = new TBox(-kHalf, -kHalf, kHalf, kHalf);
     slab->SetFillColorAlpha(kAzure - 9, 0.16);
@@ -93,9 +93,14 @@ void irradiation_sites(const char* outdir = "report/figures")
         ++i;
     }
 
-    // Labels, offset inward toward the plate centre so they stay on-axis.
+    // Labels, all sitting *above* the patch top with the same vertical
+    // offsets (12 mm for the coord line, 28 mm for the ROI title) so the
+    // three ROIs read consistently.  ROI 1 sits in the upper half of the
+    // plate (room above); ROI 2 and 3 sit in the lower half but their
+    // labels stay in the band between the patch top (y = -75 mm) and the
+    // y = 0 axis, matching ROI 1's spacing.
     const double lx[3] = {  0.0,   0.0,  95.0};
-    const double ly[3] = { 40.3, -60.0, -60.0};
+    const double ly[3] = { 53.0, -47.0, -47.0};
     const int al[3] = {22, 22, 22};
     for (size_t k = 0; k < sites().size(); ++k) {
         TLatex* t = new TLatex(lx[k], ly[k], sites()[k].label);
@@ -105,14 +110,14 @@ void irradiation_sites(const char* outdir = "report/figures")
         t->Draw("SAME");
     }
 
-    // Coordinates of each patch centre, printed on the patch.  The centre
-    // label is nudged below the ROI-1 title so the two do not touch.
-    const double cx[3] = {0.0, 0.0, 100.0};
-    const double cy[3] = {-16.0, -112.0, -112.0};
+    // Coordinates of each patch centre, printed 12 mm above the patch top
+    // (between the ROI title and the box) for all three sites.
+    const double cx[3] = { 0.0,   0.0, 100.0};
+    const double cy[3] = {37.0, -63.0, -63.0};
     for (size_t k = 0; k < sites().size(); ++k) {
         TLatex* t = new TLatex(cx[k], cy[k],
                                TString::Format("(%.0f, %.0f)", sites()[k].x, sites()[k].y));
-        t->SetTextSize(0.032);
+        t->SetTextSize(0.034);
         t->SetTextAlign(21);
         t->SetTextColor(kBlack);
         t->Draw("SAME");

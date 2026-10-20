@@ -250,7 +250,9 @@ void plot_whole_slab(const char* dir = "slurm/data_output_whole",
         eff->SetDirectory(nullptr);
         eff->Divide(prodMap[r]);
         eff->SetTitle(TString::Format("%s;x [mm];y [mm]", kReflName[r]));
-        eff->GetZaxis()->SetTitle("#varepsilon(x,y) = N_{#font[42]{pe}}/N_{#gamma}");
+        eff->GetZaxis()->SetTitle(
+            "#varepsilon(#font[132]{#it{x}},#font[132]{#it{y}}) = "
+            "#font[132]{#it{N}}_{pe}/#font[132]{#it{N}}_{#gamma}");
         eff->GetZaxis()->SetMaxDigits(3);
         eff->GetXaxis()->SetTitleSize(0.040);
         eff->GetYaxis()->SetTitleSize(0.040);

@@ -75,7 +75,8 @@ by CLYC / plastic detectors. See `README.md` for physics, geometry, and macros.
 Goal: reproduce Rao et al., J. Appl. Phys. 138, 114504 (2025) — polished 250×250×10 mm³
 UPS-92S plate in a black 3D-printed holder, SiPM ASD-NUV4S-P-40 on the side faces.
 Target ordering **none < TiO₂ < Al ≈ glossy**; yield centre > edge > corner (paper target —
-our bare/TiO₂ corner ordering reverses it; see *Beam regions* below).
+the v6 simulation reproduces corner-lowest for bare/Al/glossy but **reverses** it for TiO₂ in
+the four-sided layouts; see *Beam regions* below and report §9.2).
 Work lives in `src/GeometryMuonScint.cc` / `include/GeometryMuonScint.hh`.
 
 **Beam positions (centre/edge/corner)**: the 50×50 mm GPS beam is placed fully *on* the
@@ -208,10 +209,31 @@ below TiO₂ (worst: cfg3 edge −0.97 pe, −4.3σ; cfg3 corner −1.39 pe, −
 edge/corner beams fall on the opposite, un-instrumented side. This is a **simplification**:
 the paper places config 3 on the top `+y` face and config 4 on the left face (*adjacent*, not
 shared), whereas here both are on −X. On ordering, do **not** assume `centre > edge > corner`
-everywhere: the report's own config-1 table (`tab:positions`) reports **corner highest** for
-bare ($2.8\times10^{-4}$) and TiO$_2$ ($1.27\times10^{-2}$), the reverse of the paper's
-corner-lowest rule (Al/glossy are centre-highest as expected). The universal ordering claim is
-therefore unsupported by the report's own numbers.
+everywhere: the report's config-1 table (`tab:positions`, v6) reports **centre highest** for
+bare ($3.868\times10^{-3}$ centre vs $3.254\times10^{-3}$ corner — corner-lowest, as in the
+paper) but **corner highest** for TiO$_2$ ($6.380\times10^{-3}$ centre vs $1.121\times10^{-2}$
+corner) — the reverse of the paper's corner-lowest rule, and the one genuine disagreement with
+Ref. Rao 2025. The mechanism is the *nearest-sensor* rule (below): the diffuse paint is a poor
+light mixer, so the response tracks the distance to the nearest sensor.
+
+**Nearest-sensor rule (the central finding, v6).** The full-plate efficiency field is *not*
+radial: for cfg1 the bare plate maps to a checkerboard whose bright cells are exactly the cells
+containing a SiPM, for cfg2 the four sensor cells read 3.1–3.35e-3 against 1.63–2.08e-3
+elsewhere, and for cfg3 the two sensor cells are bright while the cell *between* them (on the
+instrumented face but not on a sensor) is the darkest of the plate. The organising coordinate
+is the distance from the muon entry point to the nearest collection site
+(`macros/nearest_sensor_collapse.C` → `fig_nearest_sensor.{pdf,png}`, `nearest_sensor.csv`,
+`nearest_sensor_maps.txt`): the specular wrappers are flat (they mix), the diffuse paint and
+the contact-limited bare plate fall away from the sensors (they do not mix). The same rule
+explains the sign flip of the TiO₂ position trend between four-sided and single-sided layouts.
+It is *not* a strict point-by-point law — see the config-3 cell between the sensors.
+
+**Detection-efficiency observable (v6).** `macros/de_threshold.C` computes the paper's
+DE(u_thresh) = Ndet/Nref as P(Σ N_s ≥ N_thr) from the whole-slab per-event totals
+(`fig_de_threshold.{pdf,png}`, `de_threshold.csv`, `de_threshold_window.csv`). The paper's
+statement is threshold-free ("all configs except the bare one reach DE ≥ 80 % at the working
+threshold"), and it is reproduced: a non-empty threshold window exists in configs 1–3
+(57–130, 28–63 and 14–18 pe/event) and is empty for cfg4 (no bare measurement in the paper).
 
 **Diagnostics/output**: `include/OpticalDiagnostics.hh` (thread-local per-event optical
 accounting + per-slab produced/detected + primary-muon first-entry x-y); `opticalStats`
@@ -271,6 +293,32 @@ fibre geometry is pale/dark green and does not satisfy the pure-green mask; a mo
 also invalidates the first-frame `green-delta` baseline). `green-delta` remains for
 static-camera movies.
 
+**Position reconstruction from the SiPM pattern** (report §6, `macros/position_reconstruction.C`):
+can the *relative* charge/timing pattern of the eight config-1 SiPMs localise the muon
+inside the plate? Uses the whole-slab files (`data_v6/whole/muon_whole_out_c1_r{0..3}.root`,
+25 000 events each) with the truth `muonX/muonY` as the label. Per event and SiPM it
+extracts `N`, `tfirst` (earliest photoelectron), `tbar`, `NP3` (prompt fraction, t < 3 ns)
+and `wbar`; features are the 8 pulse-integral shares, the 8 relative arrival times, the 8 prompt
+fractions, or all 24. `N` = `nDetected` = the **total** photoelectrons detected in the channel
+over the event, i.e. the *integral* of the light pulse (× gain) — **not** the pulse-peak
+amplitude; no peak-amplitude observable is used anywhere. Measured prompt (<3 ns) fractions
+of the light: bare 53 %, TiO₂ 34 %, Al/glossy 15–16 %, so a peak-amplitude read-out would
+work with a minority of the photons and be noisier. Two estimators: (a) the analytic
+"opposite-pair" observables
+`A_x = (N_right−N_left)/(N_right+N_left)` and `T_x = <t>_right−<t>_left` whose linear
+response gives noise/slope directly; (b) a k-NN regression (k = 40, standardised features,
+20 000 train / 5 000 held out) — the simulation analogue of a calibration-scan response
+function. **Result:** TiO₂ localises to σ_x ≈ 12.5 mm from the pulse integrals alone (the light
+sharing is first order: `A_x` slope 7.4e-3/mm); glossy/Al have *no* first-order light
+sharing (slope 5e-5/mm) but the arrival-time pattern still gives σ_x ≈ 19 mm (the
+information is strongly non-linear, hence the learned estimator); bare ≈ 22 mm with all
+channels. Figures `fig_recon_{waveforms,observables,features,response,map}.{pdf,png}` +
+CSVs `position_{reconstruction,observables,class_observables}.csv` in `report/figures/`.
+Run it through ACLiC (`.C+`, compute-bound) with `ROOT_INCLUDE_PATH` set; add it to
+`macros/build_report_figures.sh` (already done). Note the ROOT drawing pitfalls hit here:
+`TMarker`/`TLine` `Draw("SAME")` corrupt the pad range (use `TBox`/`TGraph`), and a
+`TH1` drawn with `"BAR"` fills from the frame bottom, so bars must be `TBox`es.
+
 **Movies**: `macros/build_movie.sh` (single pane, Config 1/glossy, blue optical photons) and
 `macros/build_movie_quad.sh` (2×2 Config 1 × reflectors 0–3) are the older modes; both need
 the X11 OpenGL stored viewer (`DISPLAY=:0`, Xwayland auth on this login node). Frames are
@@ -321,9 +369,23 @@ live outside the repo). The v6 report uses `data_v6/{matrix,whole,contact}` plus
 their v5 matrix references (the Al model is unchanged; v6 Al is incomplete). It runs `sipm_layouts.C`, `irradiation_sites.C`,
 `optical_spectra.C`, `report_figures.C`, `pe_spectra_grid.C`, `matrix_positions.C`,
 `contact_scan.C`, `al_backing.C`, `plot_collection_efficiency.C`, `plot_whole_slab.C`
-for cfg 1–4, `whole_slab_uniformity.C`, `whole_yield_table.C`, `persistence_map_grid.C`,
-`wavelength_time_grid.C`, `avg_waveform.C`, copies figures into `report/figures/`, then
-runs `pdflatex` twice.
+for cfg 1–4, `whole_slab_uniformity.C`, `nearest_sensor_collapse.C`, `de_threshold.C`,
+`whole_yield_table.C`, `persistence_map_grid.C`,
+`wavelength_time_grid.C`, `avg_waveform.C`, `position_reconstruction.C+`, copies figures into `report/figures/`, then
+runs `pdflatex` twice. `DATA_ROOT` (default `${ROOTDIR}/slurm`) moves the data root; the
+production tree lives at `/home/turko46/bigdata/DCS-Monitor-II/turko46/MuonScinti`.
+**Report structure (2026-10 rewrite).** `report/matrix_report.tex` is organised around
+questions, not data types: 1 Introduction · 2 The measurement being reproduced (what Rao et
+al. actually measured) · 3 The detector and its optical model · 4 Simulation campaigns and
+surface calibration · 5 Light collection: yield and the wrapper ordering · 6 The uniformity of
+the response over the plate · 7 The spectral and temporal signature of the detected light ·
+8 Position reconstruction from the SiPM pattern · 9 Comparison with the measurement ·
+10 Caveats and open items · 11 Summary · Appendix A (Geant4 optical-physics notes). The
+normalised whole-slab maps (old Figs. 25–28) were cut; `fig_nearest_sensor` and
+`fig_de_threshold` were added. Every bibliography entry was verified against its DOI
+record; the McPeak 2015 author list, the Geant4 PRM version/URL, the Eljen datasheet year
+and the Amcrys datasheet title/URL were corrected.
+
 `macros/persistence_map_grid.C [WHOLE_DIR] [OUTDIR] [REFL]` and
 `macros/wavelength_time_grid.C [WHOLE_DIR] [OUTDIR] [REFL]` (default REFL 3 = glossy) consume
 the per-photoelectron `tDetected`/`wlDetected_nm` vector branches of `sipmHits`: a 2×2 grid
@@ -338,10 +400,12 @@ mean p.e./0.1 ns vs arrival time (left linear, right log) → `fig_avg_waveform.
 histogram/panel title drawn must re-enable `gStyle->SetOptTitle(1)` *after* `style(...)`.
 `whole_slab_uniformity.C` always did; `plot_whole_slab.C` and `plot_collection_efficiency.C`
 (the 2×2 reflector grids) do too now — without it the four panel titles (reflector names)
-vanish. **Report packing:** the four whole-slab maps (`fig:wholeslab`–`fig:wholeslab4`,
-Figs. 20–23) are `0.74\textwidth` and forced two-per-page by a `\clearpage` before/after each
-pair; the four normalised whole-slab uniformity maps (`fig:wholeunifmap`–`fig:wholeunifmap4`,
-Figs. 25–28) are `0.68\textwidth` and pack two/page as consecutive `\begin{figure}`s.
+vanish. **Report packing (as of the 2026-10 restructure):** the report was rewritten around
+questions rather than data types; the four normalised whole-slab uniformity maps
+(`fig:wholeunifmap`–`fig:wholeunifmap4`, old Figs. 25–28) were **cut as redundant** with the
+absolute maps and replaced by `fig_nearest_sensor` (see *Nearest-sensor rule* below). The four
+whole-slab maps (`fig:wholeslab`–`fig:wholeslab4`) are `0.74\textwidth` and now use `[H]`
+with the discussion interleaved, one per page.
 `macros/pe_spectra_grid.C [MATRIX_DIR] [OUTDIR]` draws the Fig. 10 of Rao et al. layout:
 a 3 (region: centre/edge/corner) × 4 (config 1–4) grid in which every cell overlays the four
 reflector treatments, x = photoelectrons/event, y = normalised entries (both log). Zero-p.e.
@@ -370,7 +434,9 @@ cfg4 WLS clamp band marked) and a normalized `epsilon/<epsilon>` map for each cf
 markers overlaid via the same `drawOverlays`; map histograms carry ±18 mm padding bins so
 outboard markers fit). Writes `fig_whole_polar`, `fig_whole_uniformity_map_cfg<C>`,
 `fig_whole_contrast` and `whole_uniformity.csv` into OUTDIR. `kappa_2d` is statistically
-robust (25000 ev; e.g. cfg1 bare ≈9.5) and ranks bare ≫ TiO2 > Al ≳ glossy in every layout.
+robust (25000 ev) and, for the **v6** data, ranks **TiO2 > bare > Al ≳ glossy** in every
+layout (cfg1 bare ≈1.55, cfg3 bare ≈3.82, TiO2 up to ≈8.31). *The ≈9.5 figure quoted in older
+revisions of this file was the v2/v3 full-absorber bare model and no longer applies.*
 `fig_whole_contrast` is the **full-slab analogue of the old 3-patch `fig_uniformity`**: a 2×2
 grid (one panel per layout), each a 4-bin bar chart of `kappa_2d` per reflector, **linear y,
 each panel scaled to its own maximum** (dashed unity line), as in the original
@@ -508,17 +574,20 @@ so do not claim "no overlap".
 `"delta"` fixed-delay profile. This only affects the timing histograms
 (`persistence_map_grid.C` / `wavelength_time_grid.C`), not yields.
 
-**Known caveat (documented, not chased):** cfg4 collects ~67 pe/evt (centre, glossy; the
-post-P1–P6 nominal: analytic + Kuraray L0=1 mm + white clamp + multi-clad + digitized PDE)
-vs cfg3 ~164, i.e. cfg4 < cfg3, whereas paper Fig. 12 shows cfg4 > cfg3. (The old production
+**Known caveat (documented, not chased):** cfg4 collects ~67 pe/evt (whole-plate mean, glossy;
+the post-P1–P6 nominal: analytic + Kuraray L0=1 mm + white clamp + multi-clad + digitized
+PDE) vs cfg3 ~140 pe/evt, i.e. cfg4 < cfg3, whereas paper Fig. 12 shows cfg4 > cfg3. The paper
+quotes ~30 % efficiency for the WLS-converted photons, so a large loss in that path is expected
+and is **not** reproduced; a quantitative light budget has never been made. This is the
+largest open item of the study (report §10). (The old production
 `data_v3` value was 29.0.) The paper itself warns the configs "cannot be directly compared"
 (different SiPM count / gain / input capacitance), and its cfg4 value is a pulse height over a
 2500 mm² fibre-augmented effective area, not raw pe. The geometry is structurally faithful.
 
 **Figures / vis:** collection comes from the `sipmHits` tree
 (`plot_collection_efficiency.C` / `plot_whole_slab.C`). `report_figures.C::fig_wavelength_cfg`
-is a 2×2 per-reflector overlay of cfg1–4: c1–3 ≈ 459–460 nm (blue scintillation), c4
-green-shifted (confirms `G4OpWLS`). Vis `macros/muon_vis_wls.mac` / `muon_vis_wls_closeup.mac`
+is a 2×2 per-reflector overlay of cfg1–4: c1–3 ≈ 457.0–457.4 nm for the v6 data (blue
+scintillation), c4 ≈ 509.5 nm green-shifted (confirms `G4OpWLS`). Vis `macros/muon_vis_wls.mac` / `muon_vis_wls_closeup.mac`
 → `report/figures/muon_event_display_wls.{png,wrl}`; colours = scint light blue, grease
 amber, fibre core/clad pale/dark green, clamp dark grey, SiPM red.
 

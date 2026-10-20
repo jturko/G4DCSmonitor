@@ -7,8 +7,10 @@
 #   macros/build_report_figures.sh [MATRIX_DATA_DIR] [WHOLE_DATA_DIR] \
 #                                  [CONTACT_DATA_DIR] [AL_DATA_DIR]
 #
-# Defaults: slurm/data_v5/{matrix,whole,contact,al}
-# (DATA_VERSION selects the tree; override dirs positionally if needed)
+# Defaults: slurm/data_v6/{matrix,whole,contact} + slurm/data_v5/al
+# (DATA_VERSION selects the tree; override dirs positionally if needed.
+#  DATA_ROOT moves the whole data root, e.g.
+#  DATA_ROOT=/home/turko46/bigdata/DCS-Monitor-II/turko46/MuonScinti)
 # AL_MATRIX_DIR selects the matrix tree used for the Al reference curves; it
 # defaults to the sibling matrix of AL_DATA_DIR so a v5 Al scan stays paired
 # with its v5 matrix references.
@@ -36,8 +38,16 @@
 #   report/figures/fig_persistence_grid.{pdf,png}
 #   report/figures/fig_avg_waveform.{pdf,png}
 #   report/figures/fig_wavelength_time_grid.{pdf,png}
+#   report/figures/fig_recon_{waveforms,observables,features,response,map}.{pdf,png}
+#   report/figures/position_{reconstruction,observables,class_observables}.csv
 #   report/figures/whole_uniformity.csv
 #   report/figures/whole_yield.csv
+#   report/figures/fig_nearest_sensor.{pdf,png}
+#   report/figures/nearest_sensor.csv
+#   report/figures/nearest_sensor_maps.txt
+#   report/figures/fig_de_threshold.{pdf,png}
+#   report/figures/de_threshold.csv
+#   report/figures/de_threshold_window.csv
 #   report/matrix_report.pdf
 # =============================================================================
 set -uo pipefail
@@ -45,12 +55,22 @@ set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOTDIR="$(cd "${HERE}/.." && pwd)"
 ROOT_BIN="${ROOT_BIN:-${HOME}/programs/root/build/bin/root}"
-DATA_VERSION="${DATA_VERSION:-v5}"
-MATRIX_DIR="${1:-${ROOTDIR}/slurm/data_${DATA_VERSION}/matrix}"
-WHOLE_DIR="${2:-${ROOTDIR}/slurm/data_${DATA_VERSION}/whole}"
-CONTACT_DIR="${3:-${ROOTDIR}/slurm/data_${DATA_VERSION}/contact}"
-AL_DIR="${4:-${ROOTDIR}/slurm/data_${DATA_VERSION}/al}"
-AL_MATRIX_DIR="${AL_MATRIX_DIR:-${AL_DIR%/al}/matrix}"
+DATA_VERSION="${DATA_VERSION:-v6}"
+# Root of the data trees; the repo-local slurm/ tree by default, override to
+# point at the shared production root, e.g.
+#   DATA_ROOT=/home/turko46/bigdata/DCS-Monitor-II/turko46/MuonScinti
+DATA_ROOT="${DATA_ROOT:-${ROOTDIR}/slurm}"
+MATRIX_DIR="${1:-${DATA_ROOT}/data_${DATA_VERSION}/matrix}"
+WHOLE_DIR="${2:-${DATA_ROOT}/data_${DATA_VERSION}/whole}"
+CONTACT_DIR="${3:-${DATA_ROOT}/data_${DATA_VERSION}/contact}"
+# The aluminium-backing scan is still taken from the v5 tree: the v6 al run is
+# INCOMPLETE (the c*_air subdirectories hold only 2 of the 3 position files),
+# so v6 cannot be used for this scan.  For the same reason the Al reference
+# curves are taken from the v5 matrix tree, which is the matrix run the v5 al
+# scan was produced with; mixing a v6 matrix with a v5 al scan would compare
+# the two backings against a different set of reference curves.
+AL_DIR="${4:-${DATA_ROOT}/data_v5/al}"
+AL_MATRIX_DIR="${AL_MATRIX_DIR:-${DATA_ROOT}/data_v5/matrix}"
 FIGDIR="${ROOTDIR}/report/figures"
 
 # Figure macros #include "style.h" (shared fonts/ticks + PetroffPalette P6).
@@ -111,6 +131,12 @@ done
 echo "=== whole-slab uniformity (polar + 2-D cell) ==="
 "${ROOT_BIN}" -l -b -q "macros/whole_slab_uniformity.C(\"${WHOLE_DIR}\",\"${FIGDIR}\")"
 
+echo "=== nearest-sensor collapse (efficiency vs. distance to the nearest sensor) ==="
+"${ROOT_BIN}" -l -b -q "macros/nearest_sensor_collapse.C(\"${WHOLE_DIR}\",\"${FIGDIR}\")"
+
+echo "=== detection efficiency vs threshold (paper observable, Eq. 1 of Rao et al.) ==="
+"${ROOT_BIN}" -l -b -q "macros/de_threshold.C(\"${WHOLE_DIR}\",\"${FIGDIR}\")"
+
 echo "=== whole-plate yield table (p.e. per event, config x wrapper) ==="
 "${ROOT_BIN}" -l -b -q "macros/whole_yield_table.C(\"${WHOLE_DIR}\",\"${FIGDIR}\")"
 
@@ -118,6 +144,9 @@ echo "=== arrival-time persistence and wavelength-vs-time (glossy, cfg 1-4) ==="
 "${ROOT_BIN}" -l -b -q "macros/persistence_map_grid.C(\"${WHOLE_DIR}\",\"${FIGDIR}\",3)"
 "${ROOT_BIN}" -l -b -q "macros/wavelength_time_grid.C(\"${WHOLE_DIR}\",\"${FIGDIR}\",3)"
 "${ROOT_BIN}" -l -b -q "macros/avg_waveform.C(\"${WHOLE_DIR}\",\"${FIGDIR}\",3)"
+
+echo "=== position reconstruction from the SiPM pattern (config 1, whole slab) ==="
+"${ROOT_BIN}" -l -b -q "macros/position_reconstruction.C+(\"${WHOLE_DIR}\",\"${FIGDIR}\",25000)"
 
 echo "=== LaTeX (two passes for refs/toc) ==="
 ( cd "${ROOTDIR}/report" && pdflatex -interaction=nonstopmode matrix_report.tex >/dev/null 2>&1 )

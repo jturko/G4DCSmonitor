@@ -74,7 +74,8 @@ const int kBare   = PetroffPalette::getP6(4);   // grey
 // Draw the four-treatment bar chart at one wavelength.
 void drawRbars(const char* name, double lam, const char* note)
 {
-    auto* h = new TH1F(name, ";treatment;reflectivity R", 4, 0., 4.);
+    auto* h = new TH1F(name, ";treatment;reflectivity #font[132]{#it{R}}",
+                       4, 0., 4.);
     h->SetDirectory(0);
     h->SetMinimum(0.85);
     h->SetMaximum(1.02);
@@ -86,9 +87,10 @@ void drawRbars(const char* name, double lam, const char* note)
     h->GetXaxis()->SetBinLabel(2, "TiO_{2}");
     h->GetXaxis()->SetBinLabel(3, "Al");
     h->GetXaxis()->SetBinLabel(4, "glossy");
-    h->GetYaxis()->SetTitleOffset(1.15);
-    h->GetYaxis()->SetTitleSize(0.060); h->GetXaxis()->SetTitleSize(0.055);
-    h->GetYaxis()->SetLabelSize(0.048); h->GetXaxis()->SetLabelSize(0.055);
+    h->GetYaxis()->SetTitleOffset(1.30);
+    h->GetYaxis()->SetTitleSize(0.060); h->GetXaxis()->SetTitleSize(0.060);
+    h->GetYaxis()->SetLabelSize(0.050); h->GetXaxis()->SetLabelSize(0.065);
+    h->GetXaxis()->SetLabelOffset(0.02);
     const int cols[4] = {kBare, kTiO2, kAl, kGlossy};
     for (int i = 0; i < 4; ++i) h->SetFillColor(cols[i]);
     h->SetBarWidth(0.6);
@@ -116,12 +118,14 @@ void reflector_reflectivity(const char* outdir = "report/figures")
 
     // ---- Panel 1: R(lambda) --------------------------------------------
     c->cd(1);
-    gPad->SetLeftMargin(0.13); gPad->SetRightMargin(0.03);
-    gPad->SetBottomMargin(0.16); gPad->SetTopMargin(0.28);
+    gPad->SetLeftMargin(0.18); gPad->SetRightMargin(0.03);
+    gPad->SetBottomMargin(0.20); gPad->SetTopMargin(0.28);
     TH1F* f1 = gPad->DrawFrame(360., 0.88, 650., 1.008,
-                               ";wavelength [nm];reflectivity R");
-    f1->GetYaxis()->SetTitleOffset(1.15);
+                               ";wavelength [nm];reflectivity #font[132]{#it{R}}");
+    f1->GetYaxis()->SetTitleOffset(1.30);
     f1->GetYaxis()->SetTitleSize(0.060); f1->GetXaxis()->SetTitleSize(0.060);
+    f1->GetXaxis()->SetLabelSize(0.050);
+    f1->GetYaxis()->SetLabelSize(0.050);
     TLine* bare = new TLine(360., 1.0, 650., 1.0);
     bare->SetLineColor(kBare); bare->SetLineWidth(2); bare->SetLineStyle(2);
     bare->Draw("SAME");
@@ -131,8 +135,8 @@ void reflector_reflectivity(const char* outdir = "report/figures")
     gT->Draw("LP SAME");
     gA->Draw("LP SAME");
     gG->Draw("LP SAME");
-    auto* l1 = new TLegend(0.03, 0.77, 0.99, 0.995);
-    l1->SetBorderSize(0); l1->SetFillStyle(0); l1->SetTextSize(0.047);
+    auto* l1 = new TLegend(0.03, 0.84, 0.99, 0.99);
+    l1->SetBorderSize(0); l1->SetFillStyle(0); l1->SetTextSize(0.040);
     l1->SetNColumns(2);
     l1->AddEntry(gT,   "TiO_{2} paint", "lp");
     l1->AddEntry(gA,   "aluminium foil", "lp");
@@ -142,14 +146,14 @@ void reflector_reflectivity(const char* outdir = "report/figures")
 
     // ---- Panel 2: R at the 425 nm scintillation peak --------------------
     c->cd(2);
-    gPad->SetLeftMargin(0.13); gPad->SetRightMargin(0.03);
-    gPad->SetBottomMargin(0.16); gPad->SetTopMargin(0.28);
+    gPad->SetLeftMargin(0.18); gPad->SetRightMargin(0.03);
+    gPad->SetBottomMargin(0.20); gPad->SetTopMargin(0.28);
     drawRbars("hR425", 425., "at 425 nm (scintillation)");
 
     // ---- Panel 3: R at the 476 nm WLS emission peak --------------------
     c->cd(3);
-    gPad->SetLeftMargin(0.13); gPad->SetRightMargin(0.03);
-    gPad->SetBottomMargin(0.16); gPad->SetTopMargin(0.28);
+    gPad->SetLeftMargin(0.18); gPad->SetRightMargin(0.03);
+    gPad->SetBottomMargin(0.20); gPad->SetTopMargin(0.28);
     drawRbars("hR476", 476., "at 476 nm (Y-11 emission)");
 
     c->SaveAs(TString::Format("%s/reflector_reflectivity.pdf", outdir));

@@ -117,21 +117,23 @@ void optical_spectra(const char* outdir = "report/figures")
     // ---- Panel 1: spectral shapes (normalised) -------------------------
     c->cd(1);
     gPad->SetLeftMargin(0.13); gPad->SetRightMargin(0.03);
-    gPad->SetBottomMargin(0.16); gPad->SetTopMargin(0.24);
+    gPad->SetBottomMargin(0.16); gPad->SetTopMargin(0.28);
     TH1F* f1 = gPad->DrawFrame(310., 0., 700., 1.15,
                                ";wavelength [nm];normalised amplitude");
     f1->GetYaxis()->SetTitleOffset(1.15);
-    f1->GetYaxis()->SetTitleSize(0.06);  f1->GetXaxis()->SetTitleSize(0.06);
+    f1->GetYaxis()->SetTitleSize(0.060);  f1->GetXaxis()->SetTitleSize(0.060);
+    f1->GetXaxis()->SetLabelSize(0.050);
+    f1->GetYaxis()->SetLabelSize(0.050);
     TGraph* gScintE = makeGraph(scintE, scintEmis, 14, kScint, 20);
     TGraph* gWlsE   = makeGraphLam(lamE, relE, kNE, kWls, 21);
     TGraph* gWlsA   = makeGraphLam(lamA, relA, kNA, kAbs, 22);
     gWlsA->Draw("LP SAME");
     gScintE->Draw("LP SAME");
     gWlsE->Draw("LP SAME");
-    auto* l1 = new TLegend(0.10, 0.74, 0.99, 0.98);
+    auto* l1 = new TLegend(0.10, 0.79, 0.99, 0.985);
     l1->SetBorderSize(0);
     l1->SetFillStyle(0);
-    l1->SetTextSize(0.045);
+    l1->SetTextSize(0.050);
     l1->AddEntry(gScintE, "scintillator emission (PVT)", "lp");
     l1->AddEntry(gWlsA,   "Y-11 absorption (430 nm)", "lp");
     l1->AddEntry(gWlsE,   "Y-11 emission (476 nm)", "lp");
@@ -144,12 +146,17 @@ void optical_spectra(const char* outdir = "report/figures")
     // ---- Panel 2: absorption / attenuation lengths (log) ---------------
     c->cd(2);
     gPad->SetLogy();
-    gPad->SetLeftMargin(0.13); gPad->SetRightMargin(0.03);
-    gPad->SetBottomMargin(0.16); gPad->SetTopMargin(0.24);
+    // Log y-axis labels (10^-1, 10^0, 10^1, ...) are wider than the linear
+    // labels on the other panels; the "attenuation length [m]" title
+    // therefore needs more left margin to clear the labels.
+    gPad->SetLeftMargin(0.20); gPad->SetRightMargin(0.03);
+    gPad->SetBottomMargin(0.16); gPad->SetTopMargin(0.28);
     TH1F* f2 = gPad->DrawFrame(310., 1e-5, 700., 1e7,
                                ";wavelength [nm];attenuation length [m]");
-    f2->GetYaxis()->SetTitleOffset(1.05);
-    f2->GetYaxis()->SetTitleSize(0.06);  f2->GetXaxis()->SetTitleSize(0.06);
+    f2->GetYaxis()->SetTitleOffset(1.15);
+    f2->GetYaxis()->SetTitleSize(0.060);  f2->GetXaxis()->SetTitleSize(0.060);
+    f2->GetXaxis()->SetLabelSize(0.050);
+    f2->GetYaxis()->SetLabelSize(0.050);
     double wlsAbsL[37];
     for (int i = 0; i < 37; ++i)
         wlsAbsL[i] = (relA[i] > 0.) ? (kL0mm * 1e-3 / relA[i]) : 1e6;
@@ -157,10 +164,10 @@ void optical_spectra(const char* outdir = "report/figures")
     TGraph* gWlsAbs   = makeGraphLam(lamA, wlsAbsL, kNA, kWls, 21);
     gScintA->Draw("LP SAME");
     gWlsAbs->Draw("LP SAME");
-    auto* l2 = new TLegend(0.05, 0.78, 0.97, 0.98);
+    auto* l2 = new TLegend(0.05, 0.79, 0.97, 0.98);
     l2->SetBorderSize(0);
     l2->SetFillStyle(0);
-    l2->SetTextSize(0.05);
+    l2->SetTextSize(0.050);
     l2->AddEntry(gScintA, "scint. bulk absorption", "lp");
     l2->AddEntry(gWlsAbs,   "Y-11 WLS absorption", "lp");
     l2->Draw();
@@ -170,17 +177,19 @@ void optical_spectra(const char* outdir = "report/figures")
     // ---- Panel 3: SiPM PDE ---------------------------------------------
     c->cd(3);
     gPad->SetLeftMargin(0.15); gPad->SetRightMargin(0.03);
-    gPad->SetBottomMargin(0.16); gPad->SetTopMargin(0.24);
+    gPad->SetBottomMargin(0.16); gPad->SetTopMargin(0.28);
     TH1F* f3 = gPad->DrawFrame(350., 0., 760., 0.50,
                                ";wavelength [nm];photodetection efficiency");
     f3->GetYaxis()->SetTitleOffset(1.15);
-    f3->GetYaxis()->SetTitleSize(0.06);  f3->GetXaxis()->SetTitleSize(0.06);
+    f3->GetYaxis()->SetTitleSize(0.060);  f3->GetXaxis()->SetTitleSize(0.060);
+    f3->GetXaxis()->SetLabelSize(0.050);
+    f3->GetYaxis()->SetLabelSize(0.050);
     TGraph* gPDE = makeGraph(sipmE, sipmPDE, 25, kSiPM, 20);
     gPDE->Draw("LP SAME");
     auto* l3 = new TLegend(0.20, 0.81, 0.82, 0.96);
     l3->SetBorderSize(0);
     l3->SetFillStyle(0);
-    l3->SetTextSize(0.05);
+    l3->SetTextSize(0.050);
     l3->AddEntry(gPDE, "ASD-NUV4S-P-40", "lp");
     l3->Draw();
     TLine* peak3 = new TLine(410., 0., 410., 0.46);

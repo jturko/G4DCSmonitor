@@ -141,11 +141,16 @@ void avg_waveform(const char* dir = "slurm/data_v2.2/whole",
         gPad->SetBottomMargin(0.15); gPad->SetTopMargin(0.30);
         TH1F* fr = gPad->DrawFrame(
             0., logy ? 1e-4 : 0., 60., logy ? yMax * 2.0 : yMax * 1.1,
-            ";arrival time [ns];mean p.e. / 0.1 ns bin / event");
+            ";arrival time [ns];"
+            "mean p.e. / 0.1 ns bin / event");
         fr->GetYaxis()->SetTitleOffset(1.15);
-        fr->GetYaxis()->SetTitleSize(0.060); fr->GetXaxis()->SetTitleSize(0.060);
-        auto* l = new TLegend(0.03, 0.695, 0.62, 0.995);
-        l->SetBorderSize(0); l->SetFillStyle(0); l->SetTextSize(0.044);
+        fr->GetYaxis()->SetTitleSize(0.050); fr->GetXaxis()->SetTitleSize(0.050);
+        fr->GetXaxis()->SetLabelSize(0.040);
+        fr->GetYaxis()->SetLabelSize(0.040);
+        // Lift the legend bottom above the frame top (frame top sits at
+        // 1 - 0.30 = 0.70; was previously 0.695, kissing the frame).
+        auto* l = new TLegend(0.03, 0.72, 0.62, 0.995);
+        l->SetBorderSize(0); l->SetFillStyle(0); l->SetTextSize(0.040);
         for (int cfg = 1; cfg <= 4; ++cfg) {
             if (!g.count(cfg)) continue;
             g[cfg]->Draw("L SAME");

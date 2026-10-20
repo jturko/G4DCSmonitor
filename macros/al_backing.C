@@ -251,12 +251,18 @@ void al_backing(const char* alDir =
         gPad->SetLeftMargin(0.17);
         gPad->SetRightMargin(0.04);
         gPad->SetBottomMargin(0.16);
-        gPad->SetTopMargin(0.12);
+        gPad->SetTopMargin(0.18);
 
         TH1D* frame = makePosFrame(TString::Format("fr_al_c%d", cfg),
                                    0., cfgMax[cfg] * 1.15);
         frame->SetTitle(TString::Format("Config %d", cfg));
         frame->GetYaxis()->SetTitle("mean photoelectrons / event");
+        frame->GetXaxis()->SetLabelSize(0.044);
+        frame->GetYaxis()->SetLabelSize(0.044);
+        frame->GetXaxis()->SetTitleSize(0.050);
+        frame->GetYaxis()->SetTitleSize(0.050);
+        frame->GetXaxis()->SetTitleOffset(1.15);
+        frame->GetYaxis()->SetTitleOffset(1.35);
         frame->Draw("HIST");
 
         std::vector<double> xg, yg, eg, xa, ya, ea;
@@ -305,10 +311,15 @@ void al_backing(const char* alDir =
         }
 
         if (cfg == 1) {
-            legRef = new TLegend(0.15, 0.42, 0.58, 0.68);
+            // Legend in the top margin.  With top margin = 0.18 the legend at
+            // y = 0.78..0.97 sits above the frame top (~0.82).  Use 4 columns
+            // so the long "TiO2 (matrix r1)" / "glossy (matrix r3)" labels each
+            // get their own column and don't overlap the marker entries.
+            legRef = new TLegend(0.10, 0.78, 0.98, 0.97);
             legRef->SetBorderSize(0);
             legRef->SetFillStyle(0);
-            legRef->SetTextSize(0.042);
+            legRef->SetTextSize(0.034);
+            legRef->SetNColumns(4);
             legRef->AddEntry(gG, "Al grease", "p");
             legRef->AddEntry(gA, "Al air", "p");
             TLine* dT = new TLine();
@@ -330,7 +341,7 @@ void al_backing(const char* alDir =
     gPad->SetLeftMargin(0.17);
     gPad->SetRightMargin(0.04);
     gPad->SetBottomMargin(0.16);
-    gPad->SetTopMargin(0.12);
+    gPad->SetTopMargin(0.30);
 
     double rLo = 1e30, rHi = -1e30;
     for (int cfg = 1; cfg <= 3; ++cfg) {
@@ -347,12 +358,21 @@ void al_backing(const char* alDir =
     TH1D* rframe = makePosFrame("fr_al_ratio", rLo, rHi);
     rframe->SetTitle("Air / grease enhancement");
     rframe->GetYaxis()->SetTitle("air / grease");
+    rframe->GetXaxis()->SetLabelSize(0.044);
+    rframe->GetYaxis()->SetLabelSize(0.044);
+    rframe->GetXaxis()->SetTitleSize(0.050);
+    rframe->GetYaxis()->SetTitleSize(0.050);
+    rframe->GetXaxis()->SetTitleOffset(1.15);
+    rframe->GetYaxis()->SetTitleOffset(1.35);
     rframe->Draw("HIST");
 
-    TLegend* legRatio = new TLegend(0.60, 0.17, 0.95, 0.40);
+    // Move the legend to the top margin (the lower-right of the data area
+    // was overlapping the cfg 1/2/3 markers and their error bars in the
+    // y=2.3..2.6 band).
+    TLegend* legRatio = new TLegend(0.55, 0.83, 0.97, 0.97);
     legRatio->SetBorderSize(0);
     legRatio->SetFillStyle(0);
-    legRatio->SetTextSize(0.042);
+    legRatio->SetTextSize(0.038);
 
     for (int cfg = 1; cfg <= 3; ++cfg) {
         std::vector<double> x, y, ey;

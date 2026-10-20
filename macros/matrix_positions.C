@@ -200,7 +200,7 @@ void matrix_positions(const char* dir = "slurm/data_output",
             gPad->SetLeftMargin(0.20);
             gPad->SetRightMargin(0.04);
             gPad->SetBottomMargin(0.16);
-            gPad->SetTopMargin(0.12);
+            gPad->SetTopMargin(0.20);
             // Log y on every panel: the bare plate collects ~2 orders of
             // magnitude less than the reflective wrappers, so a linear axis
             // would flatten it onto zero and hide it entirely.
@@ -210,16 +210,25 @@ void matrix_positions(const char* dir = "slurm/data_output",
             // can be compared directly.
             TH1D* frame = makePosFrame(TString::Format("fr_layout_%d", cfg), yLo, yHi);
             frame->SetTitle(TString::Format("Config %d", cfg));
-            frame->GetYaxis()->SetTitle("collection efficiency  #varepsilon = N_{#font[42]{pe}}/N_{#gamma}");
+            frame->GetYaxis()->SetTitle(
+                "collection efficiency  #varepsilon = "
+                "#font[132]{#it{N}}_{pe}/#font[132]{#it{N}}_{#gamma}");
+            frame->GetXaxis()->SetLabelSize(0.040);
+            frame->GetYaxis()->SetLabelSize(0.040);
+            frame->GetXaxis()->SetTitleSize(0.045);
+            frame->GetYaxis()->SetTitleSize(0.045);
+            frame->GetXaxis()->SetTitleOffset(1.10);
+            frame->GetYaxis()->SetTitleOffset(1.10);
             frame->Draw("HIST");
 
-            // The legend is identical in every tile, so it is drawn once, in
-            // the config-1 (top-left) tile only, tucked into the bottom-right
-            // corner (below the bare points, which sit near 0.5 of the pad).
-            TLegend* leg = new TLegend(0.62, 0.22, 0.955, 0.43);
+            // Shared legend drawn only on the Config 1 (top-left) tile,
+            // placed in the top-margin strip (above the data) so it never
+            // sits over the plotted curves.  2 columns keep the strip shallow.
+            TLegend* leg = new TLegend(0.20, 0.83, 0.97, 0.985);
             leg->SetBorderSize(0); leg->SetFillStyle(0);
             leg->SetFillColorAlpha(0., 0.);
             leg->SetTextSize(0.040);
+            leg->SetNColumns(4);
             for (int r = 0; r < 4; ++r) {
                 std::vector<double> x, y, ey;
                 for (int p = 0; p < 3; ++p) {
@@ -249,25 +258,32 @@ void matrix_positions(const char* dir = "slurm/data_output",
             gPad->SetLeftMargin(0.20);
             gPad->SetRightMargin(0.04);
             gPad->SetBottomMargin(0.16);
-            gPad->SetTopMargin(0.12);
+            gPad->SetTopMargin(0.20);
             gPad->SetLogy();
 
             // Same shared range as Fig A, so the reflector panels are also
             // directly comparable to the layout panels.
             TH1D* frame = makePosFrame(TString::Format("fr_refl_%d", r), yLo, yHi);
             frame->SetTitle(kReflName[r]);
-            frame->GetYaxis()->SetTitle("collection efficiency  #varepsilon = N_{#font[42]{pe}}/N_{#gamma}");
+            frame->GetYaxis()->SetTitle(
+                "collection efficiency  #varepsilon = "
+                "#font[132]{#it{N}}_{pe}/#font[132]{#it{N}}_{#gamma}");
+            frame->GetXaxis()->SetLabelSize(0.040);
+            frame->GetYaxis()->SetLabelSize(0.040);
+            frame->GetXaxis()->SetTitleSize(0.045);
+            frame->GetYaxis()->SetTitleSize(0.045);
+            frame->GetXaxis()->SetTitleOffset(1.10);
+            frame->GetYaxis()->SetTitleOffset(1.10);
             frame->Draw("HIST");
             gPad->SetLogy();
 
-            // The legend is identical in every tile, so it is drawn once, in
-            // the bare (top-left) tile only.  The lowest curve (config 4 in the
-            // bare tile) sits near 0.47 of the pad, so the lower-right corner is
-            // free and the legend is tucked there.
-            TLegend* leg = new TLegend(0.62, 0.20, 0.955, 0.41);
+            // Shared legend drawn only on the bare (top-left) tile, in the
+            // top-margin strip to avoid covering the lower config 2/3/4 traces.
+            TLegend* leg = new TLegend(0.20, 0.83, 0.97, 0.985);
             leg->SetBorderSize(0); leg->SetFillStyle(0);
             leg->SetFillColorAlpha(0., 0.);
             leg->SetTextSize(0.040);
+            leg->SetNColumns(4);
             const int cfgColor[5] = {0, PetroffPalette::getP6(0), PetroffPalette::getP6(1),
                                      PetroffPalette::getP6(2), PetroffPalette::getP6(3)};
             const int cfgStyle[5] = {0, kSolid, kDashed, kDotted, kDashDotted};
@@ -318,11 +334,14 @@ void matrix_positions(const char* dir = "slurm/data_output",
                 ymax = std::max(ymax, ratio);
             }
             h->SetTitle(TString::Format("Config %d", cfg));
-            h->GetYaxis()->SetTitle("position contrast  #kappa = #varepsilon_{max}/#varepsilon_{min}");
-            h->GetYaxis()->SetTitleSize(0.050);
+            h->GetYaxis()->SetTitle(
+                "position contrast  #kappa = "
+                "#font[132]{#it{#varepsilon}}_{max}/"
+                "#font[132]{#it{#varepsilon}}_{min}");
+            h->GetYaxis()->SetTitleSize(0.045);
             h->GetYaxis()->SetTitleOffset(1.20);
             h->GetYaxis()->SetLabelSize(0.045);
-            h->GetXaxis()->SetLabelSize(0.075);
+            h->GetXaxis()->SetLabelSize(0.065);
             h->GetYaxis()->SetRangeUser(0, std::max(1.2, ymax * 1.18));
             h->SetBarWidth(0.7); h->SetBarOffset(0.15);
             h->SetFillColor(kAzure);

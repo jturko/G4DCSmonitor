@@ -451,15 +451,16 @@ void whole_slab_uniformity(const char* dir = "slurm/data_output_whole",
             TH2D* h = normMap[cfg][r];
             h->SetTitle(TString::Format("Config %d: %s;x [mm];y [mm]",
                                         cfg, kReflName[r]));
-            h->GetZaxis()->SetTitle("#varepsilon / #LT#varepsilon#GT");
-            h->GetZaxis()->SetTitleSize(0.038);
+            h->GetZaxis()->SetTitle(
+                "#varepsilon / #LT#font[132]{#it{#varepsilon}}#GT");
+            h->GetZaxis()->SetTitleSize(0.040);
             h->GetZaxis()->SetTitleOffset(1.35);
             h->GetZaxis()->SetLabelSize(0.034);
             h->GetZaxis()->SetMaxDigits(3);
-            h->GetXaxis()->SetTitleSize(0.040);
-            h->GetYaxis()->SetTitleSize(0.040);
-            h->GetXaxis()->SetLabelSize(0.034);
-            h->GetYaxis()->SetLabelSize(0.034);
+            h->GetXaxis()->SetTitleSize(0.045);
+            h->GetYaxis()->SetTitleSize(0.045);
+            h->GetXaxis()->SetLabelSize(0.038);
+            h->GetYaxis()->SetLabelSize(0.038);
             gPad->SetLogz();
             h->SetMinimum(gzLo); h->SetMaximum(gzHi);
             h->Draw("COLZ");
@@ -497,7 +498,10 @@ void whole_slab_uniformity(const char* dir = "slurm/data_output_whole",
                 ymax = std::max(ymax, R.kappaCell);
             }
             h->SetTitle(TString::Format("Config %d", cfg));
-            h->GetYaxis()->SetTitle("#kappa_{2D} = #varepsilon_{max}/#varepsilon_{min}");
+            h->GetYaxis()->SetTitle(
+                "#font[132]{#it{#kappa}}_{2D} = "
+                "#font[132]{#it{#varepsilon}}_{max}/"
+                "#font[132]{#it{#varepsilon}}_{min}");
             h->GetYaxis()->SetTitleSize(0.050);
             h->GetYaxis()->SetTitleOffset(1.25);
             h->GetYaxis()->SetLabelSize(0.044);
@@ -543,11 +547,13 @@ void whole_slab_uniformity(const char* dir = "slurm/data_output_whole",
                 h->GetXaxis()->SetBinLabel(r + 1, kReflName[r]);
             }
             h->SetTitle(TString::Format("Config %d", cfg));
-            h->GetYaxis()->SetTitle("collection efficiency  #varepsilon = N_{#font[42]{pe}}/N_{#gamma}");
-            h->GetYaxis()->SetTitleSize(0.050);
+            h->GetYaxis()->SetTitle(
+                "collection efficiency  #varepsilon = "
+                "#font[132]{#it{N}}_{pe}/#font[132]{#it{N}}_{#gamma}");
+            h->GetYaxis()->SetTitleSize(0.045);
             h->GetYaxis()->SetTitleOffset(1.55);
             h->GetYaxis()->SetLabelSize(0.045);
-            h->GetXaxis()->SetLabelSize(0.075);   // string bin labels
+            h->GetXaxis()->SetLabelSize(0.065);   // string bin labels
             h->GetYaxis()->SetRangeUser(0, ymaxAll * 1.15);
             h->SetBarWidth(0.7); h->SetBarOffset(0.15);
             h->SetFillColor(kAzure);

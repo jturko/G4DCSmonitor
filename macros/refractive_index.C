@@ -54,10 +54,12 @@ void refractive_index(const char* outdir = "report/figures")
 
     // ---- Panel 1: index ladder of the bulk media -----------------------
     c->cd(1);
-    gPad->SetLeftMargin(0.13); gPad->SetRightMargin(0.03);
-    gPad->SetBottomMargin(0.16); gPad->SetTopMargin(0.28);
+    gPad->SetLeftMargin(0.18); gPad->SetRightMargin(0.03);
+    gPad->SetBottomMargin(0.20); gPad->SetTopMargin(0.28);
 
-    auto* h = new TH1F("hNidx", ";medium;refractive index n", 6, 0., 6.);
+    auto* h = new TH1F("hNidx",
+                       ";medium;refractive index #font[132]{#it{n}}",
+                       6, 0., 6.);
     h->SetDirectory(0);
     h->SetMinimum(1.40);
     h->SetMaximum(1.62);
@@ -73,9 +75,10 @@ void refractive_index(const char* outdir = "report/figures")
     h->GetXaxis()->SetBinLabel(4, "#splitline{PMMA}{clad}");
     h->GetXaxis()->SetBinLabel(5, "grease");
     h->GetXaxis()->SetBinLabel(6, "#splitline{FP}{sheath}");
-    h->GetYaxis()->SetTitleOffset(1.15);
-    h->GetYaxis()->SetTitleSize(0.060); h->GetXaxis()->SetTitleSize(0.055);
-    h->GetYaxis()->SetLabelSize(0.048); h->GetXaxis()->SetLabelSize(0.045);
+    h->GetYaxis()->SetTitleOffset(1.30);
+    h->GetYaxis()->SetTitleSize(0.060); h->GetXaxis()->SetTitleSize(0.060);
+    h->GetYaxis()->SetLabelSize(0.050); h->GetXaxis()->SetLabelSize(0.055);
+    h->GetXaxis()->SetLabelOffset(0.02);
     const int cols[6] = {kCore, kScint, kClamp, kPMMA, kGrease, kSheath};
     for (int i = 0; i < 6; ++i) h->SetFillColor(cols[i]);
     h->SetBarWidth(0.7);
@@ -93,12 +96,14 @@ void refractive_index(const char* outdir = "report/figures")
 
     // ---- Panel 2: multi-clad fibre radial index profile ----------------
     c->cd(2);
-    gPad->SetLeftMargin(0.13); gPad->SetRightMargin(0.03);
-    gPad->SetBottomMargin(0.16); gPad->SetTopMargin(0.28);
+    gPad->SetLeftMargin(0.18); gPad->SetRightMargin(0.03);
+    gPad->SetBottomMargin(0.20); gPad->SetTopMargin(0.28);
     TH1F* f2 = gPad->DrawFrame(0., 0.95, 0.62, 1.65,
-                               ";radial position [mm];refractive index n");
-    f2->GetYaxis()->SetTitleOffset(1.15);
+                               ";radial position [mm];refractive index #font[132]{#it{n}}");
+    f2->GetYaxis()->SetTitleOffset(1.30);
     f2->GetYaxis()->SetTitleSize(0.060); f2->GetXaxis()->SetTitleSize(0.060);
+    f2->GetXaxis()->SetLabelSize(0.050);
+    f2->GetYaxis()->SetLabelSize(0.050);
 
     struct Layer { double x0, x1, n; int color; const char* name; };
     const Layer layers[] = {
@@ -108,7 +113,7 @@ void refractive_index(const char* outdir = "report/figures")
         {0.50, 0.55, 1.0003, kAir,    "air annulus  n = 1.0003"},
         {0.55, 0.62, 1.5500, kClamp,  "clamp  n = 1.55"},
     };
-    auto* l2 = new TLegend(0.03, 0.73, 0.99, 0.995);
+    auto* l2 = new TLegend(0.03, 0.84, 0.97, 0.99);
     l2->SetBorderSize(0); l2->SetFillStyle(0); l2->SetTextSize(0.040);
     l2->SetNColumns(2);
     for (const auto& L : layers) {
@@ -129,8 +134,8 @@ void refractive_index(const char* outdir = "report/figures")
 
     // ---- Panel 3: TIR critical angles implied by the index stair --------
     c->cd(3);
-    gPad->SetLeftMargin(0.13); gPad->SetRightMargin(0.03);
-    gPad->SetBottomMargin(0.16); gPad->SetTopMargin(0.28);
+    gPad->SetLeftMargin(0.18); gPad->SetRightMargin(0.03);
+    gPad->SetBottomMargin(0.20); gPad->SetTopMargin(0.28);
 
     const double nPair[5][2] = {
         {1.59,   1.49  },   // core -> PMMA clad
@@ -139,7 +144,8 @@ void refractive_index(const char* outdir = "report/figures")
         {1.58,   1.0003},   // scintillator -> air
         {1.58,   1.46  },   // scintillator -> grease
     };
-    auto* hc = new TH1F("hThetaC", ";interface;critical angle #theta_{c} [deg]",
+    auto* hc = new TH1F("hThetaC",
+                        ";interface;critical angle #theta_{c} [deg]",
                         5, 0., 5.);
     hc->SetDirectory(0);
     hc->SetMinimum(0.);
@@ -151,9 +157,10 @@ void refractive_index(const char* outdir = "report/figures")
     hc->GetXaxis()->SetBinLabel(3, "#splitline{FP#rightarrow}{air}");
     hc->GetXaxis()->SetBinLabel(4, "#splitline{scint#rightarrow}{air}");
     hc->GetXaxis()->SetBinLabel(5, "#splitline{scint#rightarrow}{grease}");
-    hc->GetYaxis()->SetTitleOffset(1.15);
-    hc->GetYaxis()->SetTitleSize(0.060); hc->GetXaxis()->SetTitleSize(0.050);
-    hc->GetYaxis()->SetLabelSize(0.048); hc->GetXaxis()->SetLabelSize(0.043);
+    hc->GetYaxis()->SetTitleOffset(1.30);
+    hc->GetYaxis()->SetTitleSize(0.060); hc->GetXaxis()->SetTitleSize(0.060);
+    hc->GetYaxis()->SetLabelSize(0.050); hc->GetXaxis()->SetLabelSize(0.055);
+    hc->GetXaxis()->SetLabelOffset(0.02);
     hc->SetFillColor(PetroffPalette::getP6(3));
     hc->SetBarWidth(0.6);
     hc->SetBarOffset(0.2);

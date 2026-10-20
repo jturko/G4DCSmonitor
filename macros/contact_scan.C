@@ -37,10 +37,13 @@
 #include <TFile.h>
 #include <TGraphErrors.h>
 #include <TH1D.h>
+#include <TBox.h>
 #include <TLatex.h>
 #include <TLegend.h>
 #include <TLine.h>
 #include <TList.h>
+#include <TMarker.h>
+#include <TPaveText.h>
 #include <TStyle.h>
 #include <TSystem.h>
 #include <TSystemDirectory.h>
@@ -456,15 +459,15 @@ void contact_scan(
     const double xlo = 0.;
     const double xhi = (fmax > 0.) ? fmax * 1.06 : 0.032;
 
-    TCanvas* c = new TCanvas("c_contact_scan", "contact scan", 1150, 950);
+    TCanvas* c = new TCanvas("c_contact_scan", "contact scan", 1200, 1200);
     c->Divide(2, 2, 0.006, 0.006);
 
     for (int cfg = 1; cfg <= kNCfg; ++cfg) {
         c->cd(cfg);
-        gPad->SetLeftMargin(0.17);
+        gPad->SetLeftMargin(0.18);
         gPad->SetRightMargin(0.04);
-        gPad->SetBottomMargin(0.16);
-        gPad->SetTopMargin(0.12);
+        gPad->SetBottomMargin(0.14);
+        gPad->SetTopMargin(0.24);
 
         double ymax = 0.;
         for (const auto& f : res[cfg])
@@ -478,26 +481,35 @@ void contact_scan(
         ymax *= 1.18;
 
         TH1D* frame = new TH1D(TString::Format("fr_cfg%d", cfg),
-                               TString::Format("Config %d", cfg), 1, xlo, xhi);
+                               TString::Format("Config %d;#font[132]{#it{f}};mean p.e. / event"),
+                               1, xlo, xhi);
+        frame->SetTitle("");
         frame->SetMinimum(0.);
         frame->SetMaximum(ymax);
-        frame->GetXaxis()->SetTitle("contact fraction f");
+        frame->GetXaxis()->SetTitle("contact fraction #font[132]{#it{f}}");
         frame->GetYaxis()->SetTitle("mean p.e. / event");
-        frame->GetXaxis()->SetTitleSize(0.048);
-        frame->GetYaxis()->SetTitleSize(0.048);
-        frame->GetXaxis()->SetLabelSize(0.044);
-        frame->GetYaxis()->SetLabelSize(0.044);
-        frame->GetXaxis()->SetTitleOffset(1.15);
-        frame->GetYaxis()->SetTitleOffset(1.35);
+        frame->GetXaxis()->SetTitleSize(0.060);
+        frame->GetYaxis()->SetTitleSize(0.060);
+        frame->GetXaxis()->SetLabelSize(0.050);
+        frame->GetYaxis()->SetLabelSize(0.050);
+        frame->GetXaxis()->SetTitleOffset(1.10);
+        frame->GetYaxis()->SetTitleOffset(1.45);
         frame->Draw("HIST");
 
-        TLegend* leg = new TLegend(0.53, 0.60, 0.965, 0.86);
-        leg->SetNColumns(2);
-        leg->SetFillStyle(1001);
-        leg->SetFillColor(kWhite);
-        leg->SetTextSize(0.033);
+        // Three-column, two-row legend: position curves on the top row,
+        // TiO2 reference lines on the bottom row.  NDC y = 0.90-0.99 sits
+        // entirely inside the top margin (top margin = 0.28 -> plot top
+        // at y = 0.72), with clear separation from both the panel title
+        // (above) and the plot frame (below).
+        TLegend* leg = new TLegend(0.14, 0.90, 0.97, 0.99);
+        leg->SetNColumns(3);
+        leg->SetFillStyle(0);
+        leg->SetBorderSize(0);
+        leg->SetTextSize(0.040);
 
         std::vector<TGraphErrors*> graphs(3, nullptr);
+        // First pass: draw all position curves and add their legend
+        // entries (centre, edge, corner in left-to-right column order).
         for (int p = 0; p < 3; ++p) {
             std::vector<double> x, y, ey;
             for (const auto& f : res[cfg]) {
@@ -520,46 +532,91 @@ void contact_scan(
             g->Draw("PL SAME");
             graphs[p] = g;
 
-            if (tio2[cfg][p].ok) {
-                TLine* line = new TLine(xlo, tio2[cfg][p].mean, xhi,
-                                        tio2[cfg][p].mean);
-                line->SetLineColor(posColor[p]);
-                line->SetLineStyle(kDashed);
-                line->SetLineWidth(2);
-                line->Draw("SAME");
-            }
-
             leg->AddEntry(g, kPosName[p], "lp");
         }
+        // Second pass: draw all TiO2 reference lines and add their
+        // legend entries (TiO2 centre, TiO2 edge, TiO2 corner) so
+        // each column has the solid curve on top and the dashed
+        // reference below.
         for (int p = 0; p < 3; ++p) {
-            if (!graphs[p] || !tio2[cfg][p].ok) continue;
+            if (!tio2[cfg][p].ok) continue;
+            TLine* line = new TLine(xlo, tio2[cfg][p].mean, xhi,
+                                    tio2[cfg][p].mean);
+            line->SetLineColor(posColor[p]);
+            line->SetLineStyle(kDashed);
+            line->SetLineWidth(2);
+            line->Draw("SAME");
+
             TLine* dummy = new TLine();
             dummy->SetLineColor(posColor[p]);
             dummy->SetLineStyle(kDashed);
             dummy->SetLineWidth(2);
-            leg->AddEntry(dummy, TString::Format("TiO_{2} %s", kPosName[p]),
+            leg->AddEntry(dummy,
+                          TString::Format("TiO_{2} %s", kPosName[p]),
                           "l");
         }
         leg->Draw();
 
-        TLatex* tex = new TLatex();
-        tex->SetNDC();
-        tex->SetTextSize(0.032);
-        tex->SetTextAlign(11);
+        // Crossing markers: a full diamond at the interpolated point
+        // where the bare curve meets the TiO2 reference, in the colour
+        // of that curve.  Drawn only when the interpolation bracketed
+        // the reference inside the scanned range.
         for (int p = 0; p < 3; ++p) {
-            tex->DrawLatex(0.20, 0.30 - 0.05 * p,
-                           TString::Format("f_{cross} %s = %s", kPosName[p],
-                                           crossingLabel(crossings[cfg][p],
-                                                         fmax).c_str()));
+            const Crossing& cr = crossings[cfg][p];
+            if (!cr.found || !tio2[cfg][p].ok) continue;
+            TMarker* mk = new TMarker(cr.f, tio2[cfg][p].mean,
+                                      kFullDiamond);
+            mk->SetMarkerStyle(kFullDiamond);
+            mk->SetMarkerSize(1.5);
+            mk->SetMarkerColor(posColor[p]);
+            mk->Draw("SAME");
+        }
+
+        // Panel title centered between the legend (bottom edge y = 0.90)
+        // and the plot frame (top y = 0.76).
+        TLatex* title = new TLatex(0.5, 0.84, TString::Format("Config %d", cfg));
+        title->SetNDC();
+        title->SetTextAlign(23);
+        title->SetTextSize(0.060);
+        title->Draw();
+
+        // f_cross block inside the plot area, in the empty upper-right
+        // corner: the bare curves fall monotonically with f, so the top
+        // right of every panel is free (in cfg 1 the highest obstruction
+        // there is the corner TiO2 line, at 0.61 of the frame height).
+        // Right-aligned at the right frame edge, one line per position,
+        // each value in the colour of its curve.
+        const double frameTop = 1. - gPad->GetTopMargin();
+        const double blockTop = frameTop - 0.020;   // NDC, just below the frame
+        const double pitch = 0.050;                 // NDC line pitch
+        const double xRight = 0.92;                 // inside the right frame
+
+        TLatex* head = new TLatex();
+        head->SetNDC();
+        head->SetTextSize(0.044);
+        head->SetTextAlign(33);   // right-top
+        head->SetTextColor(kBlack);
+        head->DrawLatex(xRight, blockTop, "#font[132]{#it{f}}_{cross}:");
+
+        for (int p = 0; p < 3; ++p) {
+            TLatex* t = new TLatex();
+            t->SetNDC();
+            t->SetTextSize(0.044);
+            t->SetTextAlign(33);   // right-top
+            t->SetTextColor(posColor[p]);
+            t->DrawLatex(xRight, blockTop - (p + 1) * pitch,
+                         TString::Format("%s %s", kPosName[p],
+                                         crossingLabel(crossings[cfg][p],
+                                                       fmax).c_str()));
         }
     }
 
     // Panel 4: relative yield Y(f)/Y(0) at centre, all configs.
     c->cd(4);
-    gPad->SetLeftMargin(0.17);
+    gPad->SetLeftMargin(0.18);
     gPad->SetRightMargin(0.04);
-    gPad->SetBottomMargin(0.16);
-    gPad->SetTopMargin(0.12);
+    gPad->SetBottomMargin(0.14);
+    gPad->SetTopMargin(0.24);
 
     double rmax = 1.;
     for (int cfg = 1; cfg <= kNCfg; ++cfg)
@@ -569,18 +626,21 @@ void contact_scan(
                 rmax = std::max(rmax, r.ratio + r.ratioSem);
         }
 
-    TH1D* frame4 = new TH1D("fr_relative", "Relative yield at centre", 1,
-                            xlo, xhi);
+    TH1D* frame4 = new TH1D("fr_relative",
+                            "Relative yield at centre;#font[132]{#it{f}};Y(#font[132]{#it{f}})/Y(0)",
+                            1, xlo, xhi);
+    frame4->SetTitle("");
+    const double ymax4 = std::max(1.10, rmax * 1.12);
     frame4->SetMinimum(0.);
-    frame4->SetMaximum(std::max(1.10, rmax * 1.12));
-    frame4->GetXaxis()->SetTitle("contact fraction f");
-    frame4->GetYaxis()->SetTitle("Y(f) / Y(0)");
-    frame4->GetXaxis()->SetTitleSize(0.048);
-    frame4->GetYaxis()->SetTitleSize(0.048);
-    frame4->GetXaxis()->SetLabelSize(0.044);
-    frame4->GetYaxis()->SetLabelSize(0.044);
-    frame4->GetXaxis()->SetTitleOffset(1.15);
-    frame4->GetYaxis()->SetTitleOffset(1.35);
+    frame4->SetMaximum(ymax4);
+    frame4->GetXaxis()->SetTitle("contact fraction #font[132]{#it{f}}");
+    frame4->GetYaxis()->SetTitle("#font[132]{#it{Y}}(#font[132]{#it{f}})/#font[132]{#it{Y}}(0)");
+    frame4->GetXaxis()->SetTitleSize(0.060);
+    frame4->GetYaxis()->SetTitleSize(0.060);
+    frame4->GetXaxis()->SetLabelSize(0.050);
+    frame4->GetYaxis()->SetLabelSize(0.050);
+    frame4->GetXaxis()->SetTitleOffset(1.10);
+    frame4->GetYaxis()->SetTitleOffset(1.45);
     frame4->Draw("HIST");
 
     TLine* unity = new TLine(xlo, 1., xhi, 1.);
@@ -589,11 +649,13 @@ void contact_scan(
     unity->SetLineWidth(1);
     unity->Draw("SAME");
 
-    TLegend* leg4 = new TLegend(0.50, 0.67, 0.965, 0.86);
+    // Two-row, two-column legend in the top margin (NDC y = 0.90-0.99),
+    // entirely above the plot area (plot top at y = 0.72).
+    TLegend* leg4 = new TLegend(0.14, 0.90, 0.97, 0.99);
     leg4->SetNColumns(2);
-    leg4->SetFillStyle(1001);
-    leg4->SetFillColor(kWhite);
-    leg4->SetTextSize(0.033);
+    leg4->SetFillStyle(0);
+    leg4->SetBorderSize(0);
+    leg4->SetTextSize(0.040);
     leg4->AddEntry(unity, "unity", "l");
 
     for (int cfg = 1; cfg <= kNCfg; ++cfg) {
@@ -620,17 +682,44 @@ void contact_scan(
     }
     leg4->Draw();
 
-    TLatex* tex4 = new TLatex();
-    tex4->SetNDC();
-    tex4->SetTextSize(0.032);
-    tex4->SetTextAlign(11);
-    tex4->DrawLatex(0.20, 0.25, "centre f_{cross}");
-    tex4->DrawLatex(0.20, 0.20,
-                    TString::Format(
-                        "cfg1 %s   cfg2 %s   cfg3 %s",
-                        crossingLabel(crossings[1][0], fmax).c_str(),
-                        crossingLabel(crossings[2][0], fmax).c_str(),
-                        crossingLabel(crossings[3][0], fmax).c_str()));
+    // Panel title centered between the legend (bottom edge y = 0.90)
+    // and the plot frame (top y = 0.76).
+    TLatex* title4 = new TLatex(0.5, 0.84, "Relative yield at centre");
+    title4->SetNDC();
+    title4->SetTextAlign(23);
+    title4->SetTextSize(0.060);
+    title4->Draw();
+
+    // Centre f_cross summary inside the plot area.  This panel is capped
+    // by the unity line instead of by falling curves, so the block goes
+    // into the empty wedge between that line and the curves, right side.
+    const double frameTop4 = 1. - gPad->GetTopMargin();
+    const double frameBot4 = gPad->GetBottomMargin();
+    const double unityNdc = frameBot4 +
+                            (1. / ymax4) * (frameTop4 - frameBot4);
+    const double blockTop4 = unityNdc - 0.085;   // NDC, clear of the line
+    const double pitch4 = 0.050;
+    const double xRight4 = 0.92;
+
+    TLatex* head4 = new TLatex();
+    head4->SetNDC();
+    head4->SetTextSize(0.044);
+    head4->SetTextAlign(33);   // right-top
+    head4->SetTextColor(kBlack);
+    head4->DrawLatex(xRight4, blockTop4,
+                     "#font[132]{#it{f}}_{cross} (centre):");
+
+    for (int cfg = 1; cfg <= kNCfg; ++cfg) {
+        TLatex* t4 = new TLatex();
+        t4->SetNDC();
+        t4->SetTextSize(0.044);
+        t4->SetTextAlign(33);   // right-top
+        t4->SetTextColor(cfgColor[cfg - 1]);
+        t4->DrawLatex(xRight4, blockTop4 - cfg * pitch4,
+                      TString::Format("cfg%d %s", cfg,
+                                      crossingLabel(crossings[cfg][0],
+                                                    fmax).c_str()));
+    }
 
     for (const char* ext : {"pdf", "png"}) {
         const TString out = TString::Format("%s/contact_scan.%s", outdir, ext);

@@ -349,10 +349,12 @@ void pe_spectra_grid(const char* dir = "slurm/data_v2.2/matrix",
 
                 // shared legend in the top-right cell (pad coords == frame)
                 if (l == 0 && cc == 3) {
-                    TLegend* leg = new TLegend(0.574, 0.49, 1.064, 0.89);
+                    // Clamp x2 to stay inside the pad (x2 > 1 puts the right
+                    // edge outside the pad and flush with the canvas border).
+                    TLegend* leg = new TLegend(0.574, 0.55, 0.985, 0.89);
                     leg->SetBorderSize(0);
                     leg->SetFillStyle(0);
-                    leg->SetTextSize(0.058);
+                    leg->SetTextSize(0.040);
                     for (int r = 0; r < 4; ++r)
                         leg->AddEntry(M[cfg][l][r], kReflName[r], "l");
                     leg->Draw();

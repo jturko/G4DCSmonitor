@@ -151,9 +151,13 @@ void report_figures(const char* dir = "slurm/data_output",
                          bool trimX, bool logX = false, bool logY = false,
                          double xTitleSize = 0.050,
                          double xLabelSize = 0.048, double xTitleOffset = 1.25,
-                         double xLabelOffset = 0.008) {
+                         double xLabelOffset = 0.008,
+                         bool legendTop = false) {
         TCanvas* c = new TCanvas("c_tmp", "", 760, 560);
         c->SetLeftMargin(0.14);
+        // Reserve the top strip for the legend when requested.  The default
+        // (0.13) keeps the lower-right in-pad legend used by fig_yield.
+        c->SetTopMargin(legendTop ? 0.24 : 0.13);
         c->SetBottomMargin(0.13);
         if (logX) c->SetLogx();
         if (logY) c->SetLogy();
@@ -208,18 +212,24 @@ void report_figures(const char* dir = "slurm/data_output",
             int b1 = h->GetXaxis()->GetLast();
             for (int b = b0; b <= b1; ++b) ymax = std::max(ymax, h->GetBinContent(b));
         }
-        if (ymax > 0) ymax *= 1.35;            // headroom for the legend
+        if (ymax > 0 && !legendTop) ymax *= 1.35;   // headroom for the in-pad legend
+        if (ymax > 0 &&  legendTop) ymax *= 1.10;   // legend moved out, less headroom needed
 
-        // Legend tucked into the lower-right corner, clear of the top of the
-        // pad axis box (the pad frame top sits at NDC y ~0.90) and of the
-        // distribution tails that rise there.  legBottom lifts the bottom edge
-        // so the entries do not intrude into the curves (used for the detected
-        // spectra, whose broad tails reach up into the legend region).
-        TLegend* leg = new TLegend(0.60, 0.56, 0.89, 0.81);
+        // Legend placement: either in the top-margin strip (transparent) when
+        // the in-pad curves would clash, or the original lower-right corner.
+        TLegend* leg = nullptr;
+        if (legendTop) {
+            // 2-column, top strip: spans the full width of the pad.
+            leg = new TLegend(0.14, 0.82, 0.97, 0.985);
+            leg->SetNColumns(4);
+        } else {
+            leg = new TLegend(0.60, 0.56, 0.89, 0.81);
+        }
         leg->SetBorderSize(0);
         leg->SetFillStyle(0);          // transparent (draw no fill)
         leg->SetFillColorAlpha(0, 0.);
-        
+        leg->SetTextSize(0.038);
+
         for (int r = 0; r < 4; ++r) {
             TH1D* h = hs[r];
             h->SetLineColor(kColor[r]); h->SetLineStyle(kStyle[r]); h->SetLineWidth(2);
@@ -255,12 +265,14 @@ void report_figures(const char* dir = "slurm/data_output",
         for (auto ex : exts)
             c->SaveAs(TString::Format("%s/%s.%s", outdir, name, ex));
     };
-    stackDraw(hProduced, "probability density [1/(event #gamma)]",
+    stackDraw(hProduced,
+              "probability density [1/(event #font[132]{#it{N}}_{#gamma})]",
               "produced photons / event", "fig_yield", true, true, true, true,
-              0.050, 0.048, 1.35, 0.006);
-    stackDraw(hDetected, "probability density [1/(event p.e.)]",
+              0.050, 0.045, 1.25, 0.006, /*legendTop=*/true);
+    stackDraw(hDetected,
+              "probability density [1/(event p.e.)]",
               "photoelectrons / event", "fig_detected", true, true, true, true,
-              0.050, 0.048, 1.35, 0.006);
+              0.050, 0.045, 1.25, 0.006, /*legendTop=*/true);
     {
         std::map<int, TH1D*> hWave1;
         for (int r = 0; r < 4; ++r) hWave1[r] = hWave[waveKey(1, r)];
@@ -296,9 +308,10 @@ void report_figures(const char* dir = "slurm/data_output",
             }
             if (ymax > 0) ymax *= 1.30;
             // Only the bottom-right panel (r == 3) carries the legend; it is
-            // pushed down and right so it clears the top of the axis box.
+            // pushed to the right so it sits in the high-wavelength blank area
+            // (above ~550 nm) and clear of the WLS config-4 peak at ~510 nm.
             TLegend* leg = (r == 3)
-                ? new TLegend(0.55, 0.50, 0.89, 0.81) : nullptr;
+                ? new TLegend(0.70, 0.45, 0.97, 0.78) : nullptr;
             if (leg) {
                 leg->SetBorderSize(0);
                 leg->SetFillStyle(0);
@@ -313,15 +326,15 @@ void report_figures(const char* dir = "slurm/data_output",
                 h->SetTitle(kReflName[r]);
                 h->GetXaxis()->SetTitle("detected photon wavelength [nm]");
                 h->GetYaxis()->SetTitle("photoelectrons / nm");
-                h->GetXaxis()->SetTitleSize(0.048);
-                h->GetYaxis()->SetTitleSize(0.048);
-                h->GetXaxis()->SetLabelSize(0.042);
-                h->GetYaxis()->SetLabelSize(0.042);
+                h->GetXaxis()->SetTitleSize(0.050);
+                h->GetYaxis()->SetTitleSize(0.050);
+                h->GetXaxis()->SetLabelSize(0.040);
+                h->GetYaxis()->SetLabelSize(0.040);
                 h->GetYaxis()->SetTitleOffset(1.25);
                 h->GetYaxis()->SetRangeUser(0, ymax);
                 if (cfg == 1) h->Draw("HIST");
                 else          h->Draw("HIST SAME");
-                if (leg) leg->AddEntry(h, TString::Format("config %d", cfg), "l");
+                if (leg) leg->AddEntry(h, TString::Format("cfg %d", cfg), "l");
             }
             if (leg) leg->Draw();
         }

@@ -86,6 +86,8 @@ void panel(int cfg, const char* title)
     frame->GetYaxis()->SetLabelSize(0.040);
     frame->GetXaxis()->SetTitleOffset(1.05);
     frame->GetYaxis()->SetTitleOffset(1.05);
+    gStyle->SetTitleFontSize(0.045);
+    gStyle->SetTitleSize(0.045, "t");
     TBox* slab = new TBox(-kHalf, -kHalf, kHalf, kHalf);
     slab->SetFillColorAlpha(kAzure - 9, 0.16);
     slab->SetLineColor(kGray + 2);
@@ -133,7 +135,7 @@ void panel(int cfg, const char* title)
             if (std::fabs(std::fabs(t.y) - kHalf) < 1e-6) ay -= (t.y > 0 ? off : -off);
             TLatex* tx = new TLatex(ax, ay, lab);
             tx->SetTextAlign(22);      // centred
-            tx->SetTextSize(0.05);
+            tx->SetTextSize(0.040);
             tx->SetTextColor(kBlack);
             tx->Draw("SAME");
         }

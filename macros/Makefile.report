@@ -1,0 +1,237 @@
+# Makefile for matrix_report.pdf
+#
+# Regenerates every figure used by report/matrix_report.tex from the
+# simulation outputs and runs pdflatex twice (for refs/toc).
+#
+# Data directories default to the v6 release; override on the command line:
+#
+#   make -f macros/Makefile.report MATRIX_DIR=/path/to/matrix \
+#        WHOLE_DIR=/path/to/whole CONTACT_DIR=/path/to/contact \
+#        AL_DIR=/path/to/al
+#
+# Targets:
+#   all        - report/matrix_report.pdf (default)
+#   figures    - every figure in report/figures/, no LaTeX pass
+#   <group>    - one figure group (sipm-layouts, optical-spectra, ...)
+#   pdf        - just the LaTeX pass (assumes figures exist)
+#   clean      - remove generated figures, aux files, and the PDF
+#   clean-figs - figures only
+#
+# ROOT binary: override with ROOT=/abs/path/to/root.
+# style.h:    override with STYLE_DIR=/abs/path (must contain style.h).
+
+# ----- paths (override on the command line) -------------------------------
+MATRIX_DIR     ?= /home/turko46/bigdata/DCS-Monitor-II/turko46/MuonScinti/data_v6/matrix
+WHOLE_DIR      ?= /home/turko46/bigdata/DCS-Monitor-II/turko46/MuonScinti/data_v6/whole
+CONTACT_DIR    ?= /home/turko46/bigdata/DCS-Monitor-II/turko46/MuonScinti/data_v6/contact
+AL_DIR         ?= /home/turko46/bigdata/DCS-Monitor-II/turko46/MuonScinti/data_v5/al
+# v5 Al matrix is reused for v6 (Al model unchanged; v6 Al is incomplete).
+AL_MATRIX_DIR  ?= /home/turko46/bigdata/DCS-Monitor-II/turko46/MuonScinti/data_v5/matrix
+
+ROOT           ?= $(HOME)/programs/root/build/bin/root
+STYLE_DIR      ?= $(HOME)/root-work
+FIGDIR         ?= report/figures
+REPORT_DIR     ?= report
+REPORT_TEX     ?= $(REPORT_DIR)/matrix_report.tex
+REPORT_PDF     ?= $(REPORT_DIR)/matrix_report.pdf
+MACROS         := macros
+
+# ROOT needs style.h on the include path so the figure macros can
+# `#include "style.h"`.  ACLiC-compiled macros (those invoked with a `+`)
+# also need it.
+export ROOT_INCLUDE_PATH := $(STYLE_DIR):$(ROOT_INCLUDE_PATH)
+
+ROOT_RUN = $(ROOT) -l -b -q
+ROOT_ACLIC = $(ROOT) -l -b -q
+
+# ----- figure groups (one rule per macro) --------------------------------
+STYLE_H = $(STYLE_DIR)/style.h
+
+# Group 1: geometry / layout (no data dir)
+F_sipm-layouts     := $(FIGDIR)/sipm_layouts.pdf
+F_irradiation      := $(FIGDIR)/irradiation_sites.pdf
+
+# Group 2: optical property tables (no data dir)
+F_optical-spectra  := $(FIGDIR)/optical_spectra.pdf
+F_optical-timing   := $(FIGDIR)/optical_timing.pdf
+F_reflector        := $(FIGDIR)/reflector_reflectivity.pdf
+F_refractive       := $(FIGDIR)/refractive_index.pdf
+
+# Group 3: matrix-driven figures (cfg 1 centre)
+F_report-figs      := $(FIGDIR)/fig_yield.pdf $(FIGDIR)/fig_detected.pdf \
+                      $(FIGDIR)/fig_wavelength.pdf $(FIGDIR)/fig_wavelength_cfg.pdf
+F_pe-grid          := $(FIGDIR)/fig_pe_grid.pdf
+F_matrix-positions := $(FIGDIR)/fig_pos_layouts.pdf $(FIGDIR)/fig_pos_refl.pdf \
+                      $(FIGDIR)/fig_uniformity.pdf $(FIGDIR)/fig_sipm_sharing.pdf \
+                      $(FIGDIR)/position_efficiency.csv
+
+# Group 4: calibration scans
+F_contact          := $(FIGDIR)/contact_scan.pdf $(FIGDIR)/contact_scan.csv
+F_al               := $(FIGDIR)/al_backing.pdf $(FIGDIR)/al_backing.csv
+
+# Group 5: efficiency-grid maps (one per config, all from the same macro)
+F_efficiency-grids := $(FIGDIR)/efficiency_grid_cfg1_all.pdf \
+                      $(FIGDIR)/efficiency_grid_cfg2_all.pdf \
+                      $(FIGDIR)/efficiency_grid_cfg3_all.pdf \
+                      $(FIGDIR)/efficiency_grid_cfg4_all.pdf
+
+# Group 6: whole-slab maps and uniformity
+F_whole-slabs      := $(FIGDIR)/whole_slab_cfg1.pdf $(FIGDIR)/whole_slab_cfg2.pdf \
+                      $(FIGDIR)/whole_slab_cfg3.pdf $(FIGDIR)/whole_slab_cfg4.pdf
+F_whole-uniformity := $(FIGDIR)/fig_whole_polar.pdf \
+                      $(FIGDIR)/fig_whole_uniformity_map_cfg1.pdf \
+                      $(FIGDIR)/fig_whole_uniformity_map_cfg2.pdf \
+                      $(FIGDIR)/fig_whole_uniformity_map_cfg3.pdf \
+                      $(FIGDIR)/fig_whole_uniformity_map_cfg4.pdf \
+                      $(FIGDIR)/fig_whole_contrast.pdf $(FIGDIR)/fig_eff_bars.pdf \
+                      $(FIGDIR)/whole_uniformity.csv
+F_whole-yield      := $(FIGDIR)/whole_yield.csv
+
+# Group 7: arrival-time and wavelength-vs-time
+F_persistence      := $(FIGDIR)/fig_persistence_grid.pdf
+F_wavelength-time  := $(FIGDIR)/fig_wavelength_time_grid.pdf
+F_avg-waveform     := $(FIGDIR)/fig_avg_waveform.pdf
+
+ALL_FIGURES := $(F_sipm-layouts) $(F_irradiation) \
+               $(F_optical-spectra) $(F_optical-timing) $(F_reflector) $(F_refractive) \
+               $(F_report-figs) $(F_pe-grid) $(F_matrix-positions) \
+               $(F_contact) $(F_al) $(F_efficiency-grids) \
+               $(F_whole-slabs) $(F_whole-uniformity) $(F_whole-yield) \
+               $(F_persistence) $(F_wavelength-time) $(F_avg-waveform)
+
+# ----- rules -------------------------------------------------------------
+.PHONY: all figures pdf clean clean-figs help
+.DEFAULT_GOAL := all
+
+all: $(REPORT_PDF)
+
+help:
+	@echo "Targets:"
+	@echo "  all (default)        report/matrix_report.pdf"
+	@echo "  figures              every figure in $(FIGDIR)/, no LaTeX"
+	@echo "  pdf                  just the LaTeX pass (figures must exist)"
+	@echo "  sipm-layouts, irradiation, optical-spectra, optical-timing,"
+	@echo "  reflector, refractive, report-figs, pe-grid, matrix-positions,"
+	@echo "  contact, al, efficiency-grids, whole-slabs, whole-uniformity,"
+	@echo "  whole-yield, persistence, wavelength-time, avg-waveform"
+	@echo "  clean                remove generated figures + aux + PDF"
+	@echo "  clean-figs           figures only"
+	@echo ""
+	@echo "Override directories on the command line, e.g.:"
+	@echo "  make -f macros/Makefile.report MATRIX_DIR=/path/to/matrix"
+
+figures: $(ALL_FIGURES)
+
+# ensure FIGDIR exists before any rule fires
+$(FIGDIR):
+	@mkdir -p $@
+
+# ---- group rules -------------------------------------------------------
+$(F_sipm-layouts) &: $(MACROS)/sipm_layouts.C $(STYLE_H) | $(FIGDIR)
+	@echo "=== sipm_layouts ==="
+	$(ROOT_RUN) "$(MACROS)/sipm_layouts.C(\"$(@D)\")"
+
+$(F_irradiation) &: $(MACROS)/irradiation_sites.C $(STYLE_H) | $(FIGDIR)
+	@echo "=== irradiation_sites ==="
+	$(ROOT_RUN) "$(MACROS)/irradiation_sites.C(\"$(@D)\")"
+
+$(F_optical-spectra) &: $(MACROS)/optical_spectra.C $(STYLE_H) | $(FIGDIR)
+	@echo "=== optical_spectra ==="
+	$(ROOT_RUN) "$(MACROS)/optical_spectra.C(\"$(@D)\")"
+
+$(F_optical-timing) &: $(MACROS)/optical_timing.C $(STYLE_H) | $(FIGDIR)
+	@echo "=== optical_timing ==="
+	$(ROOT_RUN) "$(MACROS)/optical_timing.C(\"$(@D)\")"
+
+$(F_reflector) &: $(MACROS)/reflector_reflectivity.C $(STYLE_H) | $(FIGDIR)
+	@echo "=== reflector_reflectivity ==="
+	$(ROOT_RUN) "$(MACROS)/reflector_reflectivity.C(\"$(@D)\")"
+
+$(F_refractive) &: $(MACROS)/refractive_index.C $(STYLE_H) | $(FIGDIR)
+	@echo "=== refractive_index ==="
+	$(ROOT_RUN) "$(MACROS)/refractive_index.C(\"$(@D)\")"
+
+$(F_report-figs) &: $(MACROS)/report_figures.C $(STYLE_H) | $(FIGDIR)
+	@echo "=== report_figures ==="
+	$(ROOT_RUN) "$(MACROS)/report_figures.C(\"$(MATRIX_DIR)\",\"$(@D)\")"
+
+$(F_pe-grid) &: $(MACROS)/pe_spectra_grid.C $(STYLE_H) | $(FIGDIR)
+	@echo "=== pe_spectra_grid ==="
+	$(ROOT_RUN) "$(MACROS)/pe_spectra_grid.C(\"$(MATRIX_DIR)\",\"$(@D)\")"
+
+$(F_matrix-positions) &: $(MACROS)/matrix_positions.C $(STYLE_H) | $(FIGDIR)
+	@echo "=== matrix_positions ==="
+	$(ROOT_RUN) "$(MACROS)/matrix_positions.C(\"$(MATRIX_DIR)\",\"$(@D)\")"
+
+$(F_contact) &: $(MACROS)/contact_scan.C $(STYLE_H) | $(FIGDIR)
+	@echo "=== contact_scan ==="
+	$(ROOT_RUN) "$(MACROS)/contact_scan.C+(\"$(CONTACT_DIR)\",\"$(MATRIX_DIR)\",\"$(@D)\")"
+
+$(F_al) &: $(MACROS)/al_backing.C $(STYLE_H) | $(FIGDIR)
+	@echo "=== al_backing ==="
+	$(ROOT_RUN) "$(MACROS)/al_backing.C+(\"$(AL_DIR)\",\"$(AL_MATRIX_DIR)\",\"$(@D)\")"
+
+# plot_collection_efficiency writes <inDir>/plots/efficiency_grid_cfg<C>_all.{pdf,png};
+# we then copy them into FIGDIR.
+$(F_efficiency-grids) &: $(MACROS)/plot_collection_efficiency.C $(STYLE_H) | $(FIGDIR)
+	@echo "=== plot_collection_efficiency (cfgs 1-4) ==="
+	$(ROOT_RUN) "$(MACROS)/plot_collection_efficiency.C+(\"$(MATRIX_DIR)\", 5.0, \"\", 125.0)"
+	@for cfg in 1 2 3 4; do \
+	    cp -f "$(MATRIX_DIR)/plots/efficiency_grid_cfg$${cfg}_all.pdf" "$(@D)/" ; \
+	    cp -f "$(MATRIX_DIR)/plots/efficiency_grid_cfg$${cfg}_all.png" "$(@D)/" ; \
+	done
+
+# plot_whole_slab writes one figure per config; cfgs 1-3, then cfg 4.
+# We invoke it once per cfg and copy the output into FIGDIR.
+$(F_whole-slabs) &: $(MACROS)/plot_whole_slab.C $(STYLE_H) | $(FIGDIR)
+	@echo "=== plot_whole_slab (cfgs 1-4) ==="
+	@for cfg in 1 2 3 4; do \
+	    $(ROOT_RUN) "$(MACROS)/plot_whole_slab.C+(\"$(WHOLE_DIR)\", $${cfg}, 5.0, 125.0, true)" ; \
+	    cp -f "$(WHOLE_DIR)/plots/whole_slab_cfg$${cfg}.pdf" "$(@D)/" ; \
+	    cp -f "$(WHOLE_DIR)/plots/whole_slab_cfg$${cfg}.png" "$(@D)/" ; \
+	done
+
+$(F_whole-uniformity) &: $(MACROS)/whole_slab_uniformity.C $(STYLE_H) | $(FIGDIR)
+	@echo "=== whole_slab_uniformity ==="
+	$(ROOT_RUN) "$(MACROS)/whole_slab_uniformity.C(\"$(WHOLE_DIR)\",\"$(@D)\")"
+
+$(F_whole-yield) &: $(MACROS)/whole_yield_table.C $(STYLE_H) | $(FIGDIR)
+	@echo "=== whole_yield_table ==="
+	$(ROOT_RUN) "$(MACROS)/whole_yield_table.C(\"$(WHOLE_DIR)\",\"$(@D)\")"
+
+$(F_persistence) &: $(MACROS)/persistence_map_grid.C $(STYLE_H) | $(FIGDIR)
+	@echo "=== persistence_map_grid ==="
+	$(ROOT_RUN) "$(MACROS)/persistence_map_grid.C(\"$(WHOLE_DIR)\",\"$(@D)\",3)"
+
+$(F_wavelength-time) &: $(MACROS)/wavelength_time_grid.C $(STYLE_H) | $(FIGDIR)
+	@echo "=== wavelength_time_grid ==="
+	$(ROOT_RUN) "$(MACROS)/wavelength_time_grid.C(\"$(WHOLE_DIR)\",\"$(@D)\",3)"
+
+$(F_avg-waveform) &: $(MACROS)/avg_waveform.C $(STYLE_H) | $(FIGDIR)
+	@echo "=== avg_waveform ==="
+	$(ROOT_RUN) "$(MACROS)/avg_waveform.C(\"$(WHOLE_DIR)\",\"$(@D)\",3)"
+
+# ---- PDF rule ---------------------------------------------------------
+# pdflatex needs the .aux/.toc from the first pass to resolve refs/toc.
+REPORT_AUX = $(REPORT_DIR)/matrix_report.aux $(REPORT_DIR)/matrix_report.toc \
+             $(REPORT_DIR)/matrix_report.out $(REPORT_DIR)/matrix_report.log
+
+$(REPORT_PDF): $(ALL_FIGURES) $(REPORT_TEX) | $(REPORT_DIR)
+	@echo "=== pdflatex (pass 1) ==="
+	cd $(REPORT_DIR) && pdflatex -interaction=nonstopmode matrix_report.tex >/dev/null
+	@echo "=== pdflatex (pass 2) ==="
+	cd $(REPORT_DIR) && pdflatex -interaction=nonstopmode matrix_report.tex >/dev/null
+	@echo "=== done: $(REPORT_PDF) ==="
+
+$(REPORT_DIR):
+	@mkdir -p $@
+
+pdf: $(REPORT_PDF)
+
+# ---- clean ------------------------------------------------------------
+clean-figs:
+	rm -rf $(FIGDIR)
+
+clean: clean-figs
+	rm -f $(REPORT_PDF) $(REPORT_AUX) \
+	      $(REPORT_DIR)/matrix_report.bbl $(REPORT_DIR)/matrix_report.blg
