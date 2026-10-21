@@ -13,8 +13,9 @@ J. Appl. Phys. 138, 114504). Four arrays are submitted:
 3. **Contact scan** (`run_contact.sbatch`, 21 tasks by default) -- bare plate
    (reflector 0), configs 1-3, sweeping the effective black-holder contact
    fraction `f = 0.000, 0.005, 0.010, 0.015, 0.020, 0.025, 0.030`. Each task
-   runs centre/edge/corner back-to-back. Config 4 has no black holder, so it is
-   excluded by default.
+   runs centre/edge/corner back-to-back. Config 4 has no holder shell, but its
+   bare faces carry the same contact-loss skin, so it reuses the global nominal
+   `f` and is excluded from the scan by default.
 4. **Al-backing scan** (`run_al.sbatch`, 6 tasks by default) -- Al foil
    (reflector 2), configs 1-3, comparing the backing index `grease` (n=1.46,
    default) vs `air` (n=1.0003). Each task runs centre/edge/corner back-to-back.
@@ -130,10 +131,13 @@ pre-init knobs after `muonScint/add`:
 ```
 
 Contact fraction is an effective bare-plate/black-holder contact area fraction
-(per-hit loss `R=1-f`, `T=0`), not a measured holder gap. It applies only when
-the black holder exists (`kNoReflector` and not WLS), i.e. configs 1-3; config 4
-is excluded. The Al backing changes the backing refractive index only
-(`grease` n=1.46, `air` n=1.0003); the Al surface reflectance is unchanged.
+(per-hit loss `R=1-f`, `T=0`), not a measured holder gap. It applies to every
+bare layout (`kNoReflector`), i.e. configs 1-3 (enclosed in the black holder)
+**and** config 4 (whose bare faces -- `+X`, `+-Y` outside the read-out pad,
+`+-Z` -- carry the same skin; the `-X` face is coupled to the clamp through the
+grease-film border surface, which overrides the skin). The Al backing changes
+the backing refractive index only (`grease` n=1.46, `air` n=1.0003); the Al
+surface reflectance is unchanged.
 
 Default grids (override via environment):
 
@@ -239,6 +243,38 @@ MATRIX_EVENTS=500 WHOLE_EVENTS=20000 MATRIX_THREADS=16 WHOLE_THREADS=16 \
 
 Both drivers only **generate macros and submit**; they do not build or run the
 analysis.
+
+### Bare Config-4 re-run (`data_v7`)
+
+The contact-loss fix (`UsesBareContactModel()`) changes **only** the bare
+Config-4 files (`c4_r0`): matrix centre/edge/corner + whole-slab. Every other
+config x reflector is byte-for-byte reproducible, so the re-run overwrites just
+those four files on top of a copy of `data_v6p5`. The re-run uses the v6p5
+statistics: **2500 ev/position** (matrix) and **25000 ev** (whole), 32 threads.
+
+On the HPC (native path):
+
+```bash
+cd /bigdata/DCS-Monitor-II/turko46/MuonScinti
+# 1) clone the previous campaign (REAL copy -- NOT `cp -al`: ROOT opens with
+#    RECREATE, which truncates in place and would corrupt a hardlinked v6p5).
+cp -a data_v6p5 data_v7
+
+# 2) rebuild the binary on the cluster module stack, then submit only c4_r0:
+#    matrix array index 12 == c4_r0, whole array index 12 == c4_r0 (see the
+#    index map below).  SKIP_CALIBRATION=1 drops the contact/Al arrays.
+BIN=/abs/path/to/build/G4DCSmonitor \
+  SKIP_CALIBRATION=1 \
+  MATRIX_ARRAY=12 WHOLE_ARRAY=12 \
+  VERSION=v7 \
+  /abs/path/to/repo/slurm/run_fast.sh 2500 25000 32 32
+```
+
+The two jobs overwrite
+`data_v7/matrix/muon_out_c4_r0_{centre,edge,corner}.root` and
+`data_v7/whole/muon_whole_out_c4_r0.root`; the other 60 files in `data_v7`
+are the untouched v6p5 copies. Point the report at
+`data_v7/{matrix,whole}` afterwards.
 
 ## What is here
 

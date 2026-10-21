@@ -229,7 +229,7 @@ void GeometryMuonScint::BuildOpticalSurfaces()
       //    The SiPM coupling border surfaces override at their footprints.
       // ============================================================
       case kNoReflector: {
-        if (UsesBlackHolder() && fBareContactFraction > 0.) {
+        if (UsesBareContactModel()) {
           // Mean-field plate/holder contact: with probability f a surface hit
           // meets the black holder (index-matched, absorbing); with
           // probability 1-f it crosses the real air gap and follows the normal
@@ -670,8 +670,11 @@ G4int GeometryMuonScint::Build()
 // The holder is a shell (outer box minus an inner cavity box). The cavity is
 // drawn slightly larger than the plate for visualization; the optical loss
 // from the tight plate/holder contact (frustrated TIR) is modelled by the
-// absorber skin on the slab in PlaceDetector, while this shell's own
-// absorbing skin catches any photon that does cross the drawn gap.
+// mean-field contact skin (R = 1-f, T = 0) on the slab in PlaceDetector,
+// while this shell's own absorbing skin catches any photon that does cross
+// the drawn gap. The shell is built only for Configs 1-3; the WLS fibre clamp
+// (Config 4) occupies the -X face, so the bare holder is omitted there (the
+// escaped light dies at the world boundary instead, which is equivalent).
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 void GeometryMuonScint::BuildHolder()
@@ -1748,12 +1751,12 @@ void GeometryMuonScint::PlaceDetector(G4LogicalVolume* worldLV,
     // Wrapping skin -- applies on every face of the slab where no border
     // surface exists. The grease patches will override at their footprints.
     // The bare configuration (kNoReflector) gets a wrap only when the
-    // face-scattering study is active (kStudyBareRoughness > 0); otherwise it
-    // keeps the plain polished scintillator <-> air Fresnel/TIR boundary
-    // across the real air gap.
-    const G4bool bareContactSkin =
-        (fReflectorType == kNoReflector) && UsesBlackHolder() &&
-        fBareContactFraction > 0.;
+    // face-scattering study is active (kStudyBareRoughness > 0) or the
+    // plate/holder contact loss is enabled (f > 0); otherwise it keeps the
+    // plain polished scintillator <-> air Fresnel/TIR boundary across the real
+    // air gap. The contact-loss skin applies to every bare layout, including
+    // the WLS fibre clamp (Config 4).
+    const G4bool bareContactSkin = UsesBareContactModel();
     if (fWrapWithReflector &&
         (fReflectorType != kNoReflector || kStudyBareRoughness > 0. ||
          bareContactSkin)) {

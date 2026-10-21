@@ -48,7 +48,9 @@
 #   CONTACT_EVENTS  (default 1000)      events per beam position
 #   CONTACT_THREADS (default MATRIX_THREADS)
 #   CONTACT_FRACTIONS (default "0.000 0.005 ... 0.050", eleven values)
-#   CONTACT_CFGS    (default "1 2 3"; Config 4 has no black holder)
+#   CONTACT_CFGS    (default "1 2 3"; Config 4 reuses the global f -- see
+#                    UsesBareContactModel(): the contact loss now applies there
+#                    too, so it needs no dedicated contact scan)
 #   AL_EVENTS       (default 1000)
 #   AL_THREADS      (default MATRIX_THREADS)
 #   AL_BACKINGS     (default "grease air")

@@ -3,11 +3,12 @@
 # Generate the bare-plate / black-holder contact-fraction scan (SLURM).
 #
 # Sweeps the effective contact fraction f = 0 .. 0.03 on bare (reflector 0)
-# plates.  Configs 1-3 sit in the black holder; Config 4 has no holder, so it
-# is excluded by default (the command would be a no-op there).
+# plates.  Configs 1-3 sit in the black holder; Config 4 has no holder shell,
+# but its bare faces now carry the same contact-loss skin, so it is excluded by
+# default only because it reuses the global nominal f (no dedicated scan).
 #
 #   CONTACT_FRACTIONS : space-separated f values (default 0.000 .. 0.030)
-#   CONTACT_CFGS      : configs (default "1 2 3"; 4 is allowed but pointless)
+#   CONTACT_CFGS      : configs (default "1 2 3"; 4 reuses the global nominal)
 #   FLUXMAP           : on|off (default off; the fast variant)
 #
 # Each macro runs centre/edge/corner back-to-back, like the matrix template.

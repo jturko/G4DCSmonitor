@@ -174,10 +174,19 @@ class GeometryMuonScint
 
     // true when the bare (kNoReflector) configuration is enclosed by the
     // black 3D-printed holder that absorbs light at the non-instrumented faces.
-    // The WLS fibre clamp (Config 4) replaces the +X SiPMs, so the bare holder
+    // The WLS fibre clamp (Config 4) replaces the -X SiPMs, so the bare holder
     // is not used there (it would also overlap the clamp body).
     G4bool UsesBlackHolder() const
     { return fReflectorType == kNoReflector && !fUseWLSFibres; }
+
+    // true when the mean-field plate/holder contact loss (f) applies. This is
+    // a property of the bare plate facing the black enclosure, so it applies
+    // to every bare layout, including the WLS fibre clamp (Config 4): its bare
+    // faces (+X, +-Y, +-Z outside the read-out pad) contact the enclosure just
+    // like Configs 1-3. The -X face is coupled to the clamp through the grease
+    // film border surface, which overrides this skin there.
+    G4bool UsesBareContactModel() const
+    { return fReflectorType == kNoReflector && fBareContactFraction > 0.; }
 
   private:
     void BuildOpticalProperties(G4Material* scintMat);
