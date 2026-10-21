@@ -1592,8 +1592,20 @@ void GeometryMuonScint::PlaceWLSFibres(G4LogicalVolume* worldLV,
             if (slabRot) *r = (*slabRot) * (*r);
             return r;
         };
-        auto rotCopyNoFlip = [&](const G4RotationMatrix& base) {
-            auto* r = new G4RotationMatrix(sideRot * base);
+        // Caps and read-out pads are positioned in the construction frame (no
+        // assembly flip), but they must still be *oriented* for their side.
+        // G4PVPlacement(G4RotationMatrix*, ...) stores the INVERSE of the
+        // matrix it is given (same trap as the extruded-fibre branch above), so
+        // to obtain the intended daughter->mother rotation sideRot * P^-1 the
+        // matrix passed must be P * sideRot^-1.  At side 0 this reduces to P
+        // exactly, so the single-sided Config 4 placement is bit-identical.
+        // NOTE: localRot = sideRot*flipRot is a 180 deg rotation and therefore
+        // its own inverse, which is why the film/clamp/fibre placements above
+        // are immune to the convention; cap and pad matrices are not (they are
+        // products of a 90 deg z- and a 90 deg x-rotation), so getting this
+        // wrong leaves sides 0/2 looking right and breaks sides 1/3.
+        auto rotPassiveSide = [&](const G4RotationMatrix& P) {
+            auto* r = new G4RotationMatrix(P * sideRot.inverse());
             if (slabRot) *r = (*slabRot) * (*r);
             return r;
         };
@@ -1692,7 +1704,7 @@ void GeometryMuonScint::PlaceWLSFibres(G4LogicalVolume* worldLV,
             for (G4int k = 0; k < fNFibres; ++k) {
                 const G4double zk = -(k - 0.5*(fNFibres - 1)) * fFibreZSpacing;
                 const G4ThreeVector capCentre(fFibreAxisX, halfL + 0.05*mm, zk);
-                capPVs[k] = new G4PVPlacement(rotCopyNoFlip(capRot),
+                capPVs[k] = new G4PVPlacement(rotPassiveSide(capRot),
                                               mapPosNoFlip(capCentre),
                                               fMirrorCapLV,
                                               "WLSFibreMirrorPhys_s" + std::to_string(side)
@@ -1708,13 +1720,13 @@ void GeometryMuonScint::PlaceWLSFibres(G4LogicalVolume* worldLV,
         padRot.rotateX(90.*deg);
         padRot.rotateY(capPhi);
 
-        // Read-out pads are placed at the slab corners (full Ly offset) and,
-        // for the four-sided layout, shifted outward along the clamp face
-        // normal so the 4x4 mm pad/SiPM does not protrude into the slab volume
-        // or overlap the adjacent clamp at the corner.  For single-sided WLS
-        // halfL == Ly and padShift == 0.
-        const G4double padOffset  = Ly + fCouplingHalfZ;
-        const G4double sipmOffset = Ly + 2.*fCouplingHalfZ + fSiPMHalfZ;
+        // Read-out pads sit just past the fibre end.  The four-sided layout
+        // shortens the clamp/film/fibres to halfL = Ly - 1 mm (to clear the
+        // neighbouring clamp at the corners), so the offset must follow halfL:
+        // using Ly here left a 1 mm air gap at every read-out.  For
+        // single-sided WLS halfL == Ly, so this is unchanged.
+        const G4double padOffset  = halfL + fCouplingHalfZ;
+        const G4double sipmOffset = halfL + 2.*fCouplingHalfZ + fSiPMHalfZ;
         const G4double faceInset = fClampGap + rFibre - fFibreProtrusion;
         const G4double padShift  = fWLSFourSides
                                    ? (fSiPMHalfX - faceInset + 0.05*mm)
@@ -1722,21 +1734,24 @@ void GeometryMuonScint::PlaceWLSFibres(G4LogicalVolume* worldLV,
 
         std::vector<G4VPhysicalVolume*> padPVs;
         std::vector<G4VPhysicalVolume*> sipmPVs;
+        // Side-0 passive orientation of the pad/SiPM: padRot tilts the box
+        // normal onto the fibre axis, flipRot puts it at the read-out end.
+        // The pad and SiPM boxes are square, so the same matrix serves both
+        // ends without a 180 deg flip.
+        const G4RotationMatrix padP = flipRot * padRot;
         auto placeReadout = [&](G4bool atPlusY, G4int copyNo) {
             const G4double yPad  = atPlusY ? +padOffset  : -padOffset;
             const G4double ySiPM = atPlusY ? +sipmOffset : -sipmOffset;
-            const G4RotationMatrix& oriRot = atPlusY ? (sideRot * padRot)
-                                                     : (localRot * padRot);
             // Shift pad/SiPM outward along the face normal (construction x-axis)
             // in the four-sided layout so it clears the slab face.
             const G4double padX = fFibreAxisX - padShift;
-            auto* padPV = new G4PVPlacement(rotCopyNoFlip(oriRot),
+            auto* padPV = new G4PVPlacement(rotPassiveSide(padP),
                                             mapPosNoFlip(G4ThreeVector(padX, yPad, 0.)),
                                             fGreaseLV,
                                             "WLSReadoutGrease_s" + std::to_string(side)
                                                 + "_e" + std::to_string(copyNo),
                                             worldLV, false, copyNo, true);
-            auto* sipmPV = new G4PVPlacement(rotCopyNoFlip(oriRot),
+            auto* sipmPV = new G4PVPlacement(rotPassiveSide(padP),
                                              mapPosNoFlip(G4ThreeVector(padX, ySiPM, 0.)),
                                              fSiPMLV,
                                              "WLSReadoutSiPMPhys_s" + std::to_string(side)
@@ -2269,11 +2284,15 @@ void GeometryMuonScint::PresetConfig_WLS4Sides_SingleEnded() {
     SetFibreSquareCross(false);
     fWLSFourSides = true;
     fWLSDualEnded = false;
+    fWLSOnNegX = true;   // side 0 is -X; do not inherit from the previous preset
     // The SiPM placement is handled in PlaceWLSFibres with fWLSFourSides=true.
     // Add dummy entries so GetNumSiPMs() returns 4.
     for (G4int side = 0; side < 4; ++side) {
         SiPMSpec spec;
-        spec.edge = side;  // side 0..3 maps to +X, -X, +Y, -Y
+        // side 0..3 maps to the narrow faces -X, -Y, +X, +Y (rotateZ(side*90)
+        // applied to the -X normal), i.e. top, left, bottom, right in the
+        // report frame; the copy number of each read-out SiPM is the side.
+        spec.edge = side;
         spec.uAlong = 0.0;
         spec.vAlong = 0.0;
         fSiPMs.push_back(spec);
@@ -2287,7 +2306,9 @@ void GeometryMuonScint::PresetConfig_WLS4Sides_DualEnded() {
     SetFibreSquareCross(false);
     fWLSFourSides = true;
     fWLSDualEnded = true;
-    // Add dummy entries so GetNumSiPMs() returns 8.
+    fWLSOnNegX = true;   // side 0 is -X; do not inherit from the previous preset
+    // Add dummy entries so GetNumSiPMs() returns 8.  Their order matches the
+    // placement copy numbers: 2*side (read-out end) and 2*side+1 (far end).
     for (G4int side = 0; side < 4; ++side) {
         for (G4int end = 0; end < 2; ++end) {
             SiPMSpec spec;
