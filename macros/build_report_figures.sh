@@ -146,7 +146,10 @@ echo "=== arrival-time persistence and wavelength-vs-time (glossy, cfg 1-4) ==="
 "${ROOT_BIN}" -l -b -q "macros/avg_waveform.C(\"${WHOLE_DIR}\",\"${FIGDIR}\",3)"
 
 echo "=== position reconstruction from the SiPM pattern (config 1, whole slab) ==="
-"${ROOT_BIN}" -l -b -q "macros/position_reconstruction.C+(\"${WHOLE_DIR}\",\"${FIGDIR}\",25000)"
+# the constant-fraction (alpha) scan adds ~50 min of k-NN runs; skip it with
+# ALPHA_SCAN=0 when the figure and the csv are already in place
+ALPHA_SCAN="${ALPHA_SCAN:-1}"
+"${ROOT_BIN}" -l -b -q "macros/position_reconstruction.C+(\"${WHOLE_DIR}\",\"${FIGDIR}\",25000,${ALPHA_SCAN})"
 
 echo "=== LaTeX (two passes for refs/toc) ==="
 ( cd "${ROOTDIR}/report" && pdflatex -interaction=nonstopmode matrix_report.tex >/dev/null 2>&1 )

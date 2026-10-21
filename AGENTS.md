@@ -190,7 +190,9 @@ therefore fires only for real photoelectrons and kills the photon (no manual dra
 **Black holder** (`BuildHolder`, bare config only): `G4SubtractionSolid` shell
 (outer − cavity), `MuonScintHolderBlack` C:H 1.05 g/cm³ n=1.55 ABSLENGTH=1 µm, cavity =
 slab + `fHolderGap` 1.2 mm all faces. `UsesBlackHolder()` = bare (`kNoReflector`) **and**
-not WLS, so the Config 4 clamp never overlaps the holder. The absorber skin
+not WLS, so the Config 4 clamp never overlaps the holder (the holder shell is omitted there;
+the escaped sub-critical light dies at the world boundary instead, which is optically
+equivalent). The absorber skin
 (`MuonScintHolderSkin` → `fHolderSurface`) is applied to the **holder LV**, not the slab
 (`GeometryMuonScint.cc:1287-1290`); there is no `UsesAbsorberSkin()`.
 
@@ -198,7 +200,11 @@ not WLS, so the Config 4 clamp never overlaps the holder. The absorber skin
 as-built surfaces: `/dcs-monitor/det/muonScint/setBareContactFraction <f>` (`0..1`, default
 `0`) and `/dcs-monitor/det/muonScint/setAlBacking air|grease` (default `grease`). The
 contact model is a mean-field per-hit loss on every bare face (`R=1-f`, `T=0`), gated by
-`fWrapWithReflector && UsesBlackHolder() && f>0`; it is ignored for Config 4 bare. Defaults
+`fWrapWithReflector && UsesBareContactModel()`; `UsesBareContactModel()` =
+`kNoReflector && f>0`, i.e. it applies to **every bare layout including Config 4**
+(`include/GeometryMuonScint.hh`), whose bare faces (`+X`, `+-Y` outside the read-out pad,
+`+-Z`) carry the same skin — the `-X` face is coupled to the clamp through the grease-film
+border surface, which overrides the skin there. Defaults
 reproduce the previous production model exactly (verified event-by-event at `f=0`; `f=1`
 reproduces the old full-absorber value ≈3 pe/evt). A config-1 pilot (GPS, 4 GeV, 300
 bare / 100 reflector evt per point; centre unless noted) gives npe/event:
@@ -274,7 +280,10 @@ DE(u_thresh) = Ndet/Nref as P(Σ N_s ≥ N_thr) from the whole-slab per-event to
 (`fig_de_threshold.{pdf,png}`, `de_threshold.csv`, `de_threshold_window.csv`). The paper's
 statement is threshold-free ("all configs except the bare one reach DE ≥ 80 % at the working
 threshold"), and it is reproduced: a non-empty threshold window exists in configs 1–3
-(57–130, 28–63 and 14–18 pe/event) and is empty for cfg4 (no bare measurement in the paper).
+(57–130, 28–63 and 14–18 pe/event) and is empty for cfg4 — there the bare plate is the
+weakest wrapper (the f-fix put it at 19.5 pe/event, below TiO₂'s 36.9) but its pe
+distribution, set by the single SiPM behind the WLS fibres, overlaps TiO₂'s too closely to
+open a window (and the paper has no bare cfg4 measurement).
 
 **Diagnostics/output**: `include/OpticalDiagnostics.hh` (thread-local per-event optical
 accounting + per-slab produced/detected + primary-muon first-entry x-y); `opticalStats`
@@ -360,6 +369,32 @@ Run it through ACLiC (`.C+`, compute-bound) with `ROOT_INCLUDE_PATH` set; add it
 `TMarker`/`TLine` `Draw("SAME")` corrupt the pad range (use `TBox`/`TGraph`), and a
 `TH1` drawn with `"BAR"` fills from the frame bottom, so bars must be `TBox`es.
 
+**Optical constant-fraction (CFD) timing + the α scan** (same macro, 2026-10-21). The
+timing observable is the *wavefront time* `t̄_{≤α}` = mean arrival time of the leading α
+fraction of a channel's photoelectrons (α = 12.5 % nominal) — the optical analogue of a
+constant-fraction discriminator; it removes the `N_s^{-1/2}` amplitude walk of the
+first-photoelectron time. `macros/position_reconstruction.C` computes the three timing
+variants (`tcfd` point quantile, `tcfdm` wavefront mean, `tcfdp` tapered Beta(1,3)) for
+**every** α of `kAlpha[]` = {0.03, 0.05, 0.075, 0.10, 0.125, 0.15, 0.20, 0.30, 0.50}
+(`kAlphaNom` = 4) and stores them in `Event::tcfdA/tcfdmA/tcfdpA`; the scan block then
+re-runs the learned `kTimeCFD` and `kAll` estimators and the linear opposite-pair fit per
+α → `position_alpha_scan.csv` + `fig_recon_alpha_scan.{pdf,png}`. The scan needs ~50 min
+(72 extra k-NN runs); re-draw the figure alone with the 5th argument:
+`root -l -b -q 'macros/position_reconstruction.C+("","report/figures",0,0,"report/figures/position_alpha_scan.csv")'`.
+**Result:** the learned estimator is insensitive to α (< 6 % over α = 3–20 %, nominal within
+1 % of the best); the *linear* opposite-pair timing read-out of the specular wrappers has a
+clear minimum at α ≈ 10–15 % and grows ×1.5 at α = 50 % (glossy 182 → 279 mm) — the
+reverberation-tail argument of the report, now measured. Two consequences now stated in the
+report: (i) the minimum is **not resolved** better than α = 12.5 ± 2.5 % (the neighbouring
+differences are ≤ 1 %, the statistical precision of the error with 5000 test events), and
+(ii) the advantage of the wavefront time over the first-hit time quoted in Table 6 is an
+optimum-value statement — 32 % in glossy paper at α = 12.5 %, 17 % at α = 5 %, and *negative*
+at α = 50 % (279 mm vs 268 mm for the first hit). Caveats in the macro: ROOT has a
+global `::kTop` (TGLFontManager.h) that clashes with a local `kTop` → the SiPM group is
+called `kTopEdge`; `TText` needs `#include <TText.h>` (cling would auto-include it and
+trigger the clash). The v6p5 data (`data_v6p5/whole`) is the campaign quoted in the report
+tables, not `data_v6/whole`.
+
 **Movies**: `macros/build_movie.sh` (single pane, Config 1/glossy, blue optical photons) and
 `macros/build_movie_quad.sh` (2×2 Config 1 × reflectors 0–3) are the older modes; both need
 the X11 OpenGL stored viewer (`DISPLAY=:0`, Xwayland auth on this login node). Frames are
@@ -424,11 +459,23 @@ al. actually measured) · 3 The detector and its optical model · 4 Simulation c
 surface calibration · 5 Light collection: yield and the wrapper ordering · 6 The uniformity of
 the response over the plate · 7 The spectral and temporal signature of the detected light ·
 8 Position reconstruction from the SiPM pattern · 9 Comparison with the measurement ·
-10 Caveats and open items · 11 Summary · Appendix A (Geant4 optical-physics notes). The
+10 Caveats and open items · 11 Summary · Appendix A (Geant4 optical-physics notes) ·
+Appendix B (the position-reconstruction machinery in detail). The
 normalised whole-slab maps (old Figs. 25–28) were cut; `fig_nearest_sensor` and
 `fig_de_threshold` were added. Every bibliography entry was verified against its DOI
 record; the McPeak 2015 author list, the Geant4 PRM version/URL, the Eljen datasheet year
 and the Amcrys datasheet title/URL were corrected.
+**Section 8 was de-mathematised (2026-10-21).** It carried 13 of the report's 20 displayed
+equations (the Weibull extreme-value derivation, three CFD definitions, the `D_4` group
+presentation, the permutation matrices, the quotient distance, the standardisation
+sums). The main text now has **4** displayed equations (`eq:tcfd-mean` the wavefront time,
+`eq:risetime`, `eq:pair` the opposite-pair observables, `eq:knn-simple` the weighted
+neighbour average) and states the estimator in plain words (relative pattern → rescale →
+eight symmetries of the square → down-weight uninformative blocks); the formalism moved
+verbatim to **Appendix B** (`app:recon`: B.1 first-arrival order statistics, B.2 the two
+CFD variants not used for the headline results, B.3 the estimator in detail). The
+`D_4`/`CFD` jargon was replaced in the main text by "symmetry-augmented" and
+"wavefront time"; the numbers are unchanged.
 
 `macros/persistence_map_grid.C [WHOLE_DIR] [OUTDIR] [REFL]` and
 `macros/wavelength_time_grid.C [WHOLE_DIR] [OUTDIR] [REFL]` (default REFL 3 = glossy) consume
