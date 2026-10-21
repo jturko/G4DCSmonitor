@@ -409,6 +409,18 @@ void DetectorConstruction::SetMuonScintAlBacking(AlBackingMode m)
         fMuonScints.back()->SetAlBackingMode(m);
 }
 
+void DetectorConstruction::SetMuonScintEdgeReflector(EdgeReflectorMode m)
+{
+    if (!fMuonScints.empty())
+        fMuonScints.back()->SetEdgeReflectorMode(m);
+}
+
+void DetectorConstruction::SetMuonScintCouplingRIndex(G4double n)
+{
+    if (!fMuonScints.empty())
+        fMuonScints.back()->SetCouplingRIndex(n);
+}
+
 void DetectorConstruction::SetMuonScintLightYieldScale(G4double s)
 {
     if (!fMuonScints.empty()) fMuonScints.back()->SetLightYieldScale(s);
@@ -467,9 +479,13 @@ void DetectorConstruction::ApplyMuonScintPreset(G4int presetId)
         case 5: m->PresetConfig_WLSFibreClamp();    break;
         case 6: m->PresetConfig_WLSFibreClampBox(); break;
         case 7: m->PresetConfig_WLSFibreClampAnalytic(); break;
+        case 8: m->PresetConfig_8SiPM_Wide(); break;
+        case 9: G4cerr << "ApplyMuonScintPreset: preset 9 deferred to Phase 3" << G4endl; return;
+        case 10: m->PresetConfig_WLS4Sides_SingleEnded(); break;
+        case 11: m->PresetConfig_WLS4Sides_DualEnded(); break;
         default:
             G4cerr << " [DetectorConstruction::ApplyMuonScintPreset] "
-                   << "Unknown preset " << presetId << " (valid: 1..7)" << G4endl;
+                   << "Unknown preset " << presetId << " (valid: 1..11, 9 deferred)" << G4endl;
             break;
     }
 }

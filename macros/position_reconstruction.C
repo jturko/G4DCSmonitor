@@ -2,10 +2,10 @@
 // the muon inside the plate?
 //
 // This macro answers the question "can the relative timing/amplitude
-// information of the eight SiPMs of config 1 be used to determine the
-// interaction position of the incident muon?" for the whole-plate irradiation
-// of data_v6 (25 000 vertical 4 GeV muons uniformly covering the 250 x 250 mm
-// plate, per reflector treatment).
+// information of the SiPM array be used to determine the interaction position
+// of the incident muon?" for the whole-plate irradiation of data_v7 (25 000
+// vertical 4 GeV muons uniformly covering the 250 x 250 mm plate, per reflector
+// treatment).
 //
 // For every event the macro extracts, per SiPM, the observables that a real
 // read-out chain would provide:
@@ -55,11 +55,13 @@
 //   position_alpha_scan.csv          constant-fraction scan table
 //
 // Usage (batch):
-//   root -l -b -q 'macros/position_reconstruction.C("data_v6/whole","report/figures",25000)'
+//   root -l -b -q 'macros/position_reconstruction.C("data_v7/whole","report/figures",25000,1,"",1)'
 //
-// Args: dir (default: the data_v6 whole tree), outdir (default "report/figures"),
+// Args: dir (default: the data_v7 whole tree), outdir (default "report/figures"),
 //       maxEvents (default 25000 = all events in the file),
-//       doAlphaScan (default 1 = also scan the constant fraction alpha).
+//       doAlphaScan (default 1 = also scan the constant fraction alpha),
+//       alphaCsv (default "" = compute; otherwise redraw alpha scan from CSV),
+//       preset (default 1 = Config 1; also supported: 8, 10, 11).
 //
 // NOTE: run this through ACLiC (.C+) -- the k-NN regression is compute-bound.
 
@@ -100,32 +102,68 @@
 namespace {
 
 // ---------------------------------------------------------------------------
-// Config-1 geometry, in the REPORT plan view (top = +y, left = -x).
-//
-// The `sipm` column of the sipmHits tree is the placement index of
-// src/GeometryMuonScint.cc:1959 (PresetConfig_8SiPM_AllSides): for each of the
-// four edges e = 0(+X) 1(-X) 2(+Y) 3(-Y) the two sensors at u = -0.5 and
-// u = +0.5 are placed in that order.  The names follow the report convention
-// of macros/matrix_positions.C (clockwise T1 T2 R1 R2 B1 B2 L1 L2).
-// The slab-local positions are (+-125, u*125) resp. (u*125, +-125); the
-// report-frame positions below are that list after the (x,y) -> (y,-x) turn.
+// Geometry tables for several SiPM presets, in the REPORT plan view
+// (top = +y, left = -x).  edge = 0..3 labels the side (bottom/right/top/left
+// in report frame); u is the along-edge fractional coordinate; v is the
+// across-edge coordinate (always +-kHalf).  The report-frame (x,y) are
+// reconstructed from (edge,u) and are the positions after the usual
+// slab-local -> report (x,y) -> (y,-x) rotation.
 // ---------------------------------------------------------------------------
 const double kHalf  = 125.0;    // slab half-width [mm]
-const double kSipmU = 62.5;     // along-side offset of the config-1 SiPMs [mm]
 
-struct SipmGeom { double x, y; const char* name; };
-const SipmGeom kSipm[8] = {
-    {-kSipmU, -kHalf, "B1"}, {+kSipmU, -kHalf, "B2"},
-    {-kSipmU, +kHalf, "T2"}, {+kSipmU, +kHalf, "T1"},
-    {+kHalf, +kSipmU, "R2"}, {+kHalf, -kSipmU, "R1"},
-    {-kHalf, +kSipmU, "L1"}, {-kHalf, -kSipmU, "L2"},
-};
-// opposite-edge groups (report frame)
-const int kBot[2] = {0, 1};   // bottom edge  (simulation +X face)
-const int kTopEdge[2] = {2, 3};   // top edge  (simulation -X face)
-// (named kTopEdge, not kTop: ROOT has a global ::kTop in TGLFontManager.h)
-const int kRgt[2] = {4, 5};   // right edge   (simulation +Y face)
-const int kLft[2] = {6, 7};   // left edge    (simulation -Y face)
+struct SipmGeom { int edge; double u, v; double x, y; const char* name; };
+
+std::vector<SipmGeom> GetSipmTable(int preset)
+{
+    std::vector<SipmGeom> s;
+    if (preset == 1) {
+        // Config 1: 8 SiPMs, 2/side at u = +-0.5
+        s.push_back({0, -0.50, -kHalf, -62.5, -kHalf, "B1"});
+        s.push_back({0, +0.50, -kHalf, +62.5, -kHalf, "B2"});
+        s.push_back({1, -0.50, +kHalf, -62.5, +kHalf, "T2"});
+        s.push_back({1, +0.50, +kHalf, +62.5, +kHalf, "T1"});
+        s.push_back({2, +0.50, +kHalf, +kHalf, +62.5, "R2"});
+        s.push_back({2, -0.50, +kHalf, +kHalf, -62.5, "R1"});
+        s.push_back({3, +0.50, -kHalf, -kHalf, +62.5, "L1"});
+        s.push_back({3, -0.50, -kHalf, -kHalf, -62.5, "L2"});
+    } else if (preset == 8) {
+        // Config 8: 8 SiPMs, 2/side at u = +-0.75
+        s.push_back({0, -0.75, -kHalf, -93.75, -kHalf, "B1"});
+        s.push_back({0, +0.75, -kHalf, +93.75, -kHalf, "B2"});
+        s.push_back({1, -0.75, +kHalf, -93.75, +kHalf, "T2"});
+        s.push_back({1, +0.75, +kHalf, +93.75, +kHalf, "T1"});
+        s.push_back({2, +0.75, +kHalf, +kHalf, +93.75, "R2"});
+        s.push_back({2, -0.75, +kHalf, +kHalf, -93.75, "R1"});
+        s.push_back({3, +0.75, -kHalf, -kHalf, +93.75, "L1"});
+        s.push_back({3, -0.75, -kHalf, -kHalf, -93.75, "L2"});
+    } else if (preset == 10) {
+        // Preset 10: 4 SiPMs, 1/side at one end of each WLS bar
+        s.push_back({0, -0.75, -kHalf, -93.75, -kHalf, "B1"});
+        s.push_back({1, +0.75, +kHalf, +93.75, +kHalf, "T1"});
+        s.push_back({2, -0.75, +kHalf, +kHalf, -93.75, "R1"});
+        s.push_back({3, +0.75, -kHalf, -kHalf, +93.75, "L1"});
+    } else if (preset == 11) {
+        // Preset 11: 8 SiPMs, 2/side at both ends of each WLS bar
+        s.push_back({0, -0.75, -kHalf, -93.75, -kHalf, "B1"});
+        s.push_back({0, +0.75, -kHalf, +93.75, -kHalf, "B2"});
+        s.push_back({1, +0.75, +kHalf, +93.75, +kHalf, "T1"});
+        s.push_back({1, -0.75, +kHalf, -93.75, +kHalf, "T2"});
+        s.push_back({2, -0.75, +kHalf, +kHalf, -93.75, "R1"});
+        s.push_back({2, +0.75, +kHalf, +kHalf, +93.75, "R2"});
+        s.push_back({3, +0.75, -kHalf, -kHalf, +93.75, "L1"});
+        s.push_back({3, -0.75, -kHalf, -kHalf, -93.75, "L2"});
+    }
+    return s;
+}
+
+// Globals set from the chosen preset in position_reconstruction().
+static int gPreset = 1;
+static int gNSiPM  = 8;
+static std::vector<SipmGeom> gSipm = GetSipmTable(1);
+
+// Compile-time maximum (Preset 9 deferred).
+static const int kMaxSiPM = 12;
+
 
 const char* kReflName[4] = {"bare", "TiO2", "Al (air)", "glossy"};
 const char* kReflPlain[4] = {"bare", "TiO2", "Al (air)", "glossy"};
@@ -152,27 +190,27 @@ const double kCornerR  = 90.0;    // x >= 90 and y >= 90 mm
 // ---------------------------------------------------------------------------
 struct Event {
     int    evt  = 0;
-    double x = 0, y = 0;            // truth: muon entry, REPORT frame mm
-    int    n[8]     = {0};          // detected photoelectrons per SiPM
-    double tfirst[8] = {0};         // first arrival time [ns] (0 = nothing seen)
-    double tcfd[8]   = {0};         // 12.5% optical quantile CFD time [ns] (point quantile)
-    double tcfdm[8]  = {0};         // 12.5% optical CFD wavefront mean [ns] (mean of earliest 12.5% of PEs)
-    double tcfdp[8]  = {0};         // 12.5% prompt-gated optical CFD wavefront time [ns] (t < 4.5 ns)
+    double x = 0, y = 0;                // truth: muon entry, REPORT frame mm
+    int    n[kMaxSiPM]     = {0};       // detected photoelectrons per SiPM
+    double tfirst[kMaxSiPM] = {0};      // first arrival time [ns] (0 = nothing seen)
+    double tcfd[kMaxSiPM]   = {0};      // 12.5% optical quantile CFD time [ns] (point quantile)
+    double tcfdm[kMaxSiPM]  = {0};      // 12.5% optical CFD wavefront mean [ns] (mean of earliest 12.5% of PEs)
+    double tcfdp[kMaxSiPM]  = {0};      // 12.5% prompt-gated optical CFD wavefront time [ns] (t < 4.5 ns)
     // the same three timing observables for every scanned constant fraction
-    double tcfdA[kNAlpha][8]  = {};
-    double tcfdmA[kNAlpha][8] = {};
-    double tcfdpA[kNAlpha][8] = {};
-    double tbar[8]   = {0};         // mean arrival time [ns]
-    int    np3[8]    = {0};         // photoelectrons arriving before 3 ns
-    double wbar[8]   = {0};         // mean detected wavelength [nm]
+    double tcfdA[kNAlpha][kMaxSiPM]  = {};
+    double tcfdmA[kNAlpha][kMaxSiPM] = {};
+    double tcfdpA[kNAlpha][kMaxSiPM] = {};
+    double tbar[kMaxSiPM]   = {0};      // mean arrival time [ns]
+    int    np3[kMaxSiPM]    = {0};      // photoelectrons arriving before 3 ns
+    double wbar[kMaxSiPM]   = {0};      // mean detected wavelength [nm]
 };
 
 struct WaveSet {
-    std::vector<double> h[kNClass][8];   // accumulated time histograms
+    std::vector<double> h[kNClass][kMaxSiPM];   // accumulated time histograms
     long n[kNClass] = {0, 0};
     WaveSet() {
         for (int c = 0; c < kNClass; ++c)
-            for (int s = 0; s < 8; ++s) h[c][s].assign(kWaveBins, 0.0);
+            for (int s = 0; s < kMaxSiPM; ++s) h[c][s].assign(kWaveBins, 0.0);
     }
 };
 
@@ -201,6 +239,8 @@ bool LoadConfig1(const char* fname, int maxEvents, WrapperData& out)
     TTree* t = (TTree*)f.Get("sipmHits");
     if (!t) { std::cerr << "[position_reconstruction] no sipmHits in " << fname << "\n"; f.Close(); return false; }
 
+    const int nSiPM = (int)t->GetMaximum("sipm") + 1;
+
     int    evtNb = 0, det = 0, sipm = 0, nDet = 0;
     double tFirst = 0, meanW = 0, muonX = 0, muonY = 0;
     std::vector<double>* times = nullptr;
@@ -218,19 +258,18 @@ bool LoadConfig1(const char* fname, int maxEvents, WrapperData& out)
 
     Event cur;
     bool have = false;
-    std::vector<double> evBuf[8];
-    for (int s = 0; s < 8; ++s) evBuf[s].assign(kWaveBins, 0.0);
+    std::vector<std::vector<double>> evBuf(kMaxSiPM, std::vector<double>(kWaveBins, 0.0));
 
     auto flushEvent = [&]() {
         if (!have) return;
         const int cls = Classify(cur);
         if (cls >= 0) {
             out.wave.n[cls]++;
-            for (int s = 0; s < 8; ++s)
+            for (int s = 0; s < nSiPM; ++s)
                 for (int b = 0; b < kWaveBins; ++b) out.wave.h[cls][s][b] += evBuf[s][b];
         }
         // prompt fraction of the collected light (PE arriving before 3 ns)
-        for (int s = 0; s < 8; ++s) { out.sumTot += cur.n[s]; out.sumP3 += cur.np3[s]; }
+        for (int s = 0; s < nSiPM; ++s) { out.sumTot += cur.n[s]; out.sumP3 += cur.np3[s]; }
         out.evs.push_back(cur);
     };
 
@@ -245,10 +284,10 @@ bool LoadConfig1(const char* fname, int maxEvents, WrapperData& out)
             // slab-local -> report frame (top = +y, left = -x)
             cur.x =  muonY;
             cur.y = -muonX;
-            for (int s = 0; s < 8; ++s) evBuf[s].assign(kWaveBins, 0.0);
+            for (int s = 0; s < nSiPM; ++s) evBuf[s].assign(kWaveBins, 0.0);
             have = true;
         }
-        if (sipm < 0 || sipm > 7) continue;
+        if (sipm < 0 || sipm >= nSiPM) continue;
         cur.n[sipm]      = nDet;
         cur.tfirst[sipm] = tFirst;
         cur.wbar[sipm]   = meanW;
@@ -326,23 +365,25 @@ bool LoadConfig1(const char* fname, int maxEvents, WrapperData& out)
 struct D4Elem {
     double sx, sy;
     bool   swapXY;
-    int    perm[8];   // sensor s moves to perm[s] under T_g
+    std::vector<int> perm;   // sensor s moves to perm[s] under T_g
 };
 
-std::array<D4Elem, 8> BuildD4Group()
+std::array<D4Elem, 8> BuildD4Group(const std::vector<SipmGeom>& sipm)
 {
+    const int n = (int)sipm.size();
     std::array<D4Elem, 8> G{};
     for (int g = 0; g < 8; ++g) {
         G[g].sx     = (g & 1) ? -1.0 : +1.0;
         G[g].sy     = (g & 2) ? -1.0 : +1.0;
         G[g].swapXY = (g & 4) != 0;
-        for (int s = 0; s < 8; ++s) {
-            const double x0 = kSipm[s].x, y0 = kSipm[s].y;
+        G[g].perm.assign(n, 0);
+        for (int s = 0; s < n; ++s) {
+            const double x0 = sipm[s].x, y0 = sipm[s].y;
             const double xp = G[g].swapXY ? (G[g].sx * y0) : (G[g].sx * x0);
             const double yp = G[g].swapXY ? (G[g].sy * x0) : (G[g].sy * y0);
             int dst = s;
-            for (int q = 0; q < 8; ++q) {
-                if (std::fabs(kSipm[q].x - xp) < 1e-3 && std::fabs(kSipm[q].y - yp) < 1e-3) {
+            for (int q = 0; q < n; ++q) {
+                if (std::fabs(sipm[q].x - xp) < 1e-3 && std::fabs(sipm[q].y - yp) < 1e-3) {
                     dst = q;
                     break;
                 }
@@ -351,6 +392,15 @@ std::array<D4Elem, 8> BuildD4Group()
         }
     }
     return G;
+}
+
+// Build the list of SiPM indices on a given edge (report frame).
+std::vector<int> GetEdgeGroup(int edge)
+{
+    std::vector<int> g;
+    for (int s = 0; s < gNSiPM; ++s)
+        if (gSipm[s].edge == edge) g.push_back(s);
+    return g;
 }
 
 // ---------------------------------------------------------------------------
@@ -369,22 +419,23 @@ void MakeFeatures(const std::vector<Event>& evs, int kind,
                   std::vector<std::vector<double>>& X,
                   int alphaIdx = kAlphaNom)
 {
+    const int N = gNSiPM;
     const size_t n = evs.size();
     X.assign(n, std::vector<double>());
-    std::vector<double> amp(8), tf(8), tq(8), tm(8), pv(8);
+    std::vector<double> amp(N), tf(N), tq(N), tm(N), pv(N);
     for (size_t e = 0; e < n; ++e) {
         const Event& ev = evs[e];
 
         // (i) pulse-integral shares (total collected charge per channel),
         //     centred on the event mean
         double tot = 0;
-        for (int s = 0; s < 8; ++s) tot += ev.n[s];
+        for (int s = 0; s < N; ++s) tot += ev.n[s];
         double amean = 0;
         if (tot > 0) {
-            for (int s = 0; s < 8; ++s) { amp[s] = ev.n[s] / tot; amean += amp[s]; }
+            for (int s = 0; s < N; ++s) { amp[s] = ev.n[s] / tot; amean += amp[s]; }
         }
-        amean /= 8.0;
-        for (int s = 0; s < 8; ++s) amp[s] -= amean;
+        amean /= (double)N;
+        for (int s = 0; s < N; ++s) amp[s] -= amean;
 
         // (ii) relative arrival times (common event offset removed):
         //      tf = first-photoelectron arrival time
@@ -393,8 +444,8 @@ void MakeFeatures(const std::vector<Event>& evs, int kind,
         auto relTime = [&](const double* tarr, std::vector<double>& out) {
             double tsum = 0;
             int tn = 0;
-            for (int s = 0; s < 8; ++s) if (tarr[s] > 0) { tsum += tarr[s]; ++tn; }
-            for (int s = 0; s < 8; ++s)
+            for (int s = 0; s < N; ++s) if (tarr[s] > 0) { tsum += tarr[s]; ++tn; }
+            for (int s = 0; s < N; ++s)
                 out[s] = (tn > 0 && tarr[s] > 0) ? tarr[s] - tsum / tn : 0.0;
         };
         relTime(ev.tfirst, tf);
@@ -403,13 +454,13 @@ void MakeFeatures(const std::vector<Event>& evs, int kind,
 
         // (iii) prompt fraction (photoelectrons before 3 ns), centred
         double ptot = 0;
-        for (int s = 0; s < 8; ++s) ptot += ev.np3[s];
+        for (int s = 0; s < N; ++s) ptot += ev.np3[s];
         double pmean = 0;
         if (ptot > 0) {
-            for (int s = 0; s < 8; ++s) { pv[s] = ev.np3[s] / ptot; pmean += pv[s]; }
+            for (int s = 0; s < N; ++s) { pv[s] = ev.np3[s] / ptot; pmean += pv[s]; }
         }
-        pmean /= 8.0;
-        for (int s = 0; s < 8; ++s) pv[s] -= pmean;
+        pmean /= (double)N;
+        for (int s = 0; s < N; ++s) pv[s] -= pmean;
 
         std::vector<double>& f = X[e];
         f.clear();
@@ -424,6 +475,33 @@ void MakeFeatures(const std::vector<Event>& evs, int kind,
             f.insert(f.end(), tm.begin(), tm.end());
         }
         if (kind == kPrompt    || kind == kAll) f.insert(f.end(), pv.begin(),  pv.end());
+
+        // (iv) Preset 11: along-bar differential features for dual-ended WLS bars.
+        //     Encoded as two nSiPM-wide antisymmetric blocks so the block
+        //     structure of KnnPredict stays uniform: each bar's two ends get
+        //     +/- the differential, preserving the "one feature per bar" intent
+        //     while keeping every block nSiPM-wide.
+        if (gPreset == 11 && (kind == kTimeCFD || kind == kAll)) {
+            std::vector<double> dt(N, 0.0), da(N, 0.0);
+            for (int edge = 0; edge < 4; ++edge) {
+                std::vector<int> ids = GetEdgeGroup(edge);
+                if ((int)ids.size() != 2) continue;
+                // order by along-edge coordinate (x for horizontal, y for vertical)
+                if (edge == 0 || edge == 1) {
+                    if (gSipm[ids[0]].x > gSipm[ids[1]].x) std::swap(ids[0], ids[1]);
+                } else {
+                    if (gSipm[ids[0]].y > gSipm[ids[1]].y) std::swap(ids[0], ids[1]);
+                }
+                const int i1 = ids[0], i2 = ids[1];
+                const double dtev = (ev.tcfd[i2] > 0 && ev.tcfd[i1] > 0) ? ev.tcfd[i2] - ev.tcfd[i1] : 0.0;
+                const double ns = ev.n[i1] + ev.n[i2];
+                const double daval = ns > 0 ? (double)(ev.n[i2] - ev.n[i1]) / ns : 0.0;
+                dt[i1] = +dtev; dt[i2] = -dtev;
+                da[i1] = +daval; da[i2] = -daval;
+            }
+            f.insert(f.end(), dt.begin(), dt.end());
+            f.insert(f.end(), da.begin(), da.end());
+        }
     }
 }
 
@@ -437,35 +515,37 @@ void KnnPredict(const std::vector<std::vector<double>>& Xtr,
                 int k,
                 std::vector<double>& px, std::vector<double>& py,
                 bool useSymmetry = true,
-                const std::vector<double>& blockWeights = {})
+                const std::vector<double>& blockWeights = {},
+                int nSiPM = -1)
 {
+    if (nSiPM < 0) nSiPM = gNSiPM;
     const size_t ntr = Xtr.size(), nte = Xte.size();
     if (ntr == 0 || nte == 0) return;
     const size_t dim = Xtr[0].size();
-    const size_t nBlocks = dim / 8;
-    const auto G = BuildD4Group();
+    const size_t nBlocks = dim / nSiPM;
+    const auto G = BuildD4Group(gSipm);
     const int nSym = useSymmetry ? 8 : 1;
 
-    // Standardise per 8-sensor block so D4 permutations commute with scaling
+    // Standardise per nSiPM-sensor block so D4 permutations commute with scaling
     std::vector<double> mu(dim, 0.0), sd(dim, 0.0), wSqrt(dim, 1.0);
     for (size_t b = 0; b < nBlocks; ++b) {
         double s = 0, ss = 0;
-        const size_t cnt = ntr * 8;
+        const size_t cnt = ntr * nSiPM;
         for (size_t i = 0; i < ntr; ++i)
-            for (size_t j = 0; j < 8; ++j) s += Xtr[i][b * 8 + j];
+            for (int j = 0; j < nSiPM; ++j) s += Xtr[i][b * nSiPM + j];
         const double m = s / cnt;
         for (size_t i = 0; i < ntr; ++i)
-            for (size_t j = 0; j < 8; ++j) {
-                const double d = Xtr[i][b * 8 + j] - m;
+            for (int j = 0; j < nSiPM; ++j) {
+                const double d = Xtr[i][b * nSiPM + j] - m;
                 ss += d * d;
             }
         double sig = std::sqrt(ss / cnt);
         if (sig <= 0) sig = 1.0;
         const double wb = (b < blockWeights.size()) ? std::sqrt(std::max(0.0, blockWeights[b])) : 1.0;
-        for (size_t j = 0; j < 8; ++j) {
-            mu[b * 8 + j]    = m;
-            sd[b * 8 + j]    = sig;
-            wSqrt[b * 8 + j] = wb;
+        for (int j = 0; j < nSiPM; ++j) {
+            mu[b * nSiPM + j]    = m;
+            sd[b * nSiPM + j]    = sig;
+            wSqrt[b * nSiPM + j] = wb;
         }
     }
 
@@ -485,15 +565,15 @@ void KnnPredict(const std::vector<std::vector<double>>& Xtr,
 
     const int kk = std::min<int>(k, (int)ntr);
     std::vector<std::pair<float, int>> d(ntr);
-    float qSym[8][48];
+    std::vector<std::vector<float>> qSym(nSym, std::vector<float>(dim));
     for (size_t t = 0; t < nte; ++t) {
         const float* qt = &B[t * dim];
         // Precompute the 8 D4 symmetry permutations of the query vector in L1 cache:
         // ||Pi_g(z_i) - q_t||^2 == ||z_i - Pi_g^{-1}(q_t)||^2
         for (int g = 0; g < nSym; ++g) {
             for (size_t b = 0; b < nBlocks; ++b)
-                for (int s = 0; s < 8; ++s)
-                    qSym[g][b * 8 + s] = qt[b * 8 + G[g].perm[s]];
+                for (int s = 0; s < nSiPM; ++s)
+                    qSym[g][b * nSiPM + s] = qt[b * nSiPM + G[g].perm[s]];
         }
 
         for (size_t i = 0; i < ntr; ++i) {
@@ -501,7 +581,7 @@ void KnnPredict(const std::vector<std::vector<double>>& Xtr,
             float bestD2 = 1e30f;
             int   bestG  = 0;
             for (int g = 0; g < nSym; ++g) {
-                const float* qg = qSym[g];
+                const float* qg = qSym[g].data();
                 float s = 0.0f;
                 for (size_t j = 0; j < dim; ++j) {
                     const float dd = ar[j] - qg[j];
@@ -509,7 +589,7 @@ void KnnPredict(const std::vector<std::vector<double>>& Xtr,
                 }
                 if (s < bestD2) { bestD2 = s; bestG = g; }
             }
-            d[i] = {bestD2, (int)(i * 8 + (size_t)bestG)};
+            d[i] = {bestD2, (int)(i * nSym + (size_t)bestG)};
         }
         std::nth_element(d.begin(), d.begin() + kk, d.end());
 
@@ -522,8 +602,8 @@ void KnnPredict(const std::vector<std::vector<double>>& Xtr,
             const double u = std::min(1.0, std::sqrt(std::max(0.0, (double)d[m].first)) / dMax);
             const double t3 = 1.0 - u * u * u;
             const double w = useSymmetry ? (t3 * t3 * t3 + 1e-3) : 1.0;
-            const size_t i = (size_t)(d[m].second / 8);
-            const int    g = d[m].second % 8;
+            const size_t i = (size_t)(d[m].second / nSym);
+            const int    g = d[m].second % nSym;
             const double x0 = Yxtr[i], y0 = Yytr[i];
             const double xg = G[g].swapXY ? (G[g].sx * y0) : (G[g].sx * x0);
             const double yg = G[g].swapXY ? (G[g].sy * x0) : (G[g].sy * y0);
@@ -646,7 +726,7 @@ void DrawAlphaScan(const std::vector<AlphaRow>& ascan, const char* outdir)
         frame->SetDirectory(nullptr);
         frame->SetTitle(ip == 0
                         ? "Linear opposite-pair read-out"
-                        : "Learned eight-channel estimator");
+                        : "Learned multi-channel estimator");
         frame->GetXaxis()->SetTitle("constant fraction alpha");
         frame->GetYaxis()->SetTitle("rms error along one axis [mm]");
         // the shared style pushes the Y title off the canvas (2.5 title sizes),
@@ -743,12 +823,17 @@ struct EstResult {
 // ===========================================================================
 // main entry
 // ===========================================================================
-void position_reconstruction(const char* dir = "/home/turko46/bigdata/DCS-Monitor-II/turko46/MuonScinti/data_v6/whole",
+void position_reconstruction(const char* dir = "/home/turko46/bigdata/DCS-Monitor-II/turko46/MuonScinti/data_v7/whole",
                               const char* outdir = "report/figures",
                               int maxEvents = 25000,
                               int doAlphaScan = 1,
-                              const char* alphaCsv = "")
+                              const char* alphaCsv = "",
+                              int preset = 1)
 {
+    gPreset = preset;
+    gSipm = GetSipmTable(preset);
+    gNSiPM = (int)gSipm.size();
+
     style(0.045);
     gStyle->SetOptStat(0);
     gStyle->SetOptTitle(1);
@@ -766,10 +851,14 @@ void position_reconstruction(const char* dir = "/home/turko46/bigdata/DCS-Monito
     const int    kK        = 40;        // neighbours of the k-NN regression
     const double kTestFrac = 0.2;       // 20 % of the events held out
 
+    const char* cfgTag = (preset == 1) ? "c1" :
+                         (preset == 8) ? "c8" :
+                         (preset == 10) ? "c10" : "c11";
+
     // ---------------------------------------------------------------- read
     std::vector<WrapperData> wd(4);
     for (int r = 0; r < 4; ++r) {
-        const TString fn = TString::Format("%s/muon_whole_out_c1_r%d.root", dir, r);
+        const TString fn = TString::Format("%s/muon_whole_out_%s_r%d.root", dir, cfgTag, r);
         std::cout << "[position_reconstruction] reading " << fn << " ..." << std::endl;
         if (!LoadConfig1(fn, maxEvents, wd[r])) return;
         std::cout << "   " << wd[r].evs.size() << " events"
@@ -781,6 +870,12 @@ void position_reconstruction(const char* dir = "/home/turko46/bigdata/DCS-Monito
                       << " % arrives before 3 ns (prompt fraction)" << std::endl;
     }
 
+    // Build opposite-edge groups from the current geometry table.
+    const std::vector<int> gBot = GetEdgeGroup(0);
+    const std::vector<int> gTopEdge = GetEdgeGroup(1);
+    const std::vector<int> gRgt = GetEdgeGroup(2);
+    const std::vector<int> gLft = GetEdgeGroup(3);
+
     // ------------------------------------------------- opposite-pair analysis
     std::vector<ObsRow> obs;
     for (int r = 0; r < 4; ++r) {
@@ -789,27 +884,26 @@ void position_reconstruction(const char* dir = "/home/turko46/bigdata/DCS-Monito
         std::vector<double> Ax(n), Ay(n), Tx(n), Ty(n), Tqx(n), Tqy(n), Tmx(n), Tmy(n), Bx(n), By(n);
         for (size_t e = 0; e < n; ++e) {
             const Event& ev = E[e];
-            auto grp = [&](const int* g) {
+            auto grp = [&](const std::vector<int>& g) {
                 double s = 0;
-                s += ev.n[g[0]] + ev.n[g[1]];
+                for (int idx : g) s += ev.n[idx];
                 return s;
             };
-            const double bot = grp(kBot), top = grp(kTopEdge);
-            const double rgt = grp(kRgt), lft = grp(kLft);
+            const double bot = grp(gBot), top = grp(gTopEdge);
+            const double rgt = grp(gRgt), lft = grp(gLft);
             Ax[e] = (rgt + lft > 0) ? (rgt - lft) / (rgt + lft) : 0.0;   // report x
             Ay[e] = (bot + top > 0) ? (bot - top) / (bot + top) : 0.0;   // report y
-            auto meanPair = [&](const double* arr, int a, int b) {
+            auto meanPair = [&](const double* arr, const std::vector<int>& g) {
                 double s = 0; int k = 0;
-                if (arr[a] > 0) { s += arr[a]; ++k; }
-                if (arr[b] > 0) { s += arr[b]; ++k; }
+                for (int idx : g) if (arr[idx] > 0) { s += arr[idx]; ++k; }
                 return k ? s / k : 0.0;
             };
-            Tx[e]  = meanPair(ev.tfirst, kRgt[0], kRgt[1]) - meanPair(ev.tfirst, kLft[0], kLft[1]);
-            Ty[e]  = meanPair(ev.tfirst, kBot[0], kBot[1]) - meanPair(ev.tfirst, kTopEdge[0], kTopEdge[1]);
-            Tqx[e] = meanPair(ev.tcfd,   kRgt[0], kRgt[1]) - meanPair(ev.tcfd,   kLft[0], kLft[1]);
-            Tqy[e] = meanPair(ev.tcfd,   kBot[0], kBot[1]) - meanPair(ev.tcfd,   kTopEdge[0], kTopEdge[1]);
-            Tmx[e] = meanPair(ev.tcfdm,  kRgt[0], kRgt[1]) - meanPair(ev.tcfdm,  kLft[0], kLft[1]);
-            Tmy[e] = meanPair(ev.tcfdm,  kBot[0], kBot[1]) - meanPair(ev.tcfdm,  kTopEdge[0], kTopEdge[1]);
+            Tx[e]  = meanPair(ev.tfirst, gRgt) - meanPair(ev.tfirst, gLft);
+            Ty[e]  = meanPair(ev.tfirst, gBot) - meanPair(ev.tfirst, gTopEdge);
+            Tqx[e] = meanPair(ev.tcfd,   gRgt) - meanPair(ev.tcfd,   gLft);
+            Tqy[e] = meanPair(ev.tcfd,   gBot) - meanPair(ev.tcfd,   gTopEdge);
+            Tmx[e] = meanPair(ev.tcfdm,  gRgt) - meanPair(ev.tcfdm,  gLft);
+            Tmy[e] = meanPair(ev.tcfdm,  gBot) - meanPair(ev.tcfdm,  gTopEdge);
             Bx[e] = ev.x; By[e] = ev.y;
         }
         obs.push_back({r, "A_x pulse-integral asymmetry (report x)", LinearFit(Ax, Bx)});
@@ -864,9 +958,9 @@ void position_reconstruction(const char* dir = "/home/turko46/bigdata/DCS-Monito
             for (size_t i : tr) { Xtr.push_back(X[i]); Yxtr.push_back(Yx[i]); Yytr.push_back(Yy[i]); }
             for (size_t i : te) { Xte.push_back(X[i]); }
 
-            // For the combined estimator, weight each 8-sensor feature block by
-            // its inverse variance (w_c = (sr_min / sr_c)^4) so noisy blocks do
-            // not dilute the distance metric.
+            // For the combined estimator, weight each nSiPM-wide feature block
+            // by its inverse variance (w_c = (sr_min / sr_c)^4) so noisy blocks
+            // do not dilute the distance metric.
             std::vector<double> blkW;
             if (f == kAll) {
                 const double srMin = std::min({chSr[0], chSr[1], chSr[2], chSr[3]});
@@ -875,13 +969,23 @@ void position_reconstruction(const char* dir = "/home/turko46/bigdata/DCS-Monito
                     const double ratio = srMin / std::max(1.0, chSr[c]);
                     w4[c] = ratio * ratio * ratio * ratio;
                 }
-                // kAll stacks: amp(8), tf(8), tq(8), tm(8), pv(8) -> 5 blocks of 8
-                blkW = {w4[0], w4[1], 0.7 * w4[2], 0.3 * w4[2], w4[3]};
+                if (gPreset == 11) {
+                    // amp(8), tf(8), tq(8), tm(8), pv(8), dt(8), da(8)
+                    blkW = {w4[0], w4[1], 0.7 * w4[2], 0.3 * w4[2], w4[3], 0.7 * w4[2], w4[0]};
+                } else {
+                    // kAll stacks: amp(N), tf(N), tq(N), tm(N), pv(N) -> 5 blocks
+                    blkW = {w4[0], w4[1], 0.7 * w4[2], 0.3 * w4[2], w4[3]};
+                }
                 std::cout << "   [weights r" << r << "] w_amp=" << w4[0]
                           << " w_tfirst=" << w4[1] << " w_tcfd=" << w4[2]
                           << " w_prompt=" << w4[3] << std::endl;
             } else if (f == kTimeCFD) {
-                blkW = {0.7, 0.3};
+                if (gPreset == 11) {
+                    // tf(N), tm(N), dt(N), da(N)
+                    blkW = {0.7, 0.3, 0.7, 0.3};
+                } else {
+                    blkW = {0.7, 0.3};
+                }
             }
 
             EstResult er;
@@ -936,10 +1040,9 @@ void position_reconstruction(const char* dir = "/home/turko46/bigdata/DCS-Monito
             std::vector<int> tr, te;
             for (size_t i = 0; i < n; ++i) { if (i < ntest) te.push_back(idx[i]); else tr.push_back(idx[i]); }
 
-            auto meanPair = [&](const double* arr, int a, int b) {
+            auto meanPair = [&](const double* arr, const std::vector<int>& g) {
                 double s = 0; int k = 0;
-                if (arr[a] > 0) { s += arr[a]; ++k; }
-                if (arr[b] > 0) { s += arr[b]; ++k; }
+                for (int idx : g) if (arr[idx] > 0) { s += arr[idx]; ++k; }
                 return k ? s / k : 0.0;
             };
             auto rms = [](const std::vector<double>& v) {
@@ -956,10 +1059,10 @@ void position_reconstruction(const char* dir = "/home/turko46/bigdata/DCS-Monito
                 std::vector<double> Tm(n), Tq(n);
                 for (size_t e = 0; e < n; ++e) {
                     const Event& ev = E[e];
-                    Tm[e] = meanPair(ev.tcfdmA[ai], kRgt[0], kRgt[1])
-                           - meanPair(ev.tcfdmA[ai], kLft[0], kLft[1]);
-                    Tq[e] = meanPair(ev.tcfdA[ai],  kRgt[0], kRgt[1])
-                           - meanPair(ev.tcfdA[ai],  kLft[0], kLft[1]);
+                    Tm[e] = meanPair(ev.tcfdmA[ai], gRgt)
+                           - meanPair(ev.tcfdmA[ai], gLft);
+                    Tq[e] = meanPair(ev.tcfdA[ai],  gRgt)
+                           - meanPair(ev.tcfdA[ai],  gLft);
                 }
                 const PairStat pm = LinearFit(Tm, Yx);
                 row.linSlope = pm.slope;
@@ -975,7 +1078,10 @@ void position_reconstruction(const char* dir = "/home/turko46/bigdata/DCS-Monito
                     for (size_t i : tr) { Xtr.push_back(X[i]); Yxtr.push_back(Yx[i]); Yytr.push_back(Yy[i]); }
                     for (size_t i : te) { Xte.push_back(X[i]); }
                     EstResult er;
-                    KnnPredict(Xtr, Yxtr, Yytr, Xte, kK, er.px, er.py, true, {0.7, 0.3});
+                    std::vector<double> blkWTimeCFD = (gPreset == 11)
+                        ? std::vector<double>{0.7, 0.3, 0.7, 0.3}
+                        : std::vector<double>{0.7, 0.3};
+                    KnnPredict(Xtr, Yxtr, Yytr, Xte, kK, er.px, er.py, true, blkWTimeCFD);
                     for (size_t i = 0; i < te.size(); ++i) { er.tx.push_back(Yx[te[i]]); er.ty.push_back(Yy[te[i]]); }
                     std::vector<double> dx, dy, dr;
                     for (size_t i = 0; i < te.size(); ++i) {
@@ -1001,8 +1107,13 @@ void position_reconstruction(const char* dir = "/home/turko46/bigdata/DCS-Monito
                     for (size_t i : tr) { Xatr.push_back(Xa[i]); Yxatr.push_back(Yx[i]); Yyatr.push_back(Yy[i]); }
                     for (size_t i : te) { Xate.push_back(Xa[i]); }
                     EstResult er2;
-                    KnnPredict(Xatr, Yxatr, Yyatr, Xate, kK, er2.px, er2.py, true,
-                               {w4[0], w4[1], 0.7 * w4[2], 0.3 * w4[2], w4[3]});
+                    std::vector<double> blkWAll;
+                    if (gPreset == 11) {
+                        blkWAll = {w4[0], w4[1], 0.7 * w4[2], 0.3 * w4[2], w4[3], 0.7 * w4[2], w4[0]};
+                    } else {
+                        blkWAll = {w4[0], w4[1], 0.7 * w4[2], 0.3 * w4[2], w4[3]};
+                    }
+                    KnnPredict(Xatr, Yxatr, Yyatr, Xate, kK, er2.px, er2.py, true, blkWAll);
                     std::vector<double> dx2;
                     for (size_t i = 0; i < te.size(); ++i)
                         dx2.push_back(Yx[te[i]] - er2.px[i]);
@@ -1054,10 +1165,10 @@ void position_reconstruction(const char* dir = "/home/turko46/bigdata/DCS-Monito
     }
 
     // ================================================================ figures
-    const int kColor[8] = {PetroffPalette::getP6(0), PetroffPalette::getP6(1),
-                           PetroffPalette::getP6(2), PetroffPalette::getP6(3),
-                           PetroffPalette::getP6(4), PetroffPalette::getP6(5),
-                           kMagenta, kTeal};
+    const int kColor[kMaxSiPM] = {PetroffPalette::getP6(0), PetroffPalette::getP6(1),
+                                  PetroffPalette::getP6(2), PetroffPalette::getP6(3),
+                                  PetroffPalette::getP6(4), PetroffPalette::getP6(5),
+                                  kMagenta, kTeal, kOrange, kViolet, kSpring, kCyan};
 
     // ------------------------------------------------- F1: waveform extremes
     {
@@ -1072,7 +1183,7 @@ void position_reconstruction(const char* dir = "/home/turko46/bigdata/DCS-Monito
                 TLegend* leg = new TLegend(0.62, 0.40, 0.97, 0.92);
                 double ymax = 0;
                 TH1D* ax = nullptr;
-                for (int s = 0; s < 8; ++s) {
+                for (int s = 0; s < gNSiPM; ++s) {
                     const long n = wd[refl].wave.n[cls];
                     if (n <= 0) continue;
                     TH1D* h = new TH1D(TString::Format("w%d_%d_%d", refl, cls, s), "",
@@ -1085,7 +1196,7 @@ void position_reconstruction(const char* dir = "/home/turko46/bigdata/DCS-Monito
                     h->Draw("SAME");
                     if (!ax) ax = (TH1D*)gPad->GetListOfPrimitives()->At(0);
                     ymax = std::max(ymax, h->GetMaximum());
-                    leg->AddEntry(h, kSipm[s].name, "l");
+                    leg->AddEntry(h, gSipm[s].name, "l");
                 }
                 if (ax) {
                     ax->SetTitle(TString::Format("%s, %s muon (%ld events)",
@@ -1107,7 +1218,7 @@ void position_reconstruction(const char* dir = "/home/turko46/bigdata/DCS-Monito
 
     // ------------------------------------------- F2: per-SiPM observables
     //   left column : light share per SiPM, as the deviation [percentage
-    //                 points] from the uniform 1/8 expectation;
+    //                 points] from the uniform expectation;
     //   right column: first-arrival time per SiPM, relative to the mean
     //                 arrival time of the eight channels of the same event.
     // In both, the central-muon and the corner-muon populations are shown
@@ -1121,35 +1232,41 @@ void position_reconstruction(const char* dir = "/home/turko46/bigdata/DCS-Monito
             for (int ic = 0; ic < 2; ++ic) {
                 c->cd(ir * 2 + ic + 1);
                 const bool amp = (ic == 0);
-                double sumN[kNClass][8] = {{0}}, sumT[kNClass][8] = {{0}}, sumQ[kNClass][8] = {{0}};
+                std::vector<std::vector<double>> sumN(kNClass, std::vector<double>(gNSiPM, 0.0));
+                std::vector<std::vector<double>> sumT(kNClass, std::vector<double>(gNSiPM, 0.0));
+                std::vector<std::vector<double>> sumQ(kNClass, std::vector<double>(gNSiPM, 0.0));
                 long   cnt[kNClass] = {0, 0};
-                long   cntT[kNClass][8] = {{0}}, cntQ[kNClass][8] = {{0}};
+                std::vector<std::vector<long>> cntT(kNClass, std::vector<long>(gNSiPM, 0));
+                std::vector<std::vector<long>> cntQ(kNClass, std::vector<long>(gNSiPM, 0));
                 for (const Event& ev : wd[refl].evs) {
                     const int k = Classify(ev);
                     if (k < 0) continue;
                     ++cnt[k];
-                    for (int s = 0; s < 8; ++s) {
+                    for (int s = 0; s < gNSiPM; ++s) {
                         sumN[k][s] += ev.n[s];
                         if (ev.tfirst[s] > 0) { sumT[k][s] += ev.tfirst[s]; ++cntT[k][s]; }
                         if (ev.tcfdm[s]  > 0) { sumQ[k][s] += ev.tcfdm[s];  ++cntQ[k][s]; }
                     }
                 }
-                TH1D* h0 = new TH1D(TString::Format("obsA%d_%d", refl, ic), "", 16, -0.5, 15.5);
-                TH1D* h1 = new TH1D(TString::Format("obsB%d_%d", refl, ic), "", 16, -0.5, 15.5);
+                const int nBins = 2 * gNSiPM;
+                TH1D* h0 = new TH1D(TString::Format("obsA%d_%d", refl, ic), "", nBins, -0.5, nBins - 0.5);
+                TH1D* h1 = new TH1D(TString::Format("obsB%d_%d", refl, ic), "", nBins, -0.5, nBins - 0.5);
                 h0->SetDirectory(nullptr); h1->SetDirectory(nullptr);
                 double ymax = 0;
-                double val0[8] = {0}, val1[8] = {0}, valQ0[8] = {0}, valQ1[8] = {0};
-                for (int s = 0; s < 8; ++s) {
+                std::vector<double> val0(gNSiPM, 0.0), val1(gNSiPM, 0.0),
+                                    valQ0(gNSiPM, 0.0), valQ1(gNSiPM, 0.0);
+                const double shareMean = 100.0 / (double)gNSiPM;
+                for (int s = 0; s < gNSiPM; ++s) {
                     double v0 = 0, v1 = 0, q0 = 0, q1 = 0;
                     if (amp) {
                         double tot0 = 0, tot1 = 0;
-                        for (int q = 0; q < 8; ++q) { tot0 += sumN[0][q]; tot1 += sumN[1][q]; }
-                        v0 = (cnt[0] > 0 && tot0 > 0) ? 100.0 * sumN[0][s] / tot0 - 12.5 : 0.0;
-                        v1 = (cnt[1] > 0 && tot1 > 0) ? 100.0 * sumN[1][s] / tot1 - 12.5 : 0.0;
+                        for (int q = 0; q < gNSiPM; ++q) { tot0 += sumN[0][q]; tot1 += sumN[1][q]; }
+                        v0 = (cnt[0] > 0 && tot0 > 0) ? 100.0 * sumN[0][s] / tot0 - shareMean : 0.0;
+                        v1 = (cnt[1] > 0 && tot1 > 0) ? 100.0 * sumN[1][s] / tot1 - shareMean : 0.0;
                     } else {
                         double m0 = 0, m1 = 0; int k0 = 0, k1 = 0;
                         double mq0 = 0, mq1 = 0; int kq0 = 0, kq1 = 0;
-                        for (int q = 0; q < 8; ++q) {
+                        for (int q = 0; q < gNSiPM; ++q) {
                             if (cntT[0][q] > 0) { m0  += sumT[0][q] / cntT[0][q]; ++k0; }
                             if (cntT[1][q] > 0) { m1  += sumT[1][q] / cntT[1][q]; ++k1; }
                             if (cntQ[0][q] > 0) { mq0 += sumQ[0][q] / cntQ[0][q]; ++kq0; }
@@ -1177,26 +1294,27 @@ void position_reconstruction(const char* dir = "/home/turko46/bigdata/DCS-Monito
                 }
                 // frame (creates the axis) + real bars anchored at zero
                 h0->SetTitle(TString::Format("%s: %s", kReflName[refl],
-                                             amp ? "light share per SiPM (deviation from 1/8)"
+                                             amp ? "light share per SiPM (deviation from uniform)"
                                                  : "arrival-time offset (first hit vs 12.5% optical CFD)"));
-                for (int s = 0; s < 8; ++s) {
-                    h0->GetXaxis()->SetBinLabel(s + 1, kSipm[s].name);
-                    h0->GetXaxis()->SetBinLabel(s + 9, kSipm[s].name);
+                for (int s = 0; s < gNSiPM; ++s) {
+                    h0->GetXaxis()->SetBinLabel(s + 1, gSipm[s].name);
+                    h0->GetXaxis()->SetBinLabel(s + gNSiPM + 1, gSipm[s].name);
                 }
                 h0->GetXaxis()->SetTitle("SiPM   (left group: central muon,  right group: corner muon)");
-                h0->GetYaxis()->SetTitle(amp ? "share - 12.5 [%]" : "arrival-time offset [ns]");
+                h0->GetYaxis()->SetTitle(amp ? TString::Format("share - %.2f [%%]", shareMean).Data()
+                                             : "arrival-time offset [ns]");
                 h0->Draw();
                 h0->GetYaxis()->SetRangeUser(std::min(0.0, -ymax * 1.25), ymax * (amp ? 1.25 : 1.42));
-                h0->GetXaxis()->SetRangeUser(-0.6, 15.6);
+                h0->GetXaxis()->SetRangeUser(-0.6, nBins - 0.4);
                 TBox* bar0 = nullptr; TBox* bar1 = nullptr; TBox* barQ = nullptr;
-                for (int s = 0; s < 8; ++s) {
+                for (int s = 0; s < gNSiPM; ++s) {
                     const double v0 = val0[s];
                     const double v1 = val1[s];
                     if (amp) {
                         TBox* b0 = new TBox(s - 0.40, std::min(0.0, v0), s + 0.40, std::max(0.0, v0));
                         b0->SetFillColor(kColor[0]); b0->SetFillStyle(1001);
                         b0->SetLineColor(kBlack); b0->Draw("SAME");
-                        TBox* b1 = new TBox(s + 8 - 0.40, std::min(0.0, v1), s + 8 + 0.40, std::max(0.0, v1));
+                        TBox* b1 = new TBox(s + gNSiPM - 0.40, std::min(0.0, v1), s + gNSiPM + 0.40, std::max(0.0, v1));
                         b1->SetFillColor(kColor[1]); b1->SetFillStyle(1001);
                         b1->SetLineColor(kBlack); b1->Draw("SAME");
                         if (!bar0) { bar0 = b0; bar1 = b1; }
@@ -1209,10 +1327,10 @@ void position_reconstruction(const char* dir = "/home/turko46/bigdata/DCS-Monito
                         TBox* bq0 = new TBox(s + 0.02, std::min(0.0, q0), s + 0.38, std::max(0.0, q0));
                         bq0->SetFillColor(kColor[2]); bq0->SetFillStyle(1001);
                         bq0->SetLineColor(kBlack); bq0->Draw("SAME");
-                        TBox* b1 = new TBox(s + 8 - 0.38, std::min(0.0, v1), s + 8 - 0.02, std::max(0.0, v1));
+                        TBox* b1 = new TBox(s + gNSiPM - 0.38, std::min(0.0, v1), s + gNSiPM - 0.02, std::max(0.0, v1));
                         b1->SetFillColor(kColor[1]); b1->SetFillStyle(1001);
                         b1->SetLineColor(kBlack); b1->Draw("SAME");
-                        TBox* bq1 = new TBox(s + 8 + 0.02, std::min(0.0, q1), s + 8 + 0.38, std::max(0.0, q1));
+                        TBox* bq1 = new TBox(s + gNSiPM + 0.02, std::min(0.0, q1), s + gNSiPM + 0.38, std::max(0.0, q1));
                         bq1->SetFillColor(kColor[2]); bq1->SetFillStyle(1001);
                         bq1->SetLineColor(kBlack); bq1->Draw("SAME");
                         if (!bar0) { bar0 = b0; bar1 = b1; barQ = bq1; }
@@ -1248,7 +1366,8 @@ void position_reconstruction(const char* dir = "/home/turko46/bigdata/DCS-Monito
         double ymax = 0;
         for (int f = 0; f < kNFeat; ++f)
             for (int r = 0; r < 4; ++r) ymax = std::max(ymax, res[r][f].sr);
-        frame->SetTitle("Position resolution of the config-1 read-out (whole-plate data)");
+        frame->SetTitle(TString::Format("Position resolution of the %s read-out (whole-plate data)",
+                                        cfgTag).Data());
         frame->GetYaxis()->SetTitle("rms radial error [mm]");
         frame->GetXaxis()->SetTitle("information channel used by the estimator");
         const char* kAxisLabel[kNFeat] = {
@@ -1411,13 +1530,13 @@ void position_reconstruction(const char* dir = "/home/turko46/bigdata/DCS-Monito
             slab->SetLineWidth(2);
             slab->Draw("SAME");
             const double side = 8.0, gap = 2.0, off = gap + 0.5 * side;
-            for (int s = 0; s < 8; ++s) {
-                double cx = kSipm[s].x, cy = kSipm[s].y;
+            for (int s = 0; s < gNSiPM; ++s) {
+                double cx = gSipm[s].x, cy = gSipm[s].y;
                 const double tol = 1e-6;
-                if      (std::fabs(kSipm[s].x - kHalf) < tol) cx =  kHalf + off;
-                else if (std::fabs(kSipm[s].x + kHalf) < tol) cx = -kHalf - off;
-                if      (std::fabs(kSipm[s].y - kHalf) < tol) cy =  kHalf + off;
-                else if (std::fabs(kSipm[s].y + kHalf) < tol) cy = -kHalf - off;
+                if      (std::fabs(gSipm[s].x - kHalf) < tol) cx =  kHalf + off;
+                else if (std::fabs(gSipm[s].x + kHalf) < tol) cx = -kHalf - off;
+                if      (std::fabs(gSipm[s].y - kHalf) < tol) cy =  kHalf + off;
+                else if (std::fabs(gSipm[s].y + kHalf) < tol) cy = -kHalf - off;
                 TBox* b = new TBox(cx - 0.5 * side, cy - 0.5 * side,
                                    cx + 0.5 * side, cy + 0.5 * side);
                 b->SetFillColor(kBlack);
@@ -1432,15 +1551,18 @@ void position_reconstruction(const char* dir = "/home/turko46/bigdata/DCS-Monito
     {
         std::ofstream csv(TString::Format("%s/position_class_observables.csv", outdir).Data());
         csv << "wrapper,population,sipm,value\n";
-        const char* pop[6] = {"central muon, light share - 12.5 [pp]",
-                              "corner muon, light share - 12.5 [pp]",
+        const char* shareLabel = (gPreset == 1) ? "light share - 12.5 [pp]"
+                                                : "light share deviation [pp]";
+        std::string pop0 = std::string("central muon, ") + shareLabel;
+        std::string pop1 = std::string("corner muon, ") + shareLabel;
+        const char* pop[6] = {pop0.c_str(), pop1.c_str(),
                               "central muon, first-arrival offset [ns]",
                               "corner muon, first-arrival offset [ns]",
                               "central muon, 12.5% optical CFD offset [ns]",
                               "corner muon, 12.5% optical CFD offset [ns]"};
         for (const auto& r : classObs)
             csv << kReflPlain[(int)r[0]] << "," << pop[(int)r[1]] << ","
-                << kSipm[(int)r[2]].name << "," << r[3] << "\n";
+                << gSipm[(int)r[2]].name << "," << r[3] << "\n";
     }
 
     std::cout << "[position_reconstruction] done" << std::endl;

@@ -453,6 +453,45 @@ void GeometryMuonScint::BuildOpticalSurfaces()
         holdMPT->AddProperty("TRANSMITTANCE",  eh, t0, Nh);
         fHolderSurface->SetMaterialPropertiesTable(holdMPT);
     }
+
+    // -----------------------------------------------------------------
+    // 5) Uninstrumented narrow-edge reflector (presets 1-8).
+    //    kEdgeSame (default) leaves the edges governed by the main wrapping
+    //    skin; the other modes attach a thin strip with a dedicated optical
+    //    surface in BuildEdgeStrips().
+    // -----------------------------------------------------------------
+    if (fEdgeReflectorMode != kEdgeSame) {
+        fEdgeReflSurface = new G4OpticalSurface("MuonScintEdgeReflector");
+        fEdgeReflSurface->SetType(dielectric_dielectric);
+        fEdgeReflSurface->SetModel(unified);
+
+        const G4int Ne = 10;
+        G4double eEdge[Ne] = {1.907*eV, 2.066*eV, 2.254*eV, 2.480*eV, 2.638*eV,
+                              2.818*eV, 2.952*eV, 3.100*eV, 3.263*eV, 3.444*eV};
+        G4double reflEdge[Ne];
+
+        if (fEdgeReflectorMode == kEdgeBlack) {
+            fEdgeReflSurface->SetFinish(polished);
+            for (int i = 0; i < Ne; ++i) reflEdge[i] = 0.0;
+        } else if (fEdgeReflectorMode == kEdgeDiffuse) {
+            fEdgeReflSurface->SetFinish(groundfrontpainted);
+            fEdgeReflSurface->SetSigmaAlpha(0.1);
+            for (int i = 0; i < Ne; ++i) reflEdge[i] = 0.985;
+        } else if (fEdgeReflectorMode == kEdgeMirror) {
+            fEdgeReflSurface->SetType(dielectric_metal);
+            fEdgeReflSurface->SetFinish(polished);
+            for (int i = 0; i < Ne; ++i) reflEdge[i] = 0.95;
+        }
+
+        G4MaterialPropertiesTable* mptEdge = new G4MaterialPropertiesTable();
+        mptEdge->AddProperty("REFLECTIVITY", eEdge, reflEdge, Ne);
+        if (fEdgeReflectorMode == kEdgeBlack || fEdgeReflectorMode == kEdgeDiffuse) {
+            G4double transEdge[Ne];
+            for (int i = 0; i < Ne; ++i) transEdge[i] = 0.0;
+            mptEdge->AddProperty("TRANSMITTANCE", eEdge, transEdge, Ne);
+        }
+        fEdgeReflSurface->SetMaterialPropertiesTable(mptEdge);
+    }
 }
 
 
@@ -592,23 +631,25 @@ G4int GeometryMuonScint::Build()
     }
     BuildOpticalProperties(scintMat);
 
-    // ---------- Optical grease (silicone, n=1.46) ----------
-    // EJ-560 / BC-630-style silicone optical coupling pad.
+    // ---------- Optical grease (silicone, n=fCouplingRIndex) ----------
+    // EJ-560 / BC-630-style silicone optical coupling pad.  The material is
+    // cached in the G4MaterialStore, so if it already exists we still overwrite
+    // its RINDEX in case the coupling index was changed after the first Build().
     G4Material* greaseMat = G4Material::GetMaterial("OpticalGrease", false);
     if (!greaseMat) {
         greaseMat = new G4Material("OpticalGrease", 1.06*g/cm3, 2);
         greaseMat->AddElement(nist->FindOrBuildElement("Si"), 1);
         greaseMat->AddElement(nist->FindOrBuildElement("O"),  2);
-
-        const G4int Ng = 2;
-        G4double eg[Ng]   = { 1.5*eV, 6.0*eV };
-        G4double ng[Ng]   = { 1.46, 1.46 };
-        G4double absg[Ng] = { 1.*m, 1.*m };   // grease is essentially transparent over 0.1 mm
-        auto* mptG = new G4MaterialPropertiesTable();
-        mptG->AddProperty("RINDEX",    eg, ng,   Ng);
-        mptG->AddProperty("ABSLENGTH", eg, absg, Ng);
-        greaseMat->SetMaterialPropertiesTable(mptG);
     }
+    G4MaterialPropertiesTable* mptG = greaseMat->GetMaterialPropertiesTable();
+    if (!mptG) mptG = new G4MaterialPropertiesTable();
+    const G4int Ng = 2;
+    G4double eg[Ng]   = { 1.5*eV, 6.0*eV };
+    G4double ng[Ng]   = { fCouplingRIndex, fCouplingRIndex };
+    G4double absg[Ng] = { 1.*m, 1.*m };   // grease is essentially transparent over 0.1 mm
+    mptG->AddProperty("RINDEX",    eg, ng,   Ng);
+    mptG->AddProperty("ABSLENGTH", eg, absg, Ng);
+    greaseMat->SetMaterialPropertiesTable(mptG);
 
     // ---------- SiPM bulk (epoxy/glass equivalent, n=1.55) ----------
     // The volume is a Bernoulli sink at its inner face (border surface), so
@@ -758,6 +799,23 @@ static std::vector<G4ThreeVector> BentPath(G4double x, G4double zSpread,
              G4ThreeVector(x,  yA,     zSpread),
              G4ThreeVector(x,  yB,     zBundle),
              G4ThreeVector(x,  Ly + ov, zBundle) };
+}
+
+// Dual-ended fibre path: bundle at both ends, straight spread run in the middle.
+// Five legs connect six points.
+static std::vector<G4ThreeVector> BentPathDual(G4double x, G4double zSpread,
+                                               G4double zBundle, G4double Ly,
+                                               G4double conv, G4double resL,
+                                               G4double ov)
+{
+    const G4double yA = Ly - conv;
+    const G4double yB = Ly - resL;
+    return { G4ThreeVector(x, -Ly - ov, zBundle),
+             G4ThreeVector(x, -yB,      zBundle),
+             G4ThreeVector(x, -yA,      zSpread),
+             G4ThreeVector(x, +yA,      zSpread),
+             G4ThreeVector(x, +yB,      zBundle),
+             G4ThreeVector(x, +Ly + ov, zBundle) };
 }
 
 // Cross-section generators for MakeSweptPrism. A section is a list of 2-D
@@ -1132,9 +1190,14 @@ void GeometryMuonScint::BuildWLSFibres()
     const G4double sqShrink = fFibreSquareCross ? 0.98 : 1.0;
     const G4double cladSize = rFibre * sqShrink;
     const G4double coreSize = rCore  * sqShrink;
-    const G4double halfL  = fHalfSize.y();   // run the full plate length (y)
+    const G4double halfL  = fWLSFourSides ? (fHalfSize.y() - 1.0*mm) : fHalfSize.y();
     const G4double resL   = 2.0*mm;          // straight bundled stub before +end
     const G4double conv   = fFibreConvergeLen;
+    auto makePath = [&](G4double x, G4double zs, G4double zb, G4double ov) {
+        return fWLSDualEnded
+            ? BentPathDual(x, zs, zb, halfL, conv, resL, ov)
+            : BentPath(x, zs, zb, halfL, conv, resL, ov);
+    };
     // Cutter overshoot: the groove tool is made longer than the film/clamp so
     // the opening is bounded by the object's own faces, never by a face
     // coincident with the tool (coincident faces -> degenerate polygons).
@@ -1205,8 +1268,7 @@ void GeometryMuonScint::BuildWLSFibres()
     if (analytic) fFibreSegs.resize(fNFibres);
     for (G4int k = 0; analytic && k < fNFibres; ++k) {
         const auto tag = std::to_string(k);
-        const auto path = BentPath(fFibreAxisX, zSpread[k], zBundle[k],
-                                   halfL, conv, resL, 0.);
+        const auto path = makePath(fFibreAxisX, zSpread[k], zBundle[k], 0.);
         auto cladLegs  = MakeCutTubeLegs("WLSFibreCladSolid_" + tag, rFibre, path);
         auto innerLegs = fFibreMultiClad
             ? MakeCutTubeLegs("WLSFibreInnerSolid_" + tag, rInner, path)
@@ -1242,8 +1304,7 @@ void GeometryMuonScint::BuildWLSFibres()
     }
     for (G4int k = 0; !analytic && k < fNFibres; ++k) {
         const auto tag = std::to_string(k);
-        const auto path = BentPath(fFibreAxisX, zSpread[k], zBundle[k],
-                                   halfL, conv, resL, 0.);
+        const auto path = makePath(fFibreAxisX, zSpread[k], zBundle[k], 0.);
 
         auto* cladSolid = (squareCross && fFibreUseExtruded)
             ? MakeExtrudedFibre("WLSFibreCladSolid_" + tag, path, cladSize)
@@ -1302,7 +1363,7 @@ void GeometryMuonScint::BuildWLSFibres()
     // PMMA clad (n=1.49, single-clad); the core/inner-clad guide is unaffected
     // because the sheath is only 0.02 mm thick.
     auto* filmBox = new G4Box("WLSCoupleFilmBox",
-                              filmHalfX, fHalfSize.y(), fHalfSize.z());
+                              filmHalfX, halfL, fHalfSize.z());
     G4Material* greaseMat = G4Material::GetMaterial("OpticalGrease", false);
     {
         // Carve the film with a groove CONCENTRIC to each fibre, of radius
@@ -1319,8 +1380,8 @@ void GeometryMuonScint::BuildWLSFibres()
         // along +y with the transverse offset in z).
         G4VSolid* solid = filmBox;
         for (G4int k = 0; k < fNFibres; ++k) {
-            const auto tool = BentPath(fFibreAxisX - filmCx, zSpread[k],
-                                       zBundle[k], halfL, conv, resL, cutterOv);
+            const auto tool = makePath(fFibreAxisX - filmCx, zSpread[k],
+                                       zBundle[k], cutterOv);
             const auto tag = std::to_string(k);
             auto* groove = analytic
                 ? MakeCutTubeCutter("WLSCoupleGroove_" + tag,
@@ -1361,7 +1422,7 @@ void GeometryMuonScint::BuildWLSFibres()
     // Channel centre relative to the clamp centre (local frame, no rotation).
     const G4double relChX = sx * (channelCxAbs - clampCxAbs);
     auto* clampBox = new G4Box("WLSClampBox",
-                               clampHalfX, fHalfSize.y(), fHalfSize.z());
+                               clampHalfX, halfL, fHalfSize.z());
     G4VSolid* clampSolid = clampBox;
     {
         // Same swept tools as the fibres, in slab-local coordinates, shifted by
@@ -1369,8 +1430,8 @@ void GeometryMuonScint::BuildWLSFibres()
         // straight-run channel web is preserved by fFibrePitch > 2*fChannelRadius;
         // the channels merge into the bundle slot over the converging stretch.
         for (G4int k = 0; k < fNFibres; ++k) {
-            const auto tool = BentPath(relChX, zSpread[k],
-                                       zBundle[k], halfL, conv, resL, cutterOv);
+            const auto tool = makePath(relChX, zSpread[k],
+                                       zBundle[k], cutterOv);
             const auto tag = std::to_string(k);
             auto* channel = analytic
                 ? MakeCutTubeCutter("WLSChannel_" + tag, fChannelRadius, tool)
@@ -1489,243 +1550,289 @@ void GeometryMuonScint::PlaceWLSFibres(G4LogicalVolume* worldLV,
                                        G4int /*copyNo*/)
 {
     const G4double rFibre = fFibreRadius;
-    const G4double sx      = fWLSOnNegX ? -1.0 : +1.0;
     const G4double clampFrontX = fHalfSize.x() + fClampGap;
     const G4double filmHalfX = 0.5 * fClampGap;
-    const G4double filmCx  = sx * (fHalfSize.x() + filmHalfX);
-    const G4double clampCx = sx * (clampFrontX + 0.5*fClampWallZ);
     const G4double Ly = fHalfSize.y();
+    const G4double halfL = fWLSFourSides ? (Ly - 1.0*mm) : Ly;
 
-    auto mapPos = [&](const G4ThreeVector& local) {
-        G4ThreeVector w = local;
-        if (slabRot) w = (*slabRot) * w;
-        return w + slabPos;
-    };
-    auto rotCopy = [&](const G4RotationMatrix& base) {
-        auto* r = new G4RotationMatrix(base);
-        if (slabRot) *r = (*slabRot) * (*r);
-        return r;
-    };
     // The WLS sub-assembly is built with the fibre bundle at slab-local +y and
-    // the mirror at -y, then the whole assembly (film, clamp, fibres, caps,
-    // read-out pad) is rotated 180 deg about the slab-local x axis here.  This
-    // puts the clamp along the report-plan TOP edge (the -x narrow face) with
-    // the read-out SiPM at its LEFT (-x) end -- the top-left corner of the
-    // top-down view, matching Fig. 1 / Fig. 3(b) of Rao et al.  Rx180 is a
-    // proper rotation, so the tessellated fibres and the milled clamp/grease
-    // channels keep their outward facet orientation and flip together; the
-    // clamp and grease boxes are symmetric about that axis.  The fibre / clamp
-    // / channel CONSTRUCTION (BuildWLSFibres) is untouched.
+    // the mirror at -y, then flipped 180 deg about the slab-local x axis so the
+    // read-out ends up at -y.
     G4RotationMatrix flipRot;
     flipRot.rotateX(180.*deg);
 
-    // ---- Thin grease film (grooves flip with the assembly) ----
-    auto* filmPV = new G4PVPlacement(rotCopy(flipRot),
-                                     mapPos(G4ThreeVector(filmCx, 0., 0.)),
-                                     fGrease4LV, "WLSCoupleFilmPhys",
-                                     worldLV, false, 0, true);
+    // Single-sided WLS (Config 4) places one clamp on the face selected by
+    // fWLSOnNegX.  Four-sided WLS (presets 10/11) places a clamp on every
+    // narrow face; sideRot rotates the assembly by 0/90/180/270 deg about z.
+    const G4int nSides = fWLSFourSides ? 4 : 1;
 
-    // ---- Clamp body (outboard of the fibres) ----
-    new G4PVPlacement(rotCopy(flipRot),
-                      mapPos(G4ThreeVector(clampCx, 0., 0.)),
-                      fClampLV, "WLSClampPhys", worldLV, false, 0, true);
-    // NOTE: a skin surface applies to EVERY face of the LV (channel walls and
-    // the grease-facing front included), not just the outboard face.
-    switch (fClampSurfaceMode) {
-        case kClampBlack:
-            G4cout << " [MuonScint] clamp skin = none (black absorbing bulk)" << G4endl;
-            break;
-        case kClampMirror:
-            new G4LogicalSkinSurface("WLSClampMirrorSkin", fClampLV, fClampMirror);
-            break;
-        case kClampWhite:
-        default:
-            new G4LogicalSkinSurface("WLSClampWhiteSkin", fClampLV, fClampWhite);
-            G4cout << " [MuonScint] clamp skin = white Lambertian R=0.85" << G4endl;
-            break;
-    }
+    for (G4int side = 0; side < nSides; ++side) {
+        G4RotationMatrix sideRot;
+        if (fWLSFourSides) sideRot.rotateZ(side * 90.*deg);
 
-    // ---- Fibres (clad + core), seated in the clamp channels --------------
-    // The fibres are world siblings of the slab (like the mirror caps and the
-    // read-out), running the full plate length in y and spread across z. Each
-    // sits inside a milled channel and pokes fFibreProtrusion past the channel
-    // mouth (the clamp front face) into the grease film; the clamp and grease
-    // solids were carved with the same swept-tube tools so the three never
-    // overlap. Placing the fibres in the world (rather than as daughters of the
-    // clamp) is what lets them protrude out of the clamp without tripping
-    // Geant4's mother-containment overlap check.
-    //
-    // Each fibre solid (MakeSweptTube) is built DIRECTLY in slab-local
-    // coordinates (axis +y, transverse offset in z, centred on y=0); it is
-    // placed at the slab-local origin and carries the SAME flipRot as the
-    // clamp/film so its bundle moves to -y along with the milled channels. The
-    // core is a daughter of each clad LV (built above), so it is not placed
-    // here.
-    std::vector<G4VPhysicalVolume*> cladPVs(fNFibres, nullptr);
-    // Square fibres are built as G4ExtrudedSolid in their own local frame (see
-    // MakeExtrudedFibre), which needs an extra local->slab rotation and an x
-    // offset; the round tessellated fibres are already in slab-local coordinates.
-    G4RotationMatrix baseFibreRot = flipRot;
-    G4ThreeVector    cladPos(0., 0., 0.);
-    if (fFibreSquareCross && fFibreUseExtruded) {
-        // Desired object (local->slab) rotation is flipRot*M; G4 stores the
-        // inverse of the matrix passed to G4PVPlacement, so pass its inverse.
-        G4RotationMatrix objRot = flipRot * ExtrudedFibreRot();
-        baseFibreRot = objRot.inverse();
-        cladPos      = flipRot * G4ThreeVector(fFibreAxisX, 0., 0.);
-    }
-    // The clad PV touching the far-end mirror cap and the one touching the
-    // read-out pad (the same PV for a single-solid fibre; the first / last leg
-    // for the analytic multi-leg fibre).
-    std::vector<G4VPhysicalVolume*> capSidePVs(fNFibres, nullptr);
-    std::vector<G4VPhysicalVolume*> padSidePVs(fNFibres, nullptr);
-    if (!fFibreSegs.empty()) {
-        // Analytic legs: object transform = slab o flip o leg (all active).
-        for (G4int k = 0; k < fNFibres; ++k) {
-            const auto& legs = fFibreSegs[k];
-            for (std::size_t s = 0; s < legs.size(); ++s) {
-                G4RotationMatrix objRot = flipRot * legs[s].rot;
-                G4ThreeVector    objPos = flipRot * legs[s].pos;
-                if (slabRot) { objRot = (*slabRot) * objRot; objPos = (*slabRot) * objPos; }
-                objPos += slabPos;
-                auto* pv = new G4PVPlacement(G4Transform3D(objRot, objPos),
-                                             legs[s].cladLV,
-                                             "WLSFibreCladPhys_" + std::to_string(k)
-                                                 + "_" + std::to_string(s),
-                                             worldLV, false, k, true);
-                if (s == 0)               capSidePVs[k] = pv;
-                if (s + 1 == legs.size()) padSidePVs[k] = pv;
+        // Local transformation for this side: first flip, then side rotation.
+        const G4RotationMatrix localRot = sideRot * flipRot;
+
+        auto mapPosLocal = [&](const G4ThreeVector& local) {
+            G4ThreeVector w = localRot * local;
+            if (slabRot) w = (*slabRot) * w;
+            return w + slabPos;
+        };
+        auto mapPosNoFlip = [&](const G4ThreeVector& local) {
+            // Caps and read-out pads are positioned in the construction frame;
+            // only the side rotation (not the assembly flip) is applied to the
+            // position.  The orientation carries the flip so the pad faces the
+            // bundle end.
+            G4ThreeVector w = sideRot * local;
+            if (slabRot) w = (*slabRot) * w;
+            return w + slabPos;
+        };
+        auto rotCopyLocal = [&](const G4RotationMatrix& base) {
+            auto* r = new G4RotationMatrix(localRot * base);
+            if (slabRot) *r = (*slabRot) * (*r);
+            return r;
+        };
+        auto rotCopyNoFlip = [&](const G4RotationMatrix& base) {
+            auto* r = new G4RotationMatrix(sideRot * base);
+            if (slabRot) *r = (*slabRot) * (*r);
+            return r;
+        };
+
+        const G4double sx = fWLSOnNegX ? -1.0 : +1.0;
+        const G4double filmCx  = sx * (fHalfSize.x() + filmHalfX);
+        const G4double clampCx = sx * (clampFrontX + 0.5*fClampWallZ);
+
+        // ---- Thin grease film (grooves flip with the assembly) ----
+        auto* filmPV = new G4PVPlacement(rotCopyLocal(G4RotationMatrix()),
+                                         mapPosLocal(G4ThreeVector(filmCx, 0., 0.)),
+                                         fGrease4LV, "WLSCoupleFilmPhys",
+                                         worldLV, false, side, true);
+
+        // ---- Clamp body (outboard of the fibres) ----
+        new G4PVPlacement(rotCopyLocal(G4RotationMatrix()),
+                          mapPosLocal(G4ThreeVector(clampCx, 0., 0.)),
+                          fClampLV, "WLSClampPhys", worldLV, false, side, true);
+        // NOTE: a skin surface applies to EVERY face of the LV (channel walls and
+        // the grease-facing front included), not just the outboard face.  The
+        // same LV is used for all sides, so one skin registration is enough.
+        if (side == 0) {
+            switch (fClampSurfaceMode) {
+                case kClampBlack:
+                    G4cout << " [MuonScint] clamp skin = none (black absorbing bulk)" << G4endl;
+                    break;
+                case kClampMirror:
+                    new G4LogicalSkinSurface("WLSClampMirrorSkin", fClampLV, fClampMirror);
+                    break;
+                case kClampWhite:
+                default:
+                    new G4LogicalSkinSurface("WLSClampWhiteSkin", fClampLV, fClampWhite);
+                    G4cout << " [MuonScint] clamp skin = white Lambertian R=0.85" << G4endl;
+                    break;
+            }
+        }
+
+        // ---- Fibres (clad + core), seated in the clamp channels --------------
+        std::vector<G4VPhysicalVolume*> cladPVs(fNFibres, nullptr);
+        std::vector<G4VPhysicalVolume*> capSidePVs(fNFibres, nullptr);
+        std::vector<G4VPhysicalVolume*> padSidePVs(fNFibres, nullptr);
+
+        // Square fibres are built as G4ExtrudedSolid in their own local frame
+        // (see MakeExtrudedFibre), which needs an extra local->slab rotation
+        // and an x offset; the round tessellated fibres are already in
+        // slab-local coordinates.
+        G4RotationMatrix baseFibreRot = localRot;
+        G4ThreeVector    cladPos(0., 0., 0.);
+        if (fFibreSquareCross && fFibreUseExtruded) {
+            // Desired object (local->slab) rotation is localRot*M; G4 stores the
+            // inverse of the matrix passed to G4PVPlacement, so pass its inverse.
+            G4RotationMatrix objRot = localRot * ExtrudedFibreRot();
+            baseFibreRot = objRot.inverse();
+            cladPos      = localRot * G4ThreeVector(fFibreAxisX, 0., 0.);
+        }
+        if (!fFibreSegs.empty()) {
+            // Analytic legs: object transform = slab o localRot o leg (all active).
+            for (G4int k = 0; k < fNFibres; ++k) {
+                const auto& legs = fFibreSegs[k];
+                for (std::size_t s = 0; s < legs.size(); ++s) {
+                    G4RotationMatrix objRot = localRot * legs[s].rot;
+                    G4ThreeVector    objPos = localRot * legs[s].pos;
+                    if (slabRot) { objRot = (*slabRot) * objRot; objPos = (*slabRot) * objPos; }
+                    objPos += slabPos;
+                    auto* pv = new G4PVPlacement(G4Transform3D(objRot, objPos),
+                                                 legs[s].cladLV,
+                                                 "WLSFibreCladPhys_s" + std::to_string(side)
+                                                     + "_" + std::to_string(k)
+                                                     + "_" + std::to_string(s),
+                                                 worldLV, false, k, true);
+                    if (s == 0)               capSidePVs[k] = pv;
+                    if (s + 1 == legs.size()) padSidePVs[k] = pv;
+                }
+            }
+        }
+        for (G4int k = 0; fFibreSegs.empty() && k < fNFibres; ++k) {
+            cladPVs[k] = new G4PVPlacement(rotCopyLocal(baseFibreRot),
+                                           mapPosLocal(cladPos),
+                                           fFibreOuterLVs[k],
+                                           "WLSFibreCladPhys_s" + std::to_string(side)
+                                               + "_" + std::to_string(k),
+                                           worldLV, false, k, true);
+            capSidePVs[k] = cladPVs[k];
+            padSidePVs[k] = cladPVs[k];
+        }
+
+        // ---- Far-end mirror caps (single-ended only) ----
+        // Caps sit just past the construction +y fibre ends.  After the assembly
+        // flip that end becomes the mirror end; the side rotation distributes
+        // the clamps around the slab perimeter.
+        const G4double capPhi = fWLSOnNegX ? 180.*deg : 0.;
+        G4RotationMatrix capRot;
+        if (!fFibreSquareCross) capRot.rotateX(90.*deg);
+        std::vector<G4VPhysicalVolume*> capPVs(fNFibres, nullptr);
+        if (!fWLSDualEnded) {
+            for (G4int k = 0; k < fNFibres; ++k) {
+                const G4double zk = -(k - 0.5*(fNFibres - 1)) * fFibreZSpacing;
+                const G4ThreeVector capCentre(fFibreAxisX, halfL + 0.05*mm, zk);
+                capPVs[k] = new G4PVPlacement(rotCopyNoFlip(capRot),
+                                              mapPosNoFlip(capCentre),
+                                              fMirrorCapLV,
+                                              "WLSFibreMirrorPhys_s" + std::to_string(side)
+                                                  + "_" + std::to_string(k),
+                                              worldLV, false, k, true);
+            }
+        }
+
+        // ---- Read-out grease pad(s) + SiPM(s) ----
+        // Single-ended: one pad/SiPM at the construction -y end (bundle end).
+        // Dual-ended:   pads/SiPMs at both ends, copy numbers 2*side and 2*side+1.
+        G4RotationMatrix padRot;
+        padRot.rotateX(90.*deg);
+        padRot.rotateY(capPhi);
+
+        // Read-out pads are placed at the slab corners (full Ly offset) and,
+        // for the four-sided layout, shifted outward along the clamp face
+        // normal so the 4x4 mm pad/SiPM does not protrude into the slab volume
+        // or overlap the adjacent clamp at the corner.  For single-sided WLS
+        // halfL == Ly and padShift == 0.
+        const G4double padOffset  = Ly + fCouplingHalfZ;
+        const G4double sipmOffset = Ly + 2.*fCouplingHalfZ + fSiPMHalfZ;
+        const G4double faceInset = fClampGap + rFibre - fFibreProtrusion;
+        const G4double padShift  = fWLSFourSides
+                                   ? (fSiPMHalfX - faceInset + 0.05*mm)
+                                   : 0.0;
+
+        std::vector<G4VPhysicalVolume*> padPVs;
+        std::vector<G4VPhysicalVolume*> sipmPVs;
+        auto placeReadout = [&](G4bool atPlusY, G4int copyNo) {
+            const G4double yPad  = atPlusY ? +padOffset  : -padOffset;
+            const G4double ySiPM = atPlusY ? +sipmOffset : -sipmOffset;
+            const G4RotationMatrix& oriRot = atPlusY ? (sideRot * padRot)
+                                                     : (localRot * padRot);
+            // Shift pad/SiPM outward along the face normal (construction x-axis)
+            // in the four-sided layout so it clears the slab face.
+            const G4double padX = fFibreAxisX - padShift;
+            auto* padPV = new G4PVPlacement(rotCopyNoFlip(oriRot),
+                                            mapPosNoFlip(G4ThreeVector(padX, yPad, 0.)),
+                                            fGreaseLV,
+                                            "WLSReadoutGrease_s" + std::to_string(side)
+                                                + "_e" + std::to_string(copyNo),
+                                            worldLV, false, copyNo, true);
+            auto* sipmPV = new G4PVPlacement(rotCopyNoFlip(oriRot),
+                                             mapPosNoFlip(G4ThreeVector(padX, ySiPM, 0.)),
+                                             fSiPMLV,
+                                             "WLSReadoutSiPMPhys_s" + std::to_string(side)
+                                                 + "_e" + std::to_string(copyNo),
+                                             worldLV, false, copyNo, true);
+            padPVs.push_back(padPV);
+            sipmPVs.push_back(sipmPV);
+        };
+
+        if (!fWLSDualEnded) {
+            placeReadout(false, side);   // one SiPM per side, copy = side
+        } else {
+            placeReadout(false, 2*side);     // -y end
+            placeReadout(true,  2*side + 1); // +y end
+        }
+
+        // ---- Optical borders ----
+        const std::string sTag = "_s" + std::to_string(side);
+
+        // slab instrumented face <-> grease film: transparent Fresnel.
+        if (fScintPV && fCouplingSurface) {
+            new G4LogicalBorderSurface("MuonScint_SlabFilm" + sTag,
+                                       fScintPV, filmPV, fCouplingSurface);
+            new G4LogicalBorderSurface("MuonScint_FilmSlab" + sTag,
+                                       filmPV, fScintPV, fCouplingSurface);
+        }
+
+        // Slab <-> each read-out grease pad contact.
+        for (std::size_t r = 0; r < padPVs.size(); ++r) {
+            auto* padPV = padPVs[r];
+            const std::string rTag = sTag + "_e" + std::to_string(
+                fWLSDualEnded ? (2*side + (G4int)r) : side);
+            if (fWLSPadSlabContact) {
+                if (fScintPV && padPV && fCouplingSurface) {
+                    new G4LogicalBorderSurface("MuonScint_SlabPad" + rTag,
+                                               fScintPV, padPV, fCouplingSurface);
+                    new G4LogicalBorderSurface("MuonScint_PadSlab" + rTag,
+                                               padPV, fScintPV, fCouplingSurface);
+                }
+            } else if (fReflectorType == kNoReflector && fScintPV && padPV) {
+                auto* gap = new G4OpticalSurface("MuonScintPadAirGap" + rTag);
+                gap->SetModel(unified);
+                gap->SetType(dielectric_dielectric);
+                gap->SetFinish(polishedbackpainted);
+                auto* m = new G4MaterialPropertiesTable();
+                const G4int ng = 2;
+                G4double eg[ng]   = { 1.5*eV, 6.0*eV };
+                G4double nAir[ng] = { 1.0003, 1.0003 };
+                G4double r0[ng]   = { 0., 0. };
+                m->AddProperty("RINDEX", eg, nAir, ng);
+                m->AddProperty("REFLECTIVITY", eg, r0, ng);
+                gap->SetMaterialPropertiesTable(m);
+                new G4LogicalBorderSurface("MuonScint_SlabPadGap" + rTag,
+                                           fScintPV, padPV, gap);
+                new G4LogicalBorderSurface("MuonScint_PadSlabGap" + rTag,
+                                           padPV, fScintPV, gap);
+            }
+        }
+
+        // Far-end mirror cap: specular Al reflector (single-ended only).
+        if (!fWLSDualEnded && fFibreEndMirror) {
+            new G4LogicalSkinSurface("WLSFibreCapMirrorSkin" + sTag, fMirrorCapLV,
+                                     fFibreEndMirror);
+            for (G4int k = 0; k < fNFibres; ++k) {
+                new G4LogicalBorderSurface("MuonScint_FibreCap" + sTag + "_" + std::to_string(k),
+                                           capSidePVs[k], capPVs[k], fFibreEndMirror);
+                new G4LogicalBorderSurface("MuonScint_CapFibre" + sTag + "_" + std::to_string(k),
+                                           capPVs[k], capSidePVs[k], fFibreEndMirror);
+            }
+        }
+
+        // Fibre read-out end -> read-out pad: transparent coupling.
+        for (std::size_t r = 0; r < padPVs.size(); ++r) {
+            auto* padPV = padPVs[r];
+            if (fCouplingSurface && padPV) {
+                for (std::size_t k = 0; k < padSidePVs.size(); ++k) {
+                    const std::string reTag = sTag + "_" + std::to_string(k)
+                                              + "_e" + std::to_string(
+                                                  fWLSDualEnded ? (2*side + (G4int)r) : side);
+                    new G4LogicalBorderSurface("MuonScint_FibrePad" + reTag,
+                                               padSidePVs[k], padPV, fCouplingSurface);
+                    new G4LogicalBorderSurface("MuonScint_PadFibre" + reTag,
+                                               padPV, padSidePVs[k], fCouplingSurface);
+                }
+            }
+            // pad -> SiPM: photocathode (PDE) detection.
+            if (fSiPMSurface && padPV && sipmPVs[r]) {
+                const std::string eTag = sTag + "_e" + std::to_string(
+                    fWLSDualEnded ? (2*side + (G4int)r) : side);
+                new G4LogicalBorderSurface("MuonScint_ReadoutGreaseSiPM" + eTag,
+                                           padPV, sipmPVs[r], fSiPMSurface);
             }
         }
     }
-    for (G4int k = 0; fFibreSegs.empty() && k < fNFibres; ++k) {
-        cladPVs[k] = new G4PVPlacement(rotCopy(baseFibreRot),
-                                       mapPos(cladPos),
-                                       fFibreOuterLVs[k],
-                                       "WLSFibreCladPhys_" + std::to_string(k),
-                                       worldLV, false, k, true);
-        capSidePVs[k] = cladPVs[k];
-        padSidePVs[k] = cladPVs[k];
-    }
-
-    // ---- Far-end mirror caps (world siblings just past the +y fibre ends
-    // after the flip). The cap disc's axis is put along y (rotateX(+90) maps
-    // tube local z -> y); a full disc is rotationally symmetric so Phi is
-    // immaterial. zk is mirrored so cap k pairs with the flipped fibre k.
-    const G4double capPhi = fWLSOnNegX ? 180.*deg : 0.;
-    G4RotationMatrix capRot;
-    if (!fFibreSquareCross) capRot.rotateX(90.*deg);  // tube axis z -> y (box cap already aligned)
-    std::vector<G4VPhysicalVolume*> capPVs(fNFibres, nullptr);
-    for (G4int k = 0; k < fNFibres; ++k) {
-        const G4double zk = -(k - 0.5*(fNFibres - 1)) * fFibreZSpacing;
-        const G4ThreeVector capCentre(fFibreAxisX, Ly + 0.05*mm, zk);
-        capPVs[k] = new G4PVPlacement(rotCopy(capRot), mapPos(capCentre),
-                                      fMirrorCapLV,
-                                      "WLSFibreMirrorPhys_" + std::to_string(k),
-                                      worldLV, false, k, true);
-    }
-
-    // ---- Read-out grease pad + single SiPM at the -y fibre ends (after the
-    // flip). The pad/SiPM boxes are large in their local (x,y); after the
-    // axisRot (tube axis -> y) we additionally rotate about the axis by Phi so
-    // their wide face aligns with the slab face (x-z), not the slab edge. The
-    // assembly flip is composed on top so the wide face still faces the slab.
-    const G4double padCentreY  = -(Ly + fCouplingHalfZ);
-    const G4double sipmCentreY = -(Ly + 2.*fCouplingHalfZ + fSiPMHalfZ);
-    G4RotationMatrix padRot;
-    padRot.rotateX(90.*deg);
-    padRot.rotateY(capPhi);
-    const G4RotationMatrix padRotFlip = flipRot * padRot;
-    auto* padPV  = new G4PVPlacement(rotCopy(padRotFlip),
-                                     mapPos(G4ThreeVector(fFibreAxisX, padCentreY, 0.)),
-                                     fGreaseLV, "WLSReadoutGrease",
-                                     worldLV, false, 0, true);
-    auto* sipmPV = new G4PVPlacement(rotCopy(padRotFlip),
-                                     mapPos(G4ThreeVector(fFibreAxisX, sipmCentreY, 0.)),
-                                     fSiPMLV, "WLSReadoutSiPMPhys",
-                                     worldLV, false, 0, true);
-
-    // ---- Optical borders ----
-    // slab instrumented face <-> grease film: transparent Fresnel (overrides
-    // the wrap).
-    if (fScintPV && fCouplingSurface) {
-        new G4LogicalBorderSurface("MuonScint_SlabFilm", fScintPV, filmPV,
-                                   fCouplingSurface);
-        new G4LogicalBorderSurface("MuonScint_FilmSlab", filmPV, fScintPV,
-                                   fCouplingSurface);
-    }
-    // ---- Slab <-> read-out grease pad contact ----
-    // The 4x4 mm read-out grease pad (x in [-127.55,-123.55], z in [-2,2])
-    // overlaps the slab's -Y face over x in [-125.0,-123.55], z in [-2,2].
-    // In the experimental setup (Rao et al. 2025) this portion of the SiPM
-    // active face is in direct optical contact with the slab via optical grease
-    // (fWLSPadSlabContact = true, default): register fCouplingSurface in both
-    // directions so it overrides the reflector skin and couples light through
-    // a polished Fresnel interface.
-    // When fWLSPadSlabContact is false (legacy fibre-only study mode), wrapped
-    // slabs fall back to MuonScintSkin and the bare slab uses an explicit
-    // air-gap absorber border (P4a) so no direct slab light enters the pad.
-    if (fWLSPadSlabContact) {
-        if (fScintPV && padPV && fCouplingSurface) {
-            new G4LogicalBorderSurface("MuonScint_SlabPad", fScintPV, padPV,
-                                       fCouplingSurface);
-            new G4LogicalBorderSurface("MuonScint_PadSlab", padPV, fScintPV,
-                                       fCouplingSurface);
-        }
-    } else if (fReflectorType == kNoReflector && fScintPV && padPV) {
-        auto* gap = new G4OpticalSurface("MuonScintPadAirGap");
-        gap->SetModel(unified);
-        gap->SetType(dielectric_dielectric);
-        gap->SetFinish(polishedbackpainted);   // Fresnel/TIR vs the air backing
-        auto* m = new G4MaterialPropertiesTable();
-        const G4int ng = 2;
-        G4double eg[ng]   = { 1.5*eV, 6.0*eV };
-        G4double nAir[ng] = { 1.0003, 1.0003 };
-        G4double r0[ng]   = { 0., 0. };
-        m->AddProperty("RINDEX", eg, nAir, ng);         // surface backing index
-        m->AddProperty("REFLECTIVITY", eg, r0, ng);     // transmitted light absorbed
-        gap->SetMaterialPropertiesTable(m);
-        new G4LogicalBorderSurface("MuonScint_SlabPadGap", fScintPV, padPV, gap);
-        new G4LogicalBorderSurface("MuonScint_PadSlabGap", padPV, fScintPV, gap);
-    }
-    // far-end mirror cap: specular Al reflector.
-    // A skin on the cap LV covers *every* face the borders below do not, in
-    // particular the CORE<->cap crossing.  Without it that crossing has no
-    // surface at all, and since G4_Al carries no RINDEX the boundary process
-    // kills the photon with NoRINDEX (measured: 17/40 events, exactly the
-    // core->cap crossings) instead of reflecting it.  Borders take precedence
-    // over skins, so the clad<->cap borders below are unaffected.
-    if (fFibreEndMirror) {
-        new G4LogicalSkinSurface("WLSFibreCapMirrorSkin", fMirrorCapLV,
-                                 fFibreEndMirror);
-        for (G4int k = 0; k < fNFibres; ++k) {
-            new G4LogicalBorderSurface("MuonScint_FibreCap_" + std::to_string(k),
-                                       capSidePVs[k], capPVs[k], fFibreEndMirror);
-            new G4LogicalBorderSurface("MuonScint_CapFibre_" + std::to_string(k),
-                                       capPVs[k], capSidePVs[k], fFibreEndMirror);
-        }
-    }
-    // fibre read-out end (-y after the placement flip) -> read-out pad:
-    // transparent (couples guided light out).
-    // The single SiPM views ALL FOUR fibre end faces simultaneously (Rao et al.
-    // Fig. 4a), so every fibre's read-out end carries the coupling border into the
-    // shared read-out pad. Without it the un-listed fibres fall back to the default
-    // polished Fresnel boundary, which for core->pad is optically similar to
-    // fCouplingSurface; the borders are therefore belt-and-braces, not load-bearing.
-    if (fCouplingSurface && padPV) {
-        for (std::size_t k = 0; k < padSidePVs.size(); ++k) {
-            new G4LogicalBorderSurface("MuonScint_FibrePad_" + std::to_string(k),
-                                       padSidePVs[k], padPV, fCouplingSurface);
-            new G4LogicalBorderSurface("MuonScint_PadFibre_" + std::to_string(k),
-                                       padPV, padSidePVs[k], fCouplingSurface);
-        }
-    }
-    // pad -> SiPM: photocathode (PDE) detection.
-    if (fSiPMSurface) {
-        new G4LogicalBorderSurface("MuonScint_ReadoutGreaseSiPM", padPV, sipmPV,
-                                   fSiPMSurface);
-    }
 }
+
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
@@ -1784,6 +1891,9 @@ void GeometryMuonScint::PlaceDetector(G4LogicalVolume* worldLV,
     } else {
         PlaceSiPMs(worldLV, pos, rot, copyNo);
     }
+
+    // Optional narrow-edge reflector strips (presets 1-8).
+    BuildEdgeStrips(worldLV, pos, rot);
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -1969,6 +2079,101 @@ void GeometryMuonScint::PlaceSiPMs(G4LogicalVolume* worldLV,
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
+void GeometryMuonScint::BuildEdgeStrips(G4LogicalVolume* worldLV,
+                                        const G4ThreeVector& slabPos,
+                                        G4RotationMatrix* slabRot)
+{
+    // No edge treatment for WLS presets, or when the user explicitly requests
+    // the main wrapping skin to govern the narrow edges (v6 default).
+    if (fUseWLSFibres || fEdgeReflectorMode == kEdgeSame || !fEdgeReflSurface) return;
+
+    const G4double Lx = fHalfSize.x();
+    const G4double Ly = fHalfSize.y();
+    const G4double Lz = fHalfSize.z();
+    const G4double halfThick = 0.005 * mm;
+    const G4double tol = 0.01 * mm;
+
+    auto* nist = G4NistManager::Instance();
+    G4Material* airMat = nist->FindOrBuildMaterial("G4_AIR");
+
+    // Per-edge strip solid, placed flush against the slab face.
+    for (G4int e = 0; e < 4; ++e) {
+        G4VSolid* stripSolid = nullptr;
+        G4ThreeVector localCentre;
+        if (e == 0) { // +X
+            stripSolid = new G4Box("MuonScintEdgeStrip_" + std::to_string(e),
+                                   halfThick, Ly, Lz);
+            localCentre = G4ThreeVector(+Lx + halfThick, 0., 0.);
+        } else if (e == 1) { // -X
+            stripSolid = new G4Box("MuonScintEdgeStrip_" + std::to_string(e),
+                                   halfThick, Ly, Lz);
+            localCentre = G4ThreeVector(-Lx - halfThick, 0., 0.);
+        } else if (e == 2) { // +Y
+            stripSolid = new G4Box("MuonScintEdgeStrip_" + std::to_string(e),
+                                   Lx, halfThick, Lz);
+            localCentre = G4ThreeVector(0., +Ly + halfThick, 0.);
+        } else { // -Y
+            stripSolid = new G4Box("MuonScintEdgeStrip_" + std::to_string(e),
+                                   Lx, halfThick, Lz);
+            localCentre = G4ThreeVector(0., -Ly - halfThick, 0.);
+        }
+
+        // Subtract grease-pad footprints of all SiPMs mounted on this edge.
+        for (const auto& s : fSiPMs) {
+            if (s.edge != e) continue;
+
+            const G4double uMax = (s.edge < 2)
+                                ? std::max(0.0, (Ly - fSiPMHalfX) / Ly)
+                                : std::max(0.0, (Lx - fSiPMHalfX) / Lx);
+            const G4double vMax = std::max(0.0, (Lz - fSiPMHalfY) / Lz);
+            const G4double uC   = std::max(-uMax, std::min(+uMax, s.uAlong));
+            const G4double vC   = std::max(-vMax, std::min(+vMax, s.vAlong));
+
+            G4ThreeVector padLocalPos;
+            G4VSolid* padSolid = nullptr;
+            if (e == 0 || e == 1) {
+                // Strip frame: x = thickness, y = along-slab, z = across-slab.
+                padSolid = new G4Box("EdgeStripPadCut",
+                                     halfThick + tol,
+                                     fSiPMHalfY + tol,
+                                     fSiPMHalfX + tol);
+                padLocalPos = G4ThreeVector(0., uC * Ly, vC * Lz);
+            } else {
+                // Strip frame: x = along-slab, y = thickness, z = across-slab.
+                padSolid = new G4Box("EdgeStripPadCut",
+                                     fSiPMHalfX + tol,
+                                     halfThick + tol,
+                                     fSiPMHalfY + tol);
+                padLocalPos = G4ThreeVector(uC * Lx, 0., vC * Lz);
+            }
+            stripSolid = new G4SubtractionSolid("MuonScintEdgeStripCut_" + std::to_string(e),
+                                                stripSolid, padSolid, nullptr,
+                                                padLocalPos);
+        }
+
+        auto* stripLV = new G4LogicalVolume(stripSolid, airMat,
+                                            "MuonScintEdgeStripLV_" + std::to_string(e));
+        stripLV->SetVisAttributes(new G4VisAttributes(false));
+
+        G4ThreeVector worldCentre = localCentre;
+        G4RotationMatrix* worldRot = nullptr;
+        if (slabRot) {
+            worldCentre = (*slabRot) * worldCentre;
+            worldRot = new G4RotationMatrix(*slabRot);
+        }
+        worldCentre += slabPos;
+
+        fEdgeStripPVs[e] = new G4PVPlacement(worldRot,
+                                             worldCentre,
+                                             stripLV,
+                                             "MuonScintEdgeStripPhys_" + std::to_string(e),
+                                             worldLV, false, e, true);
+
+        new G4LogicalBorderSurface("MuonScintEdgeBorder_" + std::to_string(e),
+                                   fScintPV, fEdgeStripPVs[e], fEdgeReflSurface);
+    }
+}
+
 void GeometryMuonScint::PresetConfig_8SiPM_AllSides() {
     ClearSiPMs();
     // Config 1: two SiPMs per side, equidistantly mounted along the 250 mm
@@ -2044,6 +2249,55 @@ void GeometryMuonScint::PresetConfig_WLSFibreClampBox() {
     AddSiPM({0, 0.0, 0.0});   // read-out SiPM; placement is overridden in PlaceWLSFibres
 }
 
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo.....
+
+void GeometryMuonScint::PresetConfig_8SiPM_Wide() {
+    ClearSiPMs();
+    SetUseWLSFibres(false);
+    fWLSFourSides = false;
+    fWLSDualEnded = false;
+    for (G4int e = 0; e < 4; ++e) {
+        AddSiPM({e, -0.75, 0.0});
+        AddSiPM({e, +0.75, 0.0});
+    }
+}
+
+void GeometryMuonScint::PresetConfig_WLS4Sides_SingleEnded() {
+    ClearSiPMs();
+    SetUseWLSFibres(true);
+    SetFibreAnalytic(true);
+    SetFibreSquareCross(false);
+    fWLSFourSides = true;
+    fWLSDualEnded = false;
+    // The SiPM placement is handled in PlaceWLSFibres with fWLSFourSides=true.
+    // Add dummy entries so GetNumSiPMs() returns 4.
+    for (G4int side = 0; side < 4; ++side) {
+        SiPMSpec spec;
+        spec.edge = side;  // side 0..3 maps to +X, -X, +Y, -Y
+        spec.uAlong = 0.0;
+        spec.vAlong = 0.0;
+        fSiPMs.push_back(spec);
+    }
+}
+
+void GeometryMuonScint::PresetConfig_WLS4Sides_DualEnded() {
+    ClearSiPMs();
+    SetUseWLSFibres(true);
+    SetFibreAnalytic(true);
+    SetFibreSquareCross(false);
+    fWLSFourSides = true;
+    fWLSDualEnded = true;
+    // Add dummy entries so GetNumSiPMs() returns 8.
+    for (G4int side = 0; side < 4; ++side) {
+        for (G4int end = 0; end < 2; ++end) {
+            SiPMSpec spec;
+            spec.edge = side;
+            spec.uAlong = 0.0;
+            spec.vAlong = 0.0;
+            fSiPMs.push_back(spec);
+        }
+    }
+}
 
 
 

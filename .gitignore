@@ -1,4 +1,6 @@
 build/
+/compile_commands.json
+/.cache/
 data_output/
 data_v*/
 .refs/

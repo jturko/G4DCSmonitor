@@ -65,10 +65,20 @@ runnable, and each has its **own** `build/` and its own `report/` output tree.
   `~/programs/root/build`.
 - **Ignore `GNUmakefile`** — legacy Geant4 make system with a bogus
   `G4INSTALL = ../../../..`. CMake is the real build.
-- `compile_commands.json` exists at repo root and in `build/` (untracked) for clangd.
+- `CMakeLists.txt` sets `CMAKE_EXPORT_COMPILE_COMMANDS ON`, so **every** configure
+  (including a bare `cmake -S . -B build`) writes `build/compile_commands.json`; the
+  repo-root `compile_commands.json` symlink points at it (both gitignored) for clangd.
+- **clangd diagnostics are advisory and eventually consistent.** A header edit
+  invalidates clangd's preamble asynchronously, so a mid-edit header/source pair (e.g.
+  a new declaration before its definition) surfaces transient errors that disappear
+  once clangd re-parses. Do not "fix" a diagnostic that contradicts a consistent
+  header/source pair or vanishes after the next save; one that survives a second edit
+  is real. Ground truth is `cmake --build build -j` (or that file's compile-DB command
+  with `-fsyntax-only` for a quick single-file check).
 - CMake copies `macros/{vis,vis_ogl,vis_vrml,run}.mac` into `build/` on configure;
   re-run cmake after editing them if running the copied copies.
-- No test suite, lint, or CI. Verification = build cleanly and run a macro.
+- No test suite, lint, or CI. Verification = build cleanly and run a macro; treat clangd
+  diagnostics only as hints.
 
 ## Data storage: HPC native path vs login-node sshfs
 - **HPC (SLURM jobs):** the shared data root is
@@ -78,6 +88,8 @@ runnable, and each has its **own** `build/` and its own `report/` output tree.
   `/home/turko46/bigdata/DCS-Monitor-II/turko46/MuonScinti`
   (`~/bigdata/...`). Use that for local inspection and ROOT analysis only; do
   **not** pass it as `DATAROOT` to a job that runs on the HPC.
+- **~/bigdata info** Do not do recursive searches via Glob, or other tools, which 
+  include `~/bigdata`. It is mounted via sshfs and it will freeze if you do so.
 - `slurm/run_fast.sh` defaults `DATAROOT=$PWD` (so `cd` to the bigdata root
   first or set `DATAROOT=/bigdata/...` explicitly).
   `slurm/extend_contact_v6.sh` defaults to the native `/bigdata/...` path.
@@ -364,8 +376,8 @@ sharing (slope 5e-5/mm) but the arrival-time pattern still gives σ_x ≈ 19 mm 
 information is strongly non-linear, hence the learned estimator); bare ≈ 22 mm with all
 channels. Figures `fig_recon_{waveforms,observables,features,response,map}.{pdf,png}` +
 CSVs `position_{reconstruction,observables,class_observables}.csv` in `report/figures/`.
-Run it through ACLiC (`.C+`, compute-bound) with `ROOT_INCLUDE_PATH` set; add it to
-`macros/build_report_figures.sh` (already done). Note the ROOT drawing pitfalls hit here:
+Run it through ACLiC (`.C+`, compute-bound) with `ROOT_INCLUDE_PATH=$HOME/root-work` set; add it to
+`macros/build_report_figures.sh` (already done). The shared style file (`style.h`) lives in `/home/turko46/root-work/`. Note the ROOT drawing pitfalls hit here:
 `TMarker`/`TLine` `Draw("SAME")` corrupt the pad range (use `TBox`/`TGraph`), and a
 `TH1` drawn with `"BAR"` fills from the frame bottom, so bars must be `TBox`es.
 

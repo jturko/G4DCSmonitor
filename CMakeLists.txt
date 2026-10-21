@@ -3,6 +3,9 @@
 cmake_minimum_required(VERSION 3.16...3.27)
 project(G4DCSmonitor)
 
+# Emit build/compile_commands.json for clangd/clang-tidy (keeps G4/ROOT includes)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 #----------------------------------------------------------------------------
 # Find Geant4 package, activating all available UI and Vis drivers by default
 # You can set WITH_GEANT4_UIVIS to OFF via the command line or ccmake/cmake-gui

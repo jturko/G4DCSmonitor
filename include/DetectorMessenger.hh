@@ -127,7 +127,8 @@ class DetectorMessenger : public G4UImessenger
     G4UIcmdWithAString*        fSetMuonScintClampSurfaceCmd    = nullptr;    // white|black|mirror
     G4UIcmdWithABool*          fSetMuonScintFibreMultiCladCmd = nullptr;    // outer n=1.42 sheath
     G4UIcmdWithABool*          fSetMuonScintWLSPadSlabContactCmd = nullptr; // direct slab<->pad contact
-
+    G4UIcmdWithAString*        fSetMuonScintEdgeReflectorCmd   = nullptr;    // same|black|diffuse|mirror
+    G4UIcmdWithADouble*        fSetMuonScintCouplingIndexCmd   = nullptr;    // SiPM coupling grease RINDEX
 
 };
 

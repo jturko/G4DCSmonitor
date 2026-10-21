@@ -26,6 +26,15 @@ enum ReflectorType {
     kTeflon       = 4
 };
 
+// Edge reflector treatment for the uninstrumented narrow faces of the muon
+// scintillator slab (presets 1-8).  Backward-compatible default is kEdgeSame.
+enum EdgeReflectorMode {
+    kEdgeSame    = 0,  // default: narrow edges use the slab's main fReflSurface skin
+    kEdgeBlack   = 1,  // R=0 absorber on uninstrumented narrow edges (Stem 1: Position)
+    kEdgeDiffuse = 2,  // R=0.985 Lambertian PTFE/TiO2 on narrow edges (Stem 2: Max PE)
+    kEdgeMirror  = 3   // R=0.95 specular mirror on narrow edges
+};
+
 // Config-4 WLS clamp surface. A G4LogicalSkinSurface covers EVERY face of the
 // clamp LV (channel walls and the grease-facing front included), so this is the
 // single knob for the whole clamp body.
@@ -73,6 +82,15 @@ class GeometryMuonScint
     // Al-foil backing: uniform grease (default, n=1.46) or air (n=1.0003).
     void SetAlBackingMode(AlBackingMode m) { fAlBackingMode = m; }
     AlBackingMode GetAlBackingMode() const { return fAlBackingMode; }
+
+    // Uninstrumented narrow-edge reflector (presets 1-8).  Default kEdgeSame
+    // reproduces the v6 behaviour (edges use the main wrapping skin).
+    void SetEdgeReflectorMode(EdgeReflectorMode m) { fEdgeReflectorMode = m; }
+    EdgeReflectorMode GetEdgeReflectorMode() const { return fEdgeReflectorMode; }
+
+    // Coupling-grease refractive index for SiPM read-out pads (default 1.46).
+    void SetCouplingRIndex(G4double n)             { fCouplingRIndex = n; }
+    G4double GetCouplingRIndex() const             { return fCouplingRIndex; }
 
     void SetSiPMSize(G4double sx, G4double sy)    { fSiPMHalfX = 0.5*sx; fSiPMHalfY = 0.5*sy; }
     void AddSiPM(const SiPMSpec& s)               { fSiPMs.push_back(s); }
@@ -144,6 +162,11 @@ class GeometryMuonScint
     void PresetConfig_WLSFibreClampBox();// Config 4, square (box) fibre cross-section
     void PresetConfig_WLSFibreClampAnalytic(); // Config 4, analytic G4CutTubs fibres
 
+    // Phase-2 presets (stubs for link; bodies implemented in L2).
+    void PresetConfig_8SiPM_Wide();            // Preset 8: 8 SiPMs, 2/side at u = +-0.75
+    void PresetConfig_WLS4Sides_SingleEnded(); // Preset 10: 4-sided WLS clamps, 1 SiPM/side (4 SiPMs)
+    void PresetConfig_WLS4Sides_DualEnded();   // Preset 11: 4-sided WLS clamps, 2 SiPMs/side (8 SiPMs)
+
     // Accessors
     G4LogicalVolume*   GetScintLV()  const { return fScintLV; }
     G4VPhysicalVolume* GetScintPV()  const { return fScintPV; }
@@ -201,6 +224,9 @@ class GeometryMuonScint
                         const G4ThreeVector& slabPos,
                         G4RotationMatrix* slabRot,
                         G4int copyNo);
+    void BuildEdgeStrips(G4LogicalVolume* worldLV,
+                         const G4ThreeVector& slabPos,
+                         G4RotationMatrix* slabRot);
 
     // dims (half-lengths). Default 100x100x5 mm = 200x200x10 mm slab.
     G4ThreeVector fHalfSize { 100.*CLHEP::mm, 100.*CLHEP::mm, 5.*CLHEP::mm };
@@ -311,6 +337,14 @@ class GeometryMuonScint
     G4OpticalSurface*  fClampMirror     = nullptr;  // clamp backing (specular)
     G4OpticalSurface*  fClampWhite      = nullptr;  // clamp body (white Lambertian, R=0.85)
     G4OpticalSurface*  fFibreEndMirror  = nullptr;  // far fibre ends (mirror)
+
+    // Phase-2 state: edge reflector, coupling grease index, 4-sided WLS flags.
+    EdgeReflectorMode fEdgeReflectorMode = kEdgeSame;
+    G4double          fCouplingRIndex    = 1.46;
+    G4bool            fWLSFourSides      = false;
+    G4bool            fWLSDualEnded      = false;
+    G4OpticalSurface* fEdgeReflSurface   = nullptr;
+    G4VPhysicalVolume* fEdgeStripPVs[4] = {nullptr, nullptr, nullptr, nullptr};
 
     static G4bool sHasWLSFibres;   // set true when WLS geometry is built
 };

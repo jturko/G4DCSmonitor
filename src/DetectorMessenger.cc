@@ -197,6 +197,13 @@ DetectorMessenger::DetectorMessenger(DetectorConstruction* Det) : fDetector(Det)
     fSetMuonScintBareContactCmd->SetRange("f >= 0. && f <= 1.");
     fSetMuonScintBareContactCmd->AvailableForStates(G4State_PreInit);
 
+    fSetMuonScintCouplingIndexCmd = new G4UIcmdWithADouble("/dcs-monitor/det/muonScint/setCouplingIndex", this);
+    fSetMuonScintCouplingIndexCmd->SetGuidance("Set coupling grease RINDEX between SiPM pads and scintillator face (default 1.46).");
+    fSetMuonScintCouplingIndexCmd->SetGuidance("Range 1.0 to 1.7. Typical values: 1.46 (optical grease), 1.55 (high-index grease).");
+    fSetMuonScintCouplingIndexCmd->SetParameterName("n", false);
+    fSetMuonScintCouplingIndexCmd->SetRange("n >= 1.0 && n <= 1.7");
+    fSetMuonScintCouplingIndexCmd->AvailableForStates(G4State_PreInit);
+
     fSetMuonScintAlBackingCmd = new G4UIcmdWithAString("/dcs-monitor/det/muonScint/setAlBacking", this);
     fSetMuonScintAlBackingCmd->SetGuidance("Al-foil backing index: air (mostly air-backed foil) or grease (uniform contact).");
     fSetMuonScintAlBackingCmd->SetGuidance("Defaults to grease (the current production model).");
@@ -231,8 +238,12 @@ DetectorMessenger::DetectorMessenger(DetectorConstruction* Det) : fDetector(Det)
     fApplyMuonScintPresetCmd->SetGuidance("  5 = Config 4: single SiPM + WLS fibre clamp (Y-11, round; legacy G4TessellatedSolid, vis only)");
     fApplyMuonScintPresetCmd->SetGuidance("  6 = Config 4b: as 5 but square (box) fibre cross-section (A/B only)");
     fApplyMuonScintPresetCmd->SetGuidance("  7 = Config 4c: analytic G4CutTubs fibres/grooves (production)");
+    fApplyMuonScintPresetCmd->SetGuidance("  8 = 8 SiPMs wide: 2 per side at u = +-0.75");
+    fApplyMuonScintPresetCmd->SetGuidance("  9 = (deferred to Phase 3)");
+    fApplyMuonScintPresetCmd->SetGuidance(" 10 = 4-sided WLS clamps, 1 SiPM/side (4 SiPMs)");
+    fApplyMuonScintPresetCmd->SetGuidance(" 11 = 4-sided WLS clamps, 2 SiPMs/side (8 SiPMs)");
     fApplyMuonScintPresetCmd->SetParameterName("preset", false);
-    fApplyMuonScintPresetCmd->SetRange("preset >= 1 && preset <= 7");
+    fApplyMuonScintPresetCmd->SetRange("preset >= 1 && preset <= 11");
     fApplyMuonScintPresetCmd->AvailableForStates(G4State_PreInit);
 
     fSetMuonScintLightYieldScaleCmd = new G4UIcmdWithADouble("/dcs-monitor/det/muonScint/setLightYieldScale", this);
@@ -260,6 +271,17 @@ DetectorMessenger::DetectorMessenger(DetectorConstruction* Det) : fDetector(Det)
     fSetMuonScintClampSurfaceCmd->SetParameterName("surface", false);
     fSetMuonScintClampSurfaceCmd->SetCandidates("white black mirror");
     fSetMuonScintClampSurfaceCmd->AvailableForStates(G4State_PreInit);
+
+    fSetMuonScintEdgeReflectorCmd = new G4UIcmdWithAString("/dcs-monitor/det/muonScint/setEdgeReflector", this);
+    fSetMuonScintEdgeReflectorCmd->SetGuidance("Set edge reflector mode for uninstrumented narrow faces of the muon scintillator slab.");
+    fSetMuonScintEdgeReflectorCmd->SetGuidance("  same    : narrow edges use the slab's main reflector surface (default, backward-compatible)");
+    fSetMuonScintEdgeReflectorCmd->SetGuidance("  black   : R=0 absorber on uninstrumented narrow edges");
+    fSetMuonScintEdgeReflectorCmd->SetGuidance("  diffuse : R=0.985 Lambertian on uninstrumented narrow edges");
+    fSetMuonScintEdgeReflectorCmd->SetGuidance("  mirror  : R=0.95 specular mirror on uninstrumented narrow edges");
+    fSetMuonScintEdgeReflectorCmd->SetGuidance("Applies to presets 1-8 only. For WLS presets (10,11), use setClampSurface instead.");
+    fSetMuonScintEdgeReflectorCmd->SetParameterName("mode", false);
+    fSetMuonScintEdgeReflectorCmd->SetCandidates("same black diffuse mirror");
+    fSetMuonScintEdgeReflectorCmd->AvailableForStates(G4State_PreInit);
 
     fSetMuonScintFibreMultiCladCmd = new G4UIcmdWithABool("/dcs-monitor/det/muonScint/setFibreMultiClad", this);
     fSetMuonScintFibreMultiCladCmd->SetGuidance("Config-4 fibres: nest an outer n=1.42 fluoropolymer sheath");
@@ -348,8 +370,10 @@ DetectorMessenger::~DetectorMessenger()
     delete fSetMuonScintLightYieldScaleCmd;
     delete fSetMuonScintWLSAbsLengthCmd;
     delete fSetMuonScintClampSurfaceCmd;
+    delete fSetMuonScintEdgeReflectorCmd;
     delete fSetMuonScintFibreMultiCladCmd;
     delete fSetMuonScintWLSPadSlabContactCmd;
+    delete fSetMuonScintCouplingIndexCmd;
 
 }
 
@@ -418,6 +442,7 @@ void DetectorMessenger::SetNewValue(G4UIcommand* command, G4String value)
     if (command == fSetMuonScintReflectorCmd)    fDetector->SetMuonScintReflector(fSetMuonScintReflectorCmd->GetNewIntValue(value));
     if (command == fSetMuonScintWrapCmd)         fDetector->SetMuonScintWrap(fSetMuonScintWrapCmd->GetNewBoolValue(value));
     if (command == fSetMuonScintBareContactCmd)  fDetector->SetMuonScintBareContactFraction(fSetMuonScintBareContactCmd->GetNewDoubleValue(value));
+    if (command == fSetMuonScintCouplingIndexCmd) fDetector->SetMuonScintCouplingRIndex(fSetMuonScintCouplingIndexCmd->GetNewDoubleValue(value));
     if (command == fSetMuonScintAlBackingCmd) {
         if (value == "air")         fDetector->SetMuonScintAlBacking(kAlBackingAir);
         else if (value == "grease") fDetector->SetMuonScintAlBacking(kAlBackingGrease);
@@ -442,6 +467,14 @@ void DetectorMessenger::SetNewValue(G4UIcommand* command, G4String value)
         else if (value == "mirror") fDetector->SetMuonScintClampSurface(kClampMirror);
         else G4cerr << " [DetectorMessenger] setClampSurface: unknown '" << value
                     << "' (use white|black|mirror)" << G4endl;
+    }
+    if (command == fSetMuonScintEdgeReflectorCmd) {
+        if (value == "same")        fDetector->SetMuonScintEdgeReflector(kEdgeSame);
+        else if (value == "black")  fDetector->SetMuonScintEdgeReflector(kEdgeBlack);
+        else if (value == "diffuse") fDetector->SetMuonScintEdgeReflector(kEdgeDiffuse);
+        else if (value == "mirror") fDetector->SetMuonScintEdgeReflector(kEdgeMirror);
+        else G4cerr << " [DetectorMessenger] setEdgeReflector: unknown '" << value
+                    << "' (use same|black|diffuse|mirror)" << G4endl;
     }
     if (command == fSetMuonScintFibreMultiCladCmd) fDetector->SetMuonScintFibreMultiClad(fSetMuonScintFibreMultiCladCmd->GetNewBoolValue(value));
     if (command == fSetMuonScintWLSPadSlabContactCmd) fDetector->SetMuonScintWLSPadSlabContact(fSetMuonScintWLSPadSlabContactCmd->GetNewBoolValue(value));

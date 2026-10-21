@@ -123,10 +123,12 @@ class DetectorConstruction : public G4VUserDetectorConstruction
         void SetMuonScintWrap    (G4bool on);
         void SetMuonScintBareContactFraction(G4double f); // 0 = air gap, 1 = full contact
         void SetMuonScintAlBacking(AlBackingMode m);       // Al foil: grease or air
+        void SetMuonScintEdgeReflector(EdgeReflectorMode m); // uninstrumented narrow edges
+        void SetMuonScintCouplingRIndex(G4double n);       // SiPM coupling grease RINDEX
         void SetMuonScintSiPMSize(G4double sx, G4double sy);
         void AddMuonScintSiPM    (G4int edge, G4double u, G4double v);
         void ClearMuonScintSiPMs ();
-        void ApplyMuonScintPreset(G4int presetId);    // 1..7 (Configs)
+        void ApplyMuonScintPreset(G4int presetId);    // 1..11 (9 deferred)
         void SetMuonScintLightYieldScale(G4double s); // viz-only; 1.0 = physical
         void SetMuonScintWLSAbsLength(G4double l);    // Y-11 WLS abs. length at 430 nm
         void SetMuonScintClampSurface(ClampSurfaceMode m); // Config-4 clamp body surface
