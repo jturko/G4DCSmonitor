@@ -82,6 +82,19 @@ echo "--- generating Phase-2 whole-slab macros (${WHOLE_EVENTS} ev) ---"
 echo
 echo "--- submitting Phase-2 optimization array ---"
 
+# The array tasks locate the macros through ${SLURM_SUBMIT_DIR}/muon_whole_opt
+# (run_opt_whole.sbatch), so the submit directory MUST be this slurm/ directory.
+cd "${HERE}"
+
+# ---- sanity: the array must not ask for more tasks than the manifest has -----
+N_MAC="$(wc -l < "${HERE}/muon_whole_opt/manifest.txt")"
+MAX_IDX="${WHOLE_ARRAY##*-}"
+if [[ "${MAX_IDX}" =~ ^[0-9]+$ ]] && (( MAX_IDX >= N_MAC )); then
+    echo "ERROR: WHOLE_ARRAY=${WHOLE_ARRAY} requests task ${MAX_IDX} but" >&2
+    echo "       the manifest only has ${N_MAC} entries.  Fix WHOLE_ARRAY." >&2
+    exit 1
+fi
+
 wt_array="${WHOLE_ARRAY}"
 if [[ -n "${ARRAY_LIMIT}" ]]; then
     wt_array="${WHOLE_ARRAY%%%*}%${ARRAY_LIMIT}"

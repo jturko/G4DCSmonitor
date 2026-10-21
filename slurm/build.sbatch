@@ -50,7 +50,10 @@ echo "    cmake:  $(command -v cmake)"
 echo "    Geant4: ${Geant4_DIR:-<module default>}"
 echo "    ROOT:   ${ROOTSYS:-<module default>}"
 
-cmake -S "${REPO}" -B "${REPO}/build"
+# --fresh: a build/ directory copied over from another machine pins the old
+# CMAKE_HOME_DIRECTORY and the login-node Geant4/ROOT paths in CMakeCache.txt,
+# which silently breaks the configure on the cluster.
+cmake --fresh -S "${REPO}" -B "${REPO}/build"
 cmake --build "${REPO}/build" -j "${SLURM_CPUS_PER_TASK:-8}"
 
 echo "=== built: ${REPO}/build/G4DCSmonitor ==="
