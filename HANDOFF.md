@@ -232,14 +232,15 @@ Implemented in `macros/position_reconstruction.C` and documented in report §8:
 - **Manifest (9 designs, verified):**
   `c1_split_black, c8_split_black, c10_wls4_tio2, c11_wls8_tio2, c1_edge_diffuse,
   c1_6mm_diffuse, c8_6mm_diffuse, c10_wls4_glossy, c11_wls8_glossy`.
-- Stale `c9_*` macros remain in the directory (not in the manifest; harmless).
-- **Bug:** `slurm/run_opt_fast.sh` defaults `WHOLE_ARRAY="0-10"` (11 tasks) and
-  passes it on the `sbatch` command line, overriding the `0-8` in the `.sbatch`
-  header. The manifest has only 9 entries, so tasks 9 and 10 will exit with
-  `"empty manifest entry"`. Export `WHOLE_ARRAY=0-8` or change the default
-  before submitting.
-- Cosmetic: the `.sbatch`, generator and driver headers still say "11 candidate
-  designs".
+- Stale `c9_*` macros still sit in the directory (not in the manifest, cannot be
+  selected by the array, harmless).
+- **Fixed:** `slurm/run_opt_fast.sh` defaulted `WHOLE_ARRAY="0-10"` (11 tasks) and
+  passed it on the `sbatch` command line, overriding the `0-8` in the `.sbatch`
+  header. The manifest has only 9 entries, so tasks 9 and 10 exited with
+  `"empty manifest entry"`. Default is now `0-8`; the `ARRAY_LIMIT` throttle
+  (`${WHOLE_ARRAY%%%*}%${ARRAY_LIMIT}`) and the 1-based manifest lookup in the
+  `.sbatch` were audited and are correct.
+- The `.sbatch`, generator and driver headers now say "9 candidate designs".
 
 ---
 
@@ -338,38 +339,90 @@ caps. Sides 0/2 are clean.
 - Do **not** use `addCutawayPlane` / `TSG_OFFSCREEN` to inspect; use the overlap
   counter and `GeomVol1002` messages.
 
+### 6.7 RESOLVED (2026-10-21, commit `df972b6`)
+The remaining 12 overlaps were **not** caused by (a) or (c) — both were red herrings
+(the cap z coordinates are correct). Root cause: `G4PVPlacement(G4RotationMatrix*,
+...)` stores the **inverse** of the matrix it is given
+(`.refs/source/geometry/volumes/src/G4PVPlacement.cc:75,137`), whereas the
+`G4Transform3D` constructors store the active rotation. Cap and read-out-pad matrices
+were built as `sideRot * P` and passed to that constructor, so the object received
+`sideRot^-1 * P^-1`: correct wherever `sideRot` is its own inverse (0°/180°, i.e.
+sides 0/2), wrong at 90°/270° (sides 1/3). `localRot = sideRot * flipRot` is a 180°
+rotation and therefore its own inverse, which is exactly why the film/clamp/fibre
+placements (`rotCopyLocal`) were immune while caps and pads were not.
+
+Fix: caps/pads now pass `P * sideRot^-1` (`rotPassiveSide`), which reduces to `P` at
+side 0, so the single-sided Config 4 placement is unchanged **bit for bit**. In the
+same commit the pad/SiPM axial offsets follow `halfL` instead of `Ly` (hypothesis (c);
+removes a 1 mm air gap at every read-out in the four-sided layout) and presets 10/11
+set `fWLSOnNegX` explicitly instead of inheriting it. The preset-10/11 side comment now
+reads −X, −Y, +X, +Y = report-frame top, left, bottom, right.
+
+Measured after the fix:
+
+| check | result |
+|---|---|
+| preset 10, 20 ev | 12 → **0** `GeomVol1002` |
+| preset 11, 20 ev (first analytic run) | 24 → **0** |
+| `/geometry/test`, 20 000 pts/volume, 1 µm tol, both presets | clean |
+| preset 7 vs `28c297f`, fixed seeds, 10 ev | `sipmHits` **bit-identical** |
+| preset 5 vs `28c297f`, fixed seeds, 10 ev | `sipmHits` **bit-identical** |
+| preset 10 yield, 50×50 centre, TiO₂ | 68 pe/evt over 4 faces: 366/321/354/315 per 20 ev |
+| preset 11 yield, same | 76 pe/evt over 8 faces: 173–224 per 20 ev |
+
+Note the preset-5 comparison is against `28c297f`, not upstream `17e851e`: the
+*pre-existing* Phase 2 diff already changed preset 5 (275 → 156 pe/evt at fixed seeds),
+so `17e851e` is the wrong baseline for a regression test of this fix.
+
+### 6.8 Side effect to keep in mind
+In the four-sided layouts the pad is shifted 1.5 mm outboard (`padShift = fSiPMHalfX −
+faceInset + 0.05`) so it clears the slab face, so `fWLSPadSlabContact` is inert there:
+presets 10/11 have **no** direct scintillator→SiPM path. Config 4 keeps it. This is a
+real difference between preset 10/11 and Config 4, not a bug, but it means the two are
+not like-for-like when comparing yields.
+
 ---
 
 ## 7. Remaining work, in priority order
 
-### P0 — unblock presets 10/11
-1. Fix the remaining 12 overlaps using hypotheses (a)/(b)/(c); target **0**
-   `GeomVol1002` for preset 10 **and** run preset 11.
-2. Smoke-test preset 11 (dual-ended) for the first time. Expected `sipm` range
-   0..7, both ends of every bar coupled.
-3. Regression: preset **7** and presets **1–6** must still be 0-overlap and should
-   reproduce `data_v7` yields (at least within statistics). Preset 8 currently
-   0-overlap but was only run with `edge black`.
-4. Verify SiPM indices: preset 8/11 → `sipm = 0..7`; preset 10 → `0..3`
-   (`tree->GetMaximum("sipm") + 1`).
+### P0 — unblock presets 10/11 — **DONE** (§6.7)
+1. ~~Fix the remaining 12 overlaps~~ — done in `df972b6`; preset 10 **0**.
+2. ~~Smoke-test preset 11~~ — done: **0** overlaps, `sipm` range 0..7, all four bars
+   read out at both ends.
+3. Regression — presets 5 and 7 are bit-identical to `28c297f`; presets 1/8 are
+   unaffected code paths (0 overlaps in the campaign smoke runs). Preset 8 was
+   smoke-tested with `edge black`, `diffuse` and `mirror`.
+4. SiPM indices verified: preset 10 → 0..3, presets 8/11 → 0..7.
+
+Remaining before submission: rebuild `BIN` on the cluster (`slurm/build.sbatch`) from
+this commit — the login-node binary links Geant4 11.3.2 while the cluster modules
+provide 11.4.0 — then `run_opt_fast.sh` with `DATAROOT=/bigdata/...`.
 
 ### P1 — correctness of the new observables
 5. Replace the placeholder `GetSipmTable(10)` / `GetSipmTable(11)` coordinates in
    `macros/position_reconstruction.C` with the real bar-end read-out positions.
    Re-derive the D₄ group afterwards.
-6. Smoke-test `setEdgeReflector diffuse` and `mirror` on preset 1/8 (0 overlaps,
-   sane yield; diffuse should raise PE, black should lower reverberation).
-7. Check that `fCouplingRIndex` actually reaches the WLS grease (`OpticalGrease`
-   is shared) and document the side effect.
+6. ~~Smoke-test `setEdgeReflector diffuse` and `mirror` on preset 1/8~~ — done:
+   0 overlaps, run completes (preset 8: black/diffuse/mirror; preset 1: diffuse).
+   Campaign smoke: `c1_edge_diffuse` 345 pe/evt, `c1_6mm_diffuse` 770,
+   `c8_6mm_diffuse` 667 (20 ev each, 6×6 mm designs ≈2.2× the 4×4 area, so the size
+   override reaches the geometry).
+7. ~~Check that `fCouplingRIndex` reaches the WLS grease~~ — yes, and it is broader
+   than the name suggests: `fCouplingRIndex` sets the RINDEX table of the single
+   shared `OpticalGrease` material (`GeometryMuonScint.cc:634-652`), which is used for
+   the Config-4 slab↔clamp film, the four-sided fibre↔clamp film **and** the read-out
+   pads/SiPM couplant. `setCouplingIndex 1.55` therefore changes all of them at once;
+   the campaign applies it uniformly, so comparisons across designs stay consistent.
 
 ### P2 — campaign
-8. Delete the stale artifacts
-   (`slurm/muon_whole_opt/muon_whole_opt_c9_*.mac`,
-   `macros/position_reconstruction.C.bak`), fix the "11 designs" comments, and
-   set `WHOLE_ARRAY=0-8` in `slurm/run_opt_fast.sh`.
-9. Regenerate macros and submit `slurm/run_opt_fast.sh` on the HPC (9 designs,
-   `VERSION=v7_opt`, output `/bigdata/.../data_v7_opt/whole`). Never `mkdir` the
-   native path from the login node.
+8. ~~Fix the "11 designs" comments and set `WHOLE_ARRAY=0-8`~~ — done. The stale
+   artifacts (`slurm/muon_whole_opt/muon_whole_opt_c9_*.mac`,
+   `macros/position_reconstruction.C.bak`) could not be deleted from the agent shell
+   (`rm` is denied by policy) — remove them manually; they are untracked and harmless.
+9. Rebuild `BIN` on the HPC from this commit (`cd slurm && sbatch build.sbatch`, the
+   module stack there is Geant4 11.4.0 / ROOT 6.32.14), regenerate macros and submit
+   `slurm/run_opt_fast.sh` (9 designs, `VERSION=v7_opt`, output
+   `/bigdata/.../data_v7_opt/whole`). Never `mkdir` the native path from the login node.
 10. Build `data_v8` analysis on top of the campaign and extend the report with the
     Stem-1/Stem-2 comparison.
 

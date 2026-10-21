@@ -3,7 +3,7 @@
 # MuonScint Phase-2 optimization SLURM driver.
 #
 # Self-contained driver for the v7_opt whole-slab campaign.  It generates the
-# 11 candidate macros from HANDOFF.md §6.2 and submits a single job array.
+# 9 candidate macros from HANDOFF.md §6.2 and submits a single job array.
 #
 # Usage:
 #   slurm/run_opt_fast.sh [WHOLE_EVENTS] [WHOLE_THREADS]
@@ -34,7 +34,7 @@ WHOLE_THREADS="${2:-${WHOLE_THREADS:-32}}"
 WHOLE_PARTITION="${WHOLE_PARTITION:-low}"
 WHOLE_ACCOUNT="${WHOLE_ACCOUNT:-low}"
 WHOLE_TIME="${WHOLE_TIME:-02:00:00}"
-WHOLE_ARRAY="${WHOLE_ARRAY:-0-10}"
+WHOLE_ARRAY="${WHOLE_ARRAY:-0-8}"
 WHOLE_MEM="${WHOLE_MEM:-4G}"
 
 ARRAY_LIMIT="${ARRAY_LIMIT:-}"

@@ -15,7 +15,7 @@
 # =============================================================================
 # MuonScint whole-slab irradiation -- Phase 2 optimization campaign.
 #
-#   11 candidate designs from HANDOFF.md §6.2, full 250 x 250 mm^2 plate.
+#   9 candidate designs from HANDOFF.md §6.2, full 250 x 250 mm^2 plate.
 #   Routed to `low` by default; --cpus-per-task MUST equal the
 #   /run/numberOfThreads baked into the macros by generate_opt_whole.sh.
 #

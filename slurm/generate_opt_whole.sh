@@ -2,7 +2,7 @@
 # =============================================================================
 # Generate the MuonScint Phase-2 optimization whole-slab macros.
 #
-# Emits the 11 candidate designs defined in HANDOFF.md §6.2, writing them to
+# Emits the 9 candidate designs defined in HANDOFF.md §6.2, writing them to
 # slurm/muon_whole_opt/ and producing a manifest for run_opt_whole.sbatch.
 #
 #   DESIGN    : human-readable tag (also the ROOT filename token)
