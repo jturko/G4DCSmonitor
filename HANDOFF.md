@@ -229,6 +229,11 @@ Implemented in `macros/position_reconstruction.C` and documented in report §8:
 - `slurm/run_opt_whole.sbatch` — `--array=0-8`, 32 CPUs, 4 GB, `low`, 2 h;
   reads the manifest; `DATAROOT`/`VERSION` (`v7_opt`)/`BIN` overridable.
 - `slurm/run_opt_fast.sh` — submitter.
+- The committed `slurm/muon_whole_opt/*.mac` are **generated artefacts** (last produced
+  with a test `DATADIR`, so their `/analysis/setFileName` points into `/tmp`).
+  `run_opt_fast.sh` regenerates them with the real `DATADIR` at submit time. Do not run
+  the generator with `DATADIR=/bigdata/...` from the login node — it `mkdir -p`s the
+  target (`generate_opt_whole.sh:47`).
 - **Manifest (9 designs, verified):**
   `c1_split_black, c8_split_black, c10_wls4_tio2, c11_wls8_tio2, c1_edge_diffuse,
   c1_6mm_diffuse, c8_6mm_diffuse, c10_wls4_glossy, c11_wls8_glossy`.
@@ -399,9 +404,20 @@ this commit — the login-node binary links Geant4 11.3.2 while the cluster modu
 provide 11.4.0 — then `run_opt_fast.sh` with `DATAROOT=/bigdata/...`.
 
 ### P1 — correctness of the new observables
-5. Replace the placeholder `GetSipmTable(10)` / `GetSipmTable(11)` coordinates in
-   `macros/position_reconstruction.C` with the real bar-end read-out positions.
-   Re-derive the D₄ group afterwards.
+5. ~~Replace the placeholder `GetSipmTable(10)` / `GetSipmTable(11)` coordinates~~
+   — done. The table is now derived from the same constants as
+   `PlaceWLSFibres` (`faceInset`, `padShift`, `padX`, `halfL`, `ySiPM`) and
+   converted to the report frame with `(x,y) = (y_l, -x_l)`; preset 11 covers both
+   fibre ends in copy order (copy `2s` = -y end, `2s+1` = +y end). `BuildD4Group`
+   now keeps only operations that are true **bijections** of the layout (0.1 mm
+   match tolerance, ambiguous/colliding matches rejected) and prints the ones it
+   drops: preset 10 is a pinwheel and keeps only C4 (**4/8**), presets 1, 8 and 11
+   keep 8/8. `KnnPredict` uses the retained count instead of a hard-coded 8.
+   Data-free check:
+   `ROOT_INCLUDE_PATH=$HOME/root-work root -l -b -q 'macros/position_reconstruction.C+("","/tmp/opencode/smoke",-1,0)'`
+   (negative `maxEvents` = self-test). Presets 2/3/4 have no table in this macro.
+   Note for the report text: "eight symmetries of the square" remains true for
+   configs 1/8/11 but **not** for preset 10 (four rotations only).
 6. ~~Smoke-test `setEdgeReflector diffuse` and `mirror` on preset 1/8~~ — done:
    0 overlaps, run completes (preset 8: black/diffuse/mirror; preset 1: diffuse).
    Campaign smoke: `c1_edge_diffuse` 345 pe/evt, `c1_6mm_diffuse` 770,

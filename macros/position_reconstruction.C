@@ -36,12 +36,14 @@
 //      whose linear response to the position is measured directly, so that
 //      the achievable resolution is (noise)/(slope);
 //
-//  (b) a learned one: a D4-symmetry-equivariant, inverse-variance-weighted
+//  (b) a learned one: a symmetry-augmented, inverse-variance-weighted
 //      tricube-kernel k-nearest-neighbour regression in the standardised
-//      feature space.  Exploiting the 8-fold dihedral symmetry group D4 of the
-//      square plate increases the effective training density 8-fold (from
-//      20 000 to 160 000 training patterns), while block-relevance metric
-//      weights prevent noisy feature subsets from diluting informative ones.
+//      feature space.  The symmetry group is the subgroup of D4 that is a
+//      genuine bijection of the selected SiPM layout (all eight operations for
+//      the four-sided layouts, only the four rotations C4 for the pinwheel
+//      preset 10); it increases the effective training density by that factor
+//      (8-fold for config 1), while block-relevance metric weights prevent
+//      noisy feature subsets from diluting informative ones.
 //
 // Outputs (in outdir):
 //   fig_recon_waveforms.{pdf,png}   per-SiPM waveforms, central vs corner muon
@@ -58,7 +60,8 @@
 //   root -l -b -q 'macros/position_reconstruction.C("data_v7/whole","report/figures",25000,1,"",1)'
 //
 // Args: dir (default: the data_v7 whole tree), outdir (default "report/figures"),
-//       maxEvents (default 25000 = all events in the file),
+//       maxEvents (default 25000 = all events in the file; a negative value
+//       runs the geometry/D4 self-test, which needs no data files),
 //       doAlphaScan (default 1 = also scan the constant fraction alpha),
 //       alphaCsv (default "" = compute; otherwise redraw alpha scan from CSV),
 //       preset (default 1 = Config 1; also supported: 8, 10, 11).
@@ -103,10 +106,10 @@ namespace {
 
 // ---------------------------------------------------------------------------
 // Geometry tables for several SiPM presets, in the REPORT plan view
-// (top = +y, left = -x).  edge = 0..3 labels the side (bottom/right/top/left
+// (top = +y, left = -x).  edge = 0..3 labels the side (bottom/top/right/left
 // in report frame); u is the along-edge fractional coordinate; v is the
-// across-edge coordinate (always +-kHalf).  The report-frame (x,y) are
-// reconstructed from (edge,u) and are the positions after the usual
+// signed across-edge coordinate (informational, not used by the estimators).
+// The report-frame (x,y) are the actual positions after the usual
 // slab-local -> report (x,y) -> (y,-x) rotation.
 // ---------------------------------------------------------------------------
 const double kHalf  = 125.0;    // slab half-width [mm]
@@ -136,22 +139,75 @@ std::vector<SipmGeom> GetSipmTable(int preset)
         s.push_back({2, -0.75, +kHalf, +kHalf, -93.75, "R1"});
         s.push_back({3, +0.75, -kHalf, -kHalf, +93.75, "L1"});
         s.push_back({3, -0.75, -kHalf, -kHalf, -93.75, "L2"});
-    } else if (preset == 10) {
-        // Preset 10: 4 SiPMs, 1/side at one end of each WLS bar
-        s.push_back({0, -0.75, -kHalf, -93.75, -kHalf, "B1"});
-        s.push_back({1, +0.75, +kHalf, +93.75, +kHalf, "T1"});
-        s.push_back({2, -0.75, +kHalf, +kHalf, -93.75, "R1"});
-        s.push_back({3, +0.75, -kHalf, -kHalf, +93.75, "L1"});
-    } else if (preset == 11) {
-        // Preset 11: 8 SiPMs, 2/side at both ends of each WLS bar
-        s.push_back({0, -0.75, -kHalf, -93.75, -kHalf, "B1"});
-        s.push_back({0, +0.75, -kHalf, +93.75, -kHalf, "B2"});
-        s.push_back({1, +0.75, +kHalf, +93.75, +kHalf, "T1"});
-        s.push_back({1, -0.75, +kHalf, -93.75, +kHalf, "T2"});
-        s.push_back({2, -0.75, +kHalf, +kHalf, -93.75, "R1"});
-        s.push_back({2, +0.75, +kHalf, +kHalf, +93.75, "R2"});
-        s.push_back({3, +0.75, -kHalf, -kHalf, +93.75, "L1"});
-        s.push_back({3, -0.75, -kHalf, -kHalf, -93.75, "L2"});
+    } else if (preset == 10 || preset == 11) {
+        // Four-sided WLS read-out.  Slab-local SiPM centres from
+        // GeometryMuonScint::PlaceWLSFibres() (placeReadout / mapPosNoFlip):
+        //   faceInset   = clampGap + rFibre - fibreProtrusion          = 0.55 mm
+        //   padShift    = SiPMhalfX - faceInset + 0.05 mm              = 1.50 mm
+        //   fibreAxisX  = -(kHalf + faceInset)                         = -125.55 mm
+        //   padX        = fibreAxisX - padShift                        = -127.05 mm
+        //   halfL       = kHalf - 1 mm (four-sided fibres are shorter) = 124.0 mm
+        //   ySiPM       = halfL + 2*couplingHalfZ + SiPMhalfZ          = 124.40 mm
+        // The read-out (-y) end is Rz(side*90 deg) * (padX, -ySiPM); the
+        // dual-ended +y end flips the *pre-rotation* offset to +ySiPM, exactly
+        // as placeReadout(atPlusY) does.  Report frame: (x,y) = (y_l, -x_l).
+        const double kRFibre        = 0.5;    // WLS fibre radius [mm]
+        const double kClampGap      = 0.10;   // slab <-> clamp grease film [mm]
+        const double kFibreProtr    = 0.05;   // fibre protrusion into the film [mm]
+        const double kSiPMHalfX     = 2.0;    // 4 mm square SiPM [mm]
+        const double kCouplingHalfZ = 0.05;   // read-out grease pad [mm]
+        const double kSiPMHalfZ     = 0.3;    // SiPM half-thickness [mm]
+        const double kPadClearance  = 0.05;   // extra pad/SiPM clearance [mm]
+        const double kFourSidedTrim = 1.0;    // four-sided fibre shortening [mm]
+        const double kHalfL         = kHalf - kFourSidedTrim;
+        const double faceInset = kClampGap + kRFibre - kFibreProtr;
+        const double padShift  = kSiPMHalfX - faceInset + kPadClearance;
+        const double padX      = -(kHalf + faceInset) - padShift;
+        const double ySiPM     = kHalfL + 2.0 * kCouplingHalfZ + kSiPMHalfZ;
+
+        // Naming follows the existing tables: B1/B2, T2/T1, R1/R2, L2/L1 from
+        // the low/high along-edge coordinate.
+        auto wlsName = [](int edge, double along) -> const char* {
+            switch (edge) {
+                case 0:  return along < 0 ? "B1" : "B2";
+                case 1:  return along < 0 ? "T2" : "T1";
+                case 2:  return along < 0 ? "R1" : "R2";
+                default: return along < 0 ? "L2" : "L1";
+            }
+        };
+        auto addWlsEnd = [&](int side, int endSign) {
+            // Rz(side*90 deg) * (padX, endSign*ySiPM), slab frame
+            const double ye = endSign * ySiPM;
+            double xl = 0.0, yl = 0.0;
+            switch (side) {
+                case 0:  xl =  padX; yl =  ye;   break;
+                case 1:  xl = -ye;   yl =  padX; break;
+                case 2:  xl = -padX; yl = -ye;   break;
+                default: xl =  ye;   yl = -padX; break;
+            }
+            const double xr = yl;       // slab-local -> report frame
+            const double yr = -xl;
+            // The face normal is the coordinate beyond the slab half-width;
+            // the other coordinate runs along the face.
+            const bool horizontal = std::fabs(yr) > std::fabs(xr);
+            const int edge = horizontal ? (yr > 0 ? 1 : 0)   // top / bottom
+                                        : (xr > 0 ? 2 : 3);  // right / left
+            const double along  = horizontal ? xr : yr;
+            const double across = horizontal ? yr : xr;
+            s.push_back({edge, along / kHalf, across, xr, yr,
+                         wlsName(edge, along)});
+        };
+
+        if (preset == 10) {
+            // One read-out SiPM per face at the -y end; copy number = side.
+            for (int side = 0; side < 4; ++side) addWlsEnd(side, -1);
+        } else {
+            // Dual-ended: copy 2*side = -y end, 2*side+1 = +y end.
+            for (int side = 0; side < 4; ++side) {
+                addWlsEnd(side, -1);
+                addWlsEnd(side, +1);
+            }
+        }
     }
     return s;
 }
@@ -360,7 +416,10 @@ bool LoadConfig1(const char* fname, int maxEvents, WrapperData& out)
 }
 
 // ---------------------------------------------------------------------------
-// D4 dihedral symmetry group of the square plate (8 elements: 4 rotations x 2 reflections)
+// D4 dihedral symmetry group of the square plate (8 elements: 4 rotations x 2
+// reflections).  Only the operations that are true bijections of the actual
+// SiPM layout are retained; e.g. a pinwheel layout keeps the C4 rotations but
+// has no reflection symmetry.
 // ---------------------------------------------------------------------------
 struct D4Elem {
     double sx, sy;
@@ -368,30 +427,88 @@ struct D4Elem {
     std::vector<int> perm;   // sensor s moves to perm[s] under T_g
 };
 
-std::array<D4Elem, 8> BuildD4Group(const std::vector<SipmGeom>& sipm)
+// g = 0..7 with bit 0 flipping x, bit 1 flipping y and bit 2 swapping the axes.
+const char* kD4Name[8] = {
+    "E", "sigma_x", "sigma_y", "C2", "sigma_xy", "C4", "C4^-1", "sigma_-xy"
+};
+
+std::vector<D4Elem> BuildD4Group(const std::vector<SipmGeom>& sipm)
 {
     const int n = (int)sipm.size();
-    std::array<D4Elem, 8> G{};
+    // "same position" tolerance [mm]: sensor centres are separated by at least
+    // 2.5 mm in every supported layout, so 0.1 mm cannot merge two distinct
+    // sensors while still absorbing the report-frame round-off.
+    const double kMatchTol = 0.1;
+
+    std::vector<D4Elem> G;
+    std::vector<int> dropped;
     for (int g = 0; g < 8; ++g) {
-        G[g].sx     = (g & 1) ? -1.0 : +1.0;
-        G[g].sy     = (g & 2) ? -1.0 : +1.0;
-        G[g].swapXY = (g & 4) != 0;
-        G[g].perm.assign(n, 0);
-        for (int s = 0; s < n; ++s) {
+        D4Elem e;
+        e.sx     = (g & 1) ? -1.0 : +1.0;
+        e.sy     = (g & 2) ? -1.0 : +1.0;
+        e.swapXY = (g & 4) != 0;
+        e.perm.assign(n, -1);
+        bool valid = true;
+        std::vector<int> used(n, 0);
+        for (int s = 0; s < n && valid; ++s) {
             const double x0 = sipm[s].x, y0 = sipm[s].y;
-            const double xp = G[g].swapXY ? (G[g].sx * y0) : (G[g].sx * x0);
-            const double yp = G[g].swapXY ? (G[g].sy * x0) : (G[g].sy * y0);
-            int dst = s;
+            const double xp = e.swapXY ? (e.sx * y0) : (e.sx * x0);
+            const double yp = e.swapXY ? (e.sy * x0) : (e.sy * y0);
+            int dst = -1, nMatch = 0;
             for (int q = 0; q < n; ++q) {
-                if (std::fabs(sipm[q].x - xp) < 1e-3 && std::fabs(sipm[q].y - yp) < 1e-3) {
+                if (std::fabs(sipm[q].x - xp) <= kMatchTol &&
+                    std::fabs(sipm[q].y - yp) <= kMatchTol) {
                     dst = q;
-                    break;
+                    ++nMatch;
                 }
             }
-            G[g].perm[s] = dst;
+            // Require exactly one image; reject ambiguous matches and any
+            // collision (the map must be injective, hence bijective on n).
+            if (nMatch != 1 || used[dst]) { valid = false; break; }
+            e.perm[s] = dst;
+            used[dst] = 1;
         }
+        if (valid) G.push_back(e);
+        else       dropped.push_back(g);
+    }
+
+    // Report the dropped operations once per preset.  Silently falling back to
+    // the identity permutation (the previous behaviour) would train the k-NN
+    // on reflected features paired with un-permuted labels.
+    static std::vector<int> sReportedPresets;
+    if (!dropped.empty() &&
+        std::find(sReportedPresets.begin(), sReportedPresets.end(), gPreset)
+            == sReportedPresets.end()) {
+        sReportedPresets.push_back(gPreset);
+        std::cout << "[position_reconstruction] preset " << gPreset
+                  << ": keeping " << G.size() << "/8 D4 operations; dropped";
+        for (int g : dropped) std::cout << " " << g << "=" << kD4Name[g];
+        std::cout << std::endl;
     }
     return G;
+}
+
+// Print the SiPM table size and the D4 bijection status for every preset the
+// macro knows about.  Used by the negative-maxEvents self-test mode.
+void PrintGeometrySelfTest()
+{
+    for (int preset : {1, 2, 3, 4, 8, 10, 11}) {
+        const std::vector<SipmGeom> sipm = GetSipmTable(preset);
+        if (sipm.empty()) {
+            std::cout << "[self-test] preset " << preset
+                      << ": SiPM table size 0 (no table in this macro); "
+                         "D4 kept 0/8, dropped 0" << std::endl;
+            continue;
+        }
+        gPreset = preset;
+        gSipm   = sipm;
+        gNSiPM  = (int)sipm.size();
+        const std::vector<D4Elem> G = BuildD4Group(sipm);
+        std::cout << "[self-test] preset " << preset
+                  << ": SiPM table size " << gNSiPM
+                  << "; D4 kept " << G.size() << "/8, dropped "
+                  << (8 - (int)G.size()) << std::endl;
+    }
 }
 
 // Build the list of SiPM indices on a given edge (report frame).
@@ -523,8 +640,10 @@ void KnnPredict(const std::vector<std::vector<double>>& Xtr,
     if (ntr == 0 || nte == 0) return;
     const size_t dim = Xtr[0].size();
     const size_t nBlocks = dim / nSiPM;
-    const auto G = BuildD4Group(gSipm);
-    const int nSym = useSymmetry ? 8 : 1;
+    // Only operations that are true bijections of this layout are kept
+    // (BuildD4Group drops the rest); G[0] is always the identity.
+    const std::vector<D4Elem> G = BuildD4Group(gSipm);
+    const int nSym = useSymmetry ? (int)G.size() : 1;
 
     // Standardise per nSiPM-sensor block so D4 permutations commute with scaling
     std::vector<double> mu(dim, 0.0), sd(dim, 0.0), wSqrt(dim, 1.0);
@@ -830,6 +949,11 @@ void position_reconstruction(const char* dir = "/home/turko46/bigdata/DCS-Monito
                               const char* alphaCsv = "",
                               int preset = 1)
 {
+    if (maxEvents < 0) {   // geometry/D4 self-test; no data files needed
+        PrintGeometrySelfTest();
+        return;
+    }
+
     gPreset = preset;
     gSipm = GetSipmTable(preset);
     gNSiPM = (int)gSipm.size();
