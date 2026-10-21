@@ -7,3 +7,4 @@ muon_whole_opt_c1_6mm_diffuse.mac
 muon_whole_opt_c8_6mm_diffuse.mac
 muon_whole_opt_c10_wls4_glossy.mac
 muon_whole_opt_c11_wls8_glossy.mac
+muon_whole_opt_c1_same_1p55.mac

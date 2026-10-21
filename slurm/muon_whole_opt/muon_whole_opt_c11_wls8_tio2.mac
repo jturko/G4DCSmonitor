@@ -49,6 +49,6 @@
 /gps/ang/type planar
 
 # ---- output -----------------------------------------------------------------
-/analysis/setFileName /tmp/opencode/opt_test/whole/muon_whole_out_c11_r1_c11_wls8_tio2.root
+/analysis/setFileName /tmp/opencode/optgen/whole/muon_whole_out_c11_r1_c11_wls8_tio2.root
 
 /run/beamOn 10000

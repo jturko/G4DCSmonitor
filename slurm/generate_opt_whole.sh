@@ -2,7 +2,8 @@
 # =============================================================================
 # Generate the MuonScint Phase-2 optimization whole-slab macros.
 #
-# Emits the 9 candidate designs defined in HANDOFF.md §6.2, writing them to
+# Emits the 9 candidate designs of HANDOFF.md §6.2 plus one coupling control
+# (10 macros), writing them to
 # slurm/muon_whole_opt/ and producing a manifest for run_opt_whole.sbatch.
 #
 #   DESIGN    : human-readable tag (also the ROOT filename token)
@@ -103,6 +104,13 @@ emit_macro c10_wls4_glossy  10 3 same    1.55 mirror ""
 printf 'array %2d -> %s\n' "$((i++))" c10_wls4_glossy
 emit_macro c11_wls8_glossy 11  3 same    1.55 mirror ""
 printf 'array %2d -> %s\n' "$((i++))" c11_wls8_glossy
+
+# Control: the v7 production layout at the new coupling index.  Without it the
+# difference between the data_v7 numbers (edge "same", n_coup 1.46) and the new
+# designs mixes the coupling step with the design knob, because setCouplingIndex
+# 1.55 is applied to every design above.
+emit_macro c1_same_1p55     1  3 same    1.55 white ""
+printf 'array %2d -> %s\n' "$((i++))" c1_same_1p55
 
 echo
 echo "Wrote $(wc -l < "${MANIFEST}") macros to ${OUTDIR}/"

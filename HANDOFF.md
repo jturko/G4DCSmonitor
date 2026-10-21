@@ -23,7 +23,7 @@ implementation from the blueprint; read §6 first.
 | Edge reflector (black/diffuse/mirror) | Implemented; **only `black` smoke-tested** (preset 8, 0 overlaps) |
 | Coupling index knob | Implemented and active |
 | `position_reconstruction.C` N-SiPM generalisation | **Done and verified** for preset 1 (byte-identical CSVs) |
-| SLURM `v7_opt` campaign | Scaffolding done, manifest = 9 designs; **not submitted** |
+| SLURM `v7_opt` campaign | Ready to submit; manifest = 9 designs + 1 coupling control (array 0-9) |
 | Hand-off preparation changes | 2 uncommitted fixes in `GeometryMuonScint.cc` (§6.3), build-clean, documented below |
 
 ---
@@ -226,7 +226,7 @@ Implemented in `macros/position_reconstruction.C` and documented in report §8:
 - `slurm/generate_opt_whole.sh [NEVENTS] [THREADS] [DATADIR]` — emits macros to
   `slurm/muon_whole_opt/` + `manifest.txt`. Defaults 10000 / 32 /
   `/bigdata/.../data_v7_opt/whole`.
-- `slurm/run_opt_whole.sbatch` — `--array=0-8`, 32 CPUs, 4 GB, `low`, 2 h;
+- `slurm/run_opt_whole.sbatch` — `--array=0-9`, 32 CPUs, 4 GB, `low`, 2 h;
   reads the manifest; `DATAROOT`/`VERSION` (`v7_opt`)/`BIN` overridable.
 - `slurm/run_opt_fast.sh` — submitter.
 - The committed `slurm/muon_whole_opt/*.mac` are **generated artefacts** (last produced
@@ -234,18 +234,29 @@ Implemented in `macros/position_reconstruction.C` and documented in report §8:
   `run_opt_fast.sh` regenerates them with the real `DATADIR` at submit time. Do not run
   the generator with `DATADIR=/bigdata/...` from the login node — it `mkdir -p`s the
   target (`generate_opt_whole.sh:47`).
-- **Manifest (9 designs, verified):**
+- **Manifest (10 macros, verified):**
   `c1_split_black, c8_split_black, c10_wls4_tio2, c11_wls8_tio2, c1_edge_diffuse,
-  c1_6mm_diffuse, c8_6mm_diffuse, c10_wls4_glossy, c11_wls8_glossy`.
-- Stale `c9_*` macros still sit in the directory (not in the manifest, cannot be
-  selected by the array, harmless).
+  c1_6mm_diffuse, c8_6mm_diffuse, c10_wls4_glossy, c11_wls8_glossy, c1_same_1p55`.
+  Array ids 0–8 are the nine designs; id 9 is the **coupling control**
+  (preset 1, glossy, edge `same`, `n_coup` 1.55). It exists because every design
+  runs at `n_coup` 1.55 while `data_v7` ran at the 1.46 default, so without it the
+  difference to the v7 numbers (cfg1 glossy whole-plate 520.70 pe/evt) would mix the
+  coupling step with the design knob. Preliminary (50 ev, 8 threads): the control
+  gives 550 ± 9 pe/evt, i.e. **+5.7 % ± 1.7 %** from the coupling change alone —
+  small compared with the edge-reflector effects the campaign is after.
+- Stale `c9_*` macros were deleted; the directory now holds exactly the manifest set.
 - **Fixed:** `slurm/run_opt_fast.sh` defaulted `WHOLE_ARRAY="0-10"` (11 tasks) and
   passed it on the `sbatch` command line, overriding the `0-8` in the `.sbatch`
-  header. The manifest has only 9 entries, so tasks 9 and 10 exited with
-  `"empty manifest entry"`. Default is now `0-8`; the `ARRAY_LIMIT` throttle
+  header. The manifest had only 9 entries, so tasks 9 and 10 exited with
+  `"empty manifest entry"`. Default is now `0-9` and the driver **rejects** an array
+  whose max index exceeds `wc -l manifest.txt`. The `ARRAY_LIMIT` throttle
   (`${WHOLE_ARRAY%%%*}%${ARRAY_LIMIT}`) and the 1-based manifest lookup in the
   `.sbatch` were audited and are correct.
-- The `.sbatch`, generator and driver headers now say "9 candidate designs".
+- The driver `cd`s into `slurm/` before submitting: `run_opt_whole.sbatch` resolves
+  the macros through `${SLURM_SUBMIT_DIR}/muon_whole_opt`, so submitting from the
+  repo root used to make every task die with "manifest missing".
+- `slurm/build.sbatch` uses `cmake --fresh`: a `build/` copied from the login node
+  pins the login `CMAKE_HOME_DIRECTORY` and the 11.3.2 Geant4 paths.
 
 ---
 
@@ -431,13 +442,13 @@ provide 11.4.0 — then `run_opt_fast.sh` with `DATAROOT=/bigdata/...`.
    the campaign applies it uniformly, so comparisons across designs stay consistent.
 
 ### P2 — campaign
-8. ~~Fix the "11 designs" comments and set `WHOLE_ARRAY=0-8`~~ — done. The stale
+8. ~~Fix the "11 designs" comments and set `WHOLE_ARRAY=0-9`~~ — done. The stale
    artifacts (`slurm/muon_whole_opt/muon_whole_opt_c9_*.mac`,
    `macros/position_reconstruction.C.bak`) could not be deleted from the agent shell
    (`rm` is denied by policy) — remove them manually; they are untracked and harmless.
 9. Rebuild `BIN` on the HPC from this commit (`cd slurm && sbatch build.sbatch`, the
    module stack there is Geant4 11.4.0 / ROOT 6.32.14), regenerate macros and submit
-   `slurm/run_opt_fast.sh` (9 designs, `VERSION=v7_opt`, output
+   `slurm/run_opt_fast.sh` (10 tasks, `VERSION=v7_opt`, output
    `/bigdata/.../data_v7_opt/whole`). Never `mkdir` the native path from the login node.
 10. Build `data_v8` analysis on top of the campaign and extend the report with the
     Stem-1/Stem-2 comparison.

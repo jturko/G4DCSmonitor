@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #SBATCH --job-name=muonwhole-opt
-#SBATCH --array=0-8
+#SBATCH --array=0-9
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=4G
 #SBATCH --ntasks=1
@@ -15,7 +15,8 @@
 # =============================================================================
 # MuonScint whole-slab irradiation -- Phase 2 optimization campaign.
 #
-#   9 candidate designs from HANDOFF.md §6.2, full 250 x 250 mm^2 plate.
+#   10 candidate designs from HANDOFF.md §6.2 (9 designs + one coupling
+#   control), full 250 x 250 mm^2 plate.
 #   Routed to `low` by default; --cpus-per-task MUST equal the
 #   /run/numberOfThreads baked into the macros by generate_opt_whole.sh.
 #
