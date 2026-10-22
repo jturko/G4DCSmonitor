@@ -27,9 +27,9 @@
 #                   fig_sipm_sharing}.{pdf,png}
 #   report/figures/{contact_scan,al_backing}.{pdf,png}
 #   report/figures/{contact_scan,al_backing}.csv
-#   report/figures/fig_pe_grid.{pdf,png}
+#   report/figures/fig_pe_grid.{pdf,png}                  (configs 1,2,12,3,4)
 #   report/figures/efficiency_grid_cfg<C>_all.{pdf,png}   (cfg 1..4)
-#   report/figures/whole_slab_cfg<C>.{pdf,png}            (cfg 1..4)
+#   report/figures/whole_slab_cfg<C>.{pdf,png}            (cfg 1,2,12,3,4)
 #   report/figures/fig_whole_polar.{pdf,png}
 #   report/figures/fig_eff_bars.{pdf,png}
 #   report/figures/fig_whole_uniformity_map_cfg<C>.{pdf,png}   (cfg 1..4)
@@ -39,13 +39,23 @@
 #   report/figures/fig_avg_waveform.{pdf,png}
 #   report/figures/fig_wavelength_time_grid.{pdf,png}
 #   report/figures/fig_recon_{waveforms,observables,features,response,map}.{pdf,png}
+#   report/figures/fig_recon_layouts.{pdf,png}   (C1/C2/C2mod comparison)
 #   report/figures/position_{reconstruction,observables,class_observables}.csv
+#   report/figures/position_reconstruction_{c2,c12}.csv
+#   report/figures/recon_layouts.csv
 #   report/figures/whole_uniformity.csv
 #   report/figures/whole_yield.csv
 #   report/figures/fig_nearest_sensor.{pdf,png}
 #   report/figures/nearest_sensor.csv
 #   report/figures/nearest_sensor_maps.txt
 #   report/figures/fig_de_threshold.{pdf,png}
+#   report/figures/{fig_opt_yield,fig_opt_spectra,fig_opt_maps,
+#                   fig_opt_maps_norm,fig_opt_contrast,fig_opt_de,
+#                   fig_opt_waveform}.{pdf,png}       (design study, Sec. 10)
+#   report/figures/{opt_yield,opt_maps,opt_de,opt_de_summary,opt_waveform}.csv
+#   report/figures/fig_opt_recon.{pdf,png}   (only if OPT_RECON_RAW exists)
+#   report/figures/fig_design_layouts.{pdf,png}       (Sec. 10.1 plan views)
+#   report/figures/design_ogl_*.png                   (Sec. 10.1 renders, RENDERS=1)
 #   report/figures/de_threshold.csv
 #   report/figures/de_threshold_window.csv
 #   report/matrix_report.pdf
@@ -76,7 +86,7 @@ FIGDIR="${ROOTDIR}/report/figures"
 # Figure macros #include "style.h" (shared fonts/ticks + PetroffPalette P6).
 # It lives outside the repo, so expose its directory to the ROOT interpreter and
 # ACLiC.  Override with ROOT_STYLE_DIR if it lives elsewhere.
-export ROOT_INCLUDE_PATH="${ROOT_STYLE_DIR:-${HOME}/root-work}${ROOT_INCLUDE_PATH:+:${ROOT_INCLUDE_PATH}}"
+export ROOT_INCLUDE_PATH="${ROOT_STYLE_DIR:-${HOME}/root-work}:${ROOTDIR}/macros${ROOT_INCLUDE_PATH:+:${ROOT_INCLUDE_PATH}}"
 
 mkdir -p "${FIGDIR}"
 
@@ -121,8 +131,8 @@ for cfg in 1 2 3 4; do
     cp -f "${MATRIX_DIR}/plots/efficiency_grid_cfg${cfg}_all.png" "${FIGDIR}/" 2>/dev/null
 done
 
-echo "=== whole-slab maps, one per config ==="
-for cfg in 1 2 3 4; do
+echo "=== whole-slab maps, one per config (order 1,2,12,3,4) ==="
+for cfg in 1 2 12 3 4; do
     "${ROOT_BIN}" -l -b -q "macros/plot_whole_slab.C+(\"${WHOLE_DIR}\", ${cfg}, 5.0, 125.0, true)"
     cp -f "${WHOLE_DIR}/plots/whole_slab_cfg${cfg}.pdf" "${FIGDIR}/" 2>/dev/null
     cp -f "${WHOLE_DIR}/plots/whole_slab_cfg${cfg}.png" "${FIGDIR}/" 2>/dev/null
@@ -150,6 +160,45 @@ echo "=== position reconstruction from the SiPM pattern (config 1, whole slab) =
 # ALPHA_SCAN=0 when the figure and the csv are already in place
 ALPHA_SCAN="${ALPHA_SCAN:-1}"
 "${ROOT_BIN}" -l -b -q "macros/position_reconstruction.C+(\"${WHOLE_DIR}\",\"${FIGDIR}\",25000,${ALPHA_SCAN})"
+
+# Config 2 and Config 2 (mod) were reconstructed with the same macro and are
+# stored as separate CSVs; the summary figure only needs those tables.
+if [ -s "${FIGDIR}/position_reconstruction_c2.csv" ] && \
+   [ -s "${FIGDIR}/position_reconstruction_c12.csv" ]; then
+    echo "=== reconstructed four-sensor layouts (Config 2, Config 2 mod) ==="
+    "${ROOT_BIN}" -l -b -q "macros/recon_layouts.C+(\"${FIGDIR}\")"
+fi
+
+# ---------------------------------------------------------------- design study
+# The ten-design campaign of Sec. 10 lives in its own tree (data_v7_opt) and is
+# regenerated only when that tree is present; OPT_DIR overrides the location.
+OPT_DIR="${OPT_DIR:-${DATA_ROOT}/data_v7_opt/whole}"
+if [ -d "${OPT_DIR}" ]; then
+    echo "=== design study: yield, spectra, maps, detection efficiency, timing ==="
+    "${ROOT_BIN}" -l -b -q "macros/opt_yield.C(\"${OPT_DIR}\",\"${FIGDIR}\")"
+    "${ROOT_BIN}" -l -b -q "macros/opt_maps.C(\"${OPT_DIR}\",\"${FIGDIR}\")"
+    "${ROOT_BIN}" -l -b -q "macros/opt_de.C(\"${OPT_DIR}\",\"${FIGDIR}\")"
+    "${ROOT_BIN}" -l -b -q "macros/opt_waveform.C(\"${OPT_DIR}\",\"${FIGDIR}\")"
+    # Geometry of the ten designs, Sec. 10.1: plan views (needs no data) and
+    # the head-less Geant4 close-ups.  RENDERS=0 skips the OpenGL/TSG step,
+    # which needs a built binary at ${BIN:-${ROOTDIR}/build/G4DCSmonitor}.
+    "${ROOT_BIN}" -l -b -q "macros/opt_layouts.C(\"${FIGDIR}\")"
+    if [ "${RENDERS:-1}" = "1" ]; then
+        bash "${ROOTDIR}/macros/render_designs.sh" || true
+    else
+        echo "  (design renders not redrawn: RENDERS=0)"
+    fi
+    # The position-resolution sweep is CPU-bound (~30 min), so it is only
+    # redrawn from an existing raw table; produce it with macros/run_opt_recon.sh.
+    OPT_RECON_RAW="${OPT_RECON_RAW:-${DATA_ROOT}/data_v7_opt/opt_recon_raw.csv}"
+    if [ -f "${OPT_RECON_RAW}" ]; then
+        "${ROOT_BIN}" -l -b -q "macros/opt_recon_fig.C+(\"${OPT_RECON_RAW}\",\"${FIGDIR}\",\"${FIGDIR}/opt_yield.csv\")"
+    else
+        echo "  (fig_opt_recon not redrawn: no ${OPT_RECON_RAW}; run macros/run_opt_recon.sh)"
+    fi
+else
+    echo "=== design study: skipped (no ${OPT_DIR}) ==="
+fi
 
 echo "=== LaTeX (two passes for refs/toc) ==="
 ( cd "${ROOTDIR}/report" && pdflatex -interaction=nonstopmode matrix_report.tex >/dev/null 2>&1 )

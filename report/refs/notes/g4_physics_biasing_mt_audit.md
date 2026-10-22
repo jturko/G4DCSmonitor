@@ -2,7 +2,7 @@
 
 Repo: `/home/turko46/geant4-sims/G4DCSmonitor`
 Reference tree: `.refs/{source,examples,include}` (read-only, symlinks to Geant4
-v11.3.2 install/source/examples; `.refs/source` is a symlink so `find` needs `-L`).
+v11.3.2 install/source/examples; `.refs/geant4/source` is a symlink so `find` needs `-L`).
 
 This is a **read-only** consistency audit: our code was inspected against the
 Geant4 source/example tree. `.refs/` was not modified. Only this Markdown file
@@ -57,7 +57,7 @@ or fragile under MT / future Geant4).
   `ConstructParticle`/`ConstructProcess`/`SetCuts`.
 - **(b) G4:** `G4VModularPhysicsList::ConstructProcess()` calls `AddTransportation()`
   then `(*itr)->ConstructProcess()` for every registered constructor
-  (`.refs/source/run/src/G4VModularPhysicsList.cc:134-142`): *"G4AutoLock l(&constructProcessMutex);
+  (`.refs/geant4/source/run/src/G4VModularPhysicsList.cc:134-142`): *"G4AutoLock l(&constructProcessMutex);
   AddTransportation(); for(auto itr...)(*itr)->ConstructProcess();"*.
   `PhysicsList::ConstructProcess()` correctly calls
   `G4VModularPhysicsList::ConstructProcess()` (`src/PhysicsList.cc:260`).
@@ -72,10 +72,10 @@ or fragile under MT / future Geant4).
   and installs `G4ProductionCuts` on `"CLYCRegion"` / `"MuonScintRegion"` —
   after `G4VModularPhysicsList`'s base `SetCuts()` (base is called by the kernel,
   not chained here, which is fine: the kernel calls `SetCuts()` once —
-  `.refs/source/run/src/G4RunManagerKernel.cc:580-588`).
+  `.refs/geant4/source/run/src/G4RunManagerKernel.cc:580-588`).
 - **(b) G4:** `G4RunManagerKernel::InitializePhysics()` calls
   `physicsList->SetCuts()` only on the master thread
-  (`.refs/source/run/src/G4RunManagerKernel.cc:586-588`).
+  (`.refs/geant4/source/run/src/G4RunManagerKernel.cc:586-588`).
 - **(c) Verdict:** CONSISTENT.
 - **(d) Notes:** `GetRegion(..., false)` returns `nullptr` if the region is not
   yet built; the guarded `if (region)` keeps it safe.
@@ -91,15 +91,15 @@ or fragile under MT / future Geant4).
   `"OpWLS"`, `"OpWLS2"` false; then `RegisterPhysics(new G4OpticalPhysics())`.
 - **(b) G4:** `G4OpticalPhysics::ConstructProcess()` reads the flags and adds
   only the activated processes
-  (`.refs/source/physics_lists/constructors/electromagnetic/src/G4OpticalPhysics.cc:102-124`,
+  (`.refs/geant4/source/physics_lists/constructors/electromagnetic/src/G4OpticalPhysics.cc:102-124`,
   e.g. `if(params->GetProcessActivation("OpWLS")) pManager->AddDiscreteProcess(wls);`).
   `SetProcessActivation` is allowed while not locked; `IsLocked()` is false in
   `PreInit/Init/Idle` on the master
-  (`.refs/source/processes/electromagnetic/utils/src/G4OpticalParameters.cc:161-189`,
+  (`.refs/geant4/source/processes/electromagnetic/utils/src/G4OpticalParameters.cc:161-189`,
   `:551-557`).
 - **(c) Verdict:** CONSISTENT.
 - **(d) Notes:** Defaults for `OpMieHG/OpWLS/OpWLS2` are **true**
-  (`.refs/source/processes/electromagnetic/utils/src/G4OpticalParameters.cc:132-139`),
+  (`.refs/geant4/source/processes/electromagnetic/utils/src/G4OpticalParameters.cc:132-139`),
   so our three `false` calls are meaningful and correctly override the defaults.
 
 ### 2.2 WLS auto-enable inside `ConstructProcess`
@@ -112,7 +112,7 @@ or fragile under MT / future Geant4).
   (`G4OpticalParameters.cc:164-168`), but the enforcement is the runtime
   `IsLocked()` = `!IsMasterThread() || state ∉ {PreInit,Init,Idle}`
   (`G4OpticalParameters.cc:551-557`). Our call runs during `InitializePhysics`
-  at `G4State_Init` on the master (`.refs/source/run/src/G4RunManager.cc:625-627`
+  at `G4State_Init` on the master (`.refs/geant4/source/run/src/G4RunManager.cc:625-627`
   sets `G4State_Init`, then `:653` geometry, then `:669-684` physics), so the
   setter takes effect before `G4OpticalPhysics::ConstructProcess` reads it.
 - **(c) Verdict:** **RISKY** (functional but outside the documented contract).
@@ -148,9 +148,9 @@ or fragile under MT / future Geant4).
 - **(b) G4:** registration must happen before initialization;
   `G4RunManager::InitializeGeometry()` calls
   `nParallelWorlds = userDetector->ConstructParallelGeometries()`
-  (`.refs/source/run/src/G4RunManager.cc:653`), which invokes each registered
+  (`.refs/geant4/source/run/src/G4RunManager.cc:653`), which invokes each registered
   `G4VUserParallelWorld::Construct()`
-  (`.refs/source/run/src/G4VUserDetectorConstruction.cc:62-70`). Calling
+  (`.refs/geant4/source/run/src/G4VUserDetectorConstruction.cc:62-70`). Calling
   `RegisterParallelWorld` after initialization would register a world that is
   never constructed. The ctor is the right place.
 - **(c) Verdict:** DEAD-CODE (commented out). If restored, placement is
@@ -174,14 +174,14 @@ or fragile under MT / future Geant4).
     (`G4ImportanceBiasing(&mgs)` with no parallel name).
   - A sampler is **per particle**: `G4GeometrySampler` stores a single
     `G4String fParticleName`
-    (`.refs/source/processes/biasing/importance/include/G4GeometrySampler.hh:86`)
+    (`.refs/geant4/source/processes/biasing/importance/include/G4GeometrySampler.hh:86`)
     and `PrepareImportanceSampling` builds
     `G4ImportanceConfigurator(&istore->GetWorldVolume(), fParticleName, ...)`
-    (`.refs/source/processes/biasing/importance/src/G4GeometrySampler.cc:111-114`),
+    (`.refs/geant4/source/processes/biasing/importance/src/G4GeometrySampler.cc:111-114`),
     whose constructor builds `fPlacer(particlename)`
-    (`.refs/source/processes/biasing/importance/src/G4ImportanceConfigurator.cc:54`)
+    (`.refs/geant4/source/processes/biasing/importance/src/G4ImportanceConfigurator.cc:54`)
     and `G4ProcessPlacer` is *"create a process placer for a particle type"*
-    (`.refs/source/processes/biasing/management/include/G4ProcessPlacer.hh:50`).
+    (`.refs/geant4/source/processes/biasing/management/include/G4ProcessPlacer.hh:50`).
 - **(c) Verdict:** DEAD-CODE. If revived, the *two separate samplers* approach is
   **CONSISTENT** (a single sampler cannot fan out to `gamma`+`neutron`; a
   `SetParticle()`+re-`Prepare` per particle would be needed otherwise). The
@@ -204,11 +204,11 @@ or fragile under MT / future Geant4).
   `G4ParallelWorldProcess(namePhysics)` to **every** particle's process manager
   with `SetProcessOrderingToSecond(..., idxAlongStep)` and
   `SetProcessOrdering(..., idxPostStep, 9900)`
-  (`.refs/source/physics_lists/constructors/limiters/src/G4ParallelWorldPhysics.cc:79-93`).
+  (`.refs/geant4/source/physics_lists/constructors/limiters/src/G4ParallelWorldPhysics.cc:79-93`).
   Ordering semantics: lower ordering value is invoked earlier
   (`G4ProcessManager::FindInsertPosition` inserts before the first process whose
-  ordering is `> ord`, `.refs/source/processes/management/src/G4ProcessManager.cc:383-405`;
-  `ordLast = 9999`, `.refs/source/processes/management/include/G4ProcessManager.hh:87-91`).
+  ordering is `> ord`, `.refs/geant4/source/processes/management/src/G4ProcessManager.cc:383-405`;
+  `ordLast = 9999`, `.refs/geant4/source/processes/management/include/G4ProcessManager.hh:87-91`).
   Therefore post-step = 9900 is invoked **last**, i.e. *after* `OpBoundary`
   (default `ordDefault = 1000`, `G4ProcessManager.hh:90`). The code comment
   *"was priority 9900, blocking OpBoundary"* (`src/PhysicsList.cc:285-287`) is
@@ -228,14 +228,14 @@ or fragile under MT / future Geant4).
 - **(b) G4:** `G4VUserParallelWorld` derived classes must *not* create the world
   and must obtain it via `GetWorld()`, which returns the framework-created
   parallel world
-  (`.refs/source/run/include/G4VUserParallelWorld.hh:30-34,58-59`;
-  `.refs/source/run/src/G4VUserParallelWorld.cc:47-53`). B02 builds nested
+  (`.refs/geant4/source/run/include/G4VUserParallelWorld.hh:30-34,58-59`;
+  `.refs/geant4/source/run/src/G4VUserParallelWorld.cc:47-53`). B02 builds nested
   volumes in the ghost world with `dummyMat = 0` (nullptr material) and fills the
   store itself
-  (`.refs/examples/extended/biasing/B02/src/B02ImportanceDetectorConstruction.cc:81,107,312-356`).
+  (`.refs/geant4/examples/extended/biasing/B02/src/B02ImportanceDetectorConstruction.cc:81,107,312-356`).
   `G4IStore::AddImportanceGeometryCell` overloads match
   (`imp, const G4VPhysicalVolume&, G4int aRepNum=0`)
-  (`.refs/source/geometry/biasing/include/G4IStore.hh:80-89`).
+  (`.refs/geant4/source/geometry/biasing/include/G4IStore.hh:80-89`).
 - **(c) Verdict:** DEAD-CODE; structurally **CONSISTENT** with B02 (nullptr
   material, nested tubs, `G4PVPlacement`, store population).
 - **(d) Notes / latent issues if revived:**
@@ -247,13 +247,13 @@ or fragile under MT / future Geant4).
     works because `Construct()` runs on the master before physics, and the
     master's `G4IStore` is the object later referenced by the configurator
     (see §4). It does, however, rely on the master-thread-first ordering.
-  - `G4IStore` is `static G4ThreadLocal` (`.refs/source/geometry/biasing/include/G4IStore.hh:117`;
-    `.refs/source/geometry/biasing/src/G4IStore.cc:49`). Only the master builds
+  - `G4IStore` is `static G4ThreadLocal` (`.refs/geant4/source/geometry/biasing/include/G4IStore.hh:117`;
+    `.refs/geant4/source/geometry/biasing/src/G4IStore.cc:49`). Only the master builds
     the parallel geometry, so the store is populated on the master. The
     `G4GeometrySampler`/`G4ImportanceConfigurator` capture a reference to that
     store object once (guarded by `static G4bool first` in
     `G4ImportanceBiasing::ConstructProcess`,
-    `.refs/source/physics_lists/constructors/limiters/src/G4ImportanceBiasing.cc:90-104`),
+    `.refs/geant4/source/physics_lists/constructors/limiters/src/G4ImportanceBiasing.cc:90-104`),
     so worker processes read the master's store. This should work but is subtle;
     if biasing is revived, verify per-thread behaviour explicitly.
 
@@ -277,9 +277,9 @@ or fragile under MT / future Geant4).
   `include/DCSMonitorHit.hh`/`MuonScintHit.hh` use
   `G4ThreadLocal ... Allocator`.
 - **(b) G4:** every worker calls `userDetector->ConstructSDandField()`
-  (`.refs/source/run/src/G4WorkerRunManager.cc:164-166`), which creates SDs in
+  (`.refs/geant4/source/run/src/G4WorkerRunManager.cc:164-166`), which creates SDs in
   the **thread-local** `G4SDManager`
-  (`.refs/source/digits_hits/detector/src/G4SDManager.cc:37`,
+  (`.refs/geant4/source/digits_hits/detector/src/G4SDManager.cc:37`,
   `fSDManager` is `G4ThreadLocal`). Our `ConstructSDandField` creates new SD
   objects each call (`src/DetectorConstruction.cc:201-231`).
 - **(c) Verdict:** CONSISTENT / safe. Each thread owns its `MuonScintSiPMSD`
@@ -294,17 +294,17 @@ or fragile under MT / future Geant4).
   `src/MuonScintSiPMSD.cc` and `src/SteppingAction.cc`.
 - **(b) G4:** thread-local diagnostic state is the correct MT pattern
   (compare `G4ParallelWorldProcess`'s `G4ThreadLocal` step pointer,
-  `.refs/source/processes/scoring/src/G4ParallelWorldProcess.cc:50-52`).
+  `.refs/geant4/source/processes/scoring/src/G4ParallelWorldProcess.cc:50-52`).
 - **(c) Verdict:** CONSISTENT / safe (C++17 inline variable + `thread_local`).
 - **(d) Notes:** SD `EndOfEvent` ordering before `EventAction::EndOfEventAction`
   is already documented in `AGENTS.md` and matches
-  `.refs/source/event/src/G4EventManager.cc:315` vs `:323`.
+  `.refs/geant4/source/event/src/G4EventManager.cc:315` vs `:323`.
 
 ### 4.3 Analysis output
 - **(a) Ours:** `src/MuonScintSiPMSD.cc:197-270` uses
   `G4AnalysisManager::Instance()`; `src/HistoManager.cc` books output.
 - **(b) G4:** `G4AnalysisManager` = `G4GenericAnalysisManager`, a
-  `G4ThreadLocalSingleton` (`.refs/source/analysis/factory/include/G4GenericAnalysisManager.hh:49,58`).
+  `G4ThreadLocalSingleton` (`.refs/geant4/source/analysis/factory/include/G4GenericAnalysisManager.hh:49,58`).
 - **(c) Verdict:** CONSISTENT / safe (per-thread analysis manager, master merge).
 
 ### 4.4 `RootManager` singleton
@@ -356,7 +356,7 @@ or fragile under MT / future Geant4).
 - Parallel-world registration (if uncommented) is placed in the
   `DetectorConstruction` ctor, i.e. before `runManager->Initialize()`
   (`DetectorConstruction.cc:81`) — matches
-  `.refs/source/run/src/G4RunManager.cc:653` and B02.
+  `.refs/geant4/source/run/src/G4RunManager.cc:653` and B02.
 - Two separate `G4GeometrySampler`s for `gamma` and `neutron`
   (`PhysicsList.cc:126,130`) — required, since a sampler targets one particle.
 - `thread_local`/`G4ThreadLocal` usage is the correct MT idiom; SDs are

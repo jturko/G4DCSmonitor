@@ -13,10 +13,10 @@ sources. Date: 2026-10-15. No source files were modified.
 
 Code inspected: `src/GeometryMuonScint.cc` (`BuildOpticalProperties`, `Build`),
 `include/GeometryMuonScint.hh`, `src/PhysicsList.cc`, `report/matrix_report.tex`,
-plus `.refs/source/...` Geant4 reference for the Birks plumbing only (read-only).
+plus `.refs/geant4/source/...` Geant4 reference for the Birks plumbing only (read-only).
 
 Geant4 base material: `G4_PLASTIC_SC_VINYLTOLUENE`, whose NIST density is
-`1.032 g/cm3` (`.refs/source/materials/src/G4NistMaterialBuilder.cc:1481`); the
+`1.032 g/cm3` (`.refs/geant4/source/materials/src/G4NistMaterialBuilder.cc:1481`); the
 simulation reuses it verbatim (`src/GeometryMuonScint.cc:539-547`).
 
 ## Property-by-property
@@ -73,7 +73,7 @@ simulation reuses it verbatim (`src/GeometryMuonScint.cc:539-547`).
 - (a) EljenEJ200: **1.023 g/cm3**. AmcrysPS: **1.06 g/cm3**.
 - (b) inherited from `G4_PLASTIC_SC_VINYLTOLUENE`, `baseScint->GetDensity()`
   (`src/GeometryMuonScint.cc:539-547`), = **1.032 g/cm3**
-  (`.refs/source/materials/src/G4NistMaterialBuilder.cc:1481`); report table also
+  (`.refs/geant4/source/materials/src/G4NistMaterialBuilder.cc:1481`); report table also
   shows 1.032 (`report/matrix_report.tex:304`).
 - (c) **MISMATCH** vs both datasheets (1.032 vs 1.023 Eljen; 1.032 vs 1.06 Amcrys).
 - (d) The 1.032 value is a Geant4/NIST library number, **not sourced from either
@@ -111,11 +111,11 @@ simulation reuses it verbatim (`src/GeometryMuonScint.cc:539-547`).
   Birks1951 supports the *law*, applied to anthracene, not plastic at 0.126.
 - (d) **Is it applied?** Yes. `G4OpticalPhysics` constructs `G4Scintillation`
   and calls `AddSaturation(G4LossTableManager::Instance()->EmSaturation())`
-  (`.refs/source/physics_lists/constructors/electromagnetic/src/G4OpticalPhysics.cc:126-128`);
+  (`.refs/geant4/source/physics_lists/constructors/electromagnetic/src/G4OpticalPhysics.cc:126-128`);
   `G4EmParameters::GetEmSaturation()` lazily creates the `G4EmSaturation` object
-  and sets `birks = true` (`.refs/source/processes/electromagnetic/utils/src/G4EmParameters.cc:591-604`);
+  and sets `birks = true` (`.refs/geant4/source/processes/electromagnetic/utils/src/G4EmParameters.cc:591-604`);
   `G4Scintillation` then scales the photon count by
-  `VisibleEnergyDepositionAtAStep` (`.refs/source/processes/electromagnetic/xrays/src/G4Scintillation.cc:418-420`).
+  `VisibleEnergyDepositionAtAStep` (`.refs/geant4/source/processes/electromagnetic/xrays/src/G4Scintillation.cc:418-420`).
   `SetScintByParticleType(false)` is set (`src/PhysicsList.cc:146`), so Birks is
   not overridden. **The Birks constant is functionally active**, but its value is
   unsupported by the supplied references.

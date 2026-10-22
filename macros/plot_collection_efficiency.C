@@ -8,8 +8,10 @@
 // markers are mapped through (x,y) -> (y,-x) before plotting -- for ALL configs,
 // including config 4.  Config 3 (both SiPMs on one face) therefore appears on
 // the top (+y) edge, and the edge/corner beams on the bottom (-y) edge, matching
-// Fig. 3 of Rao et al.  Configs 1 and 2 are four-fold symmetric, so the rotation
-// only moves their irradiation sites, not the sensor markers.  The config-4 WLS
+// Fig. 3 of Rao et al.  Configs 1 and 2 are four-fold symmetric, and config 12
+// (the corner-cut octagon, one sensor on each diagonal face) is four-fold too,
+// so the rotation only moves their irradiation sites, not the sensor markers.
+// The config-4 WLS
 // clamp sits on the -x narrow face with its read-out at slab-local -y, so it too
 // lands with its bar on the top edge and its single SiPM at the top-left.
 //
@@ -51,6 +53,7 @@
 #include <TObjArray.h>
 #include <TObjString.h>
 #include <TPad.h>
+#include <TPolyLine.h>
 #include <TStyle.h>
 #include <TSystem.h>
 #include <TSystemDirectory.h>
@@ -123,6 +126,11 @@ struct PerEvent {
 // sensor is mounted on a side face its in-plane footprint is 4 mm along the
 // edge and (visually, looking down the beam) zero-thickness, so on the x-y map
 // it appears as a small square straddling that edge.
+// Config 12 (tag c12, "Config 2 (mod)"): convex octagon, each square corner
+// truncated by a 45-degree cut with a 12 mm leg.  The four SiPMs are flush on
+// the diagonal faces at (+-119,+-119) mm.
+const double kCornerLeg = 12.0;
+
 struct SiPMTile { double x, y; };
 std::vector<SiPMTile> sipmTiles(int cfg, double half)
 {
@@ -137,6 +145,11 @@ std::vector<SiPMTile> sipmTiles(int cfg, double half)
         case 2:  // 4 SiPMs: one per side at the cfg1 offsets (cfg1 minus one/side)
             t = {{ H, -u}, {-H, u}, { u, H}, {-u, -H}};
             break;
+        case 12: {  // 4 SiPMs, one on each 45-degree corner face
+            const double c = H - 0.5 * kCornerLeg;   // 119 mm
+            t = {{ c, -c}, { c,  c}, {-c,  c}, {-c, -c}};
+            break;
+        }
         case 3:  // 2 SiPMs: both on the top +y edge
             t = {{-u, H}, { u, H}};
             break;
@@ -165,6 +178,22 @@ inline void toReportFrame(double& x, double& y)
 // bins, so the markers are pushed just *outside* the active area (inner edge at
 // half+gap) purely for legibility; they still mark the correct edge and the
 // correct position along it.  `side` is the drawn square side in mm.
+// Diamond marker for the corner-cut faces: a square of side `side` rotated
+// 45 deg, so its sides are parallel/perpendicular to the diagonal face.
+void drawDiamond(double cx, double cy, double side = 8.0)
+{
+    const double d = 0.5 * side * std::sqrt(2.0);
+    double xs[5] = {cx + d, cx, cx - d, cx, cx + d};
+    double ys[5] = {cy, cy + d, cy, cy - d, cy};
+    TPolyLine* m = new TPolyLine(5, xs, ys);
+    m->SetFillColor(kBlack);
+    m->SetFillStyle(1001);
+    m->SetLineColor(kBlack);
+    m->SetLineWidth(1);
+    m->Draw("F");
+    m->Draw("L SAME");
+}
+
 void drawSiPMSquares(int cfg, double half, double side = 8.0, double gap = 2.0)
 {
     if (cfg == 4) {
@@ -190,6 +219,14 @@ void drawSiPMSquares(int cfg, double half, double side = 8.0, double gap = 2.0)
         return;
     }
 
+    if (cfg == 12) {
+        // Sensors lie flush on the diagonal faces; draw them as diamonds at
+        // (+-119,+-119) mm rather than pushing them outboard.
+        for (const auto& t : sipmTiles(cfg, half))
+            drawDiamond(t.x, t.y, side);
+        return;
+    }
+
     const std::vector<SiPMTile> tiles = sipmTiles(cfg, half);
     const double off = gap + 0.5 * side;   // shift from the boundary to the centre
     const double tol = 1e-6;
@@ -209,10 +246,22 @@ void drawSiPMSquares(int cfg, double half, double side = 8.0, double gap = 2.0)
     }
 }
 
-// Draw a bold, unfilled rectangle marking the physical slab active area
-// [-half,half] x [-half,half] mm, to anchor the zoomed-out view.
-void drawSlabOutline(double half)
+// Draw a bold, unfilled outline marking the physical slab active area, to
+// anchor the zoomed-out view: the square [-half,half]^2 for configs 1-4 and the
+// convex octagon (12 mm corner legs) for config 12.
+void drawSlabOutline(int cfg, double half)
 {
+    if (cfg == 12) {
+        const double a = half - kCornerLeg;      // 113 mm
+        double xs[8] = { half,  half,     a,    -a, -half, -half,    -a,     a};
+        double ys[8] = {   -a,     a,  half,  half,     a,   -a, -half, -half};
+        TPolyLine* oct = new TPolyLine(8, xs, ys);
+        oct->SetFillStyle(0);
+        oct->SetLineColor(kBlack);
+        oct->SetLineWidth(2);
+        oct->Draw("SAME");
+        return;
+    }
     TBox* slab = new TBox(-half, -half, half, half);
     slab->SetFillStyle(0);
     slab->SetLineColor(kBlack);
@@ -441,9 +490,9 @@ void plot_collection_efficiency(const char* dir = "data_output_whole",
             TCanvas* c = new TCanvas(TString::Format("c_eff_c%d_r%d_%s", cfg, refl, selTag.Data()),
                                      "Light collection efficiency", 1500, 560);
             c->Divide(3, 1);
-            c->cd(1); stylePad(gPad); styleFrame(prod); prod->Draw("COLZ"); drawSlabOutline(half); drawSiPMSquares(cfg, half, 8.0);
-            c->cd(2); stylePad(gPad); styleFrame(coll); coll->Draw("COLZ"); drawSlabOutline(half); drawSiPMSquares(cfg, half, 8.0);
-            c->cd(3); stylePad(gPad); styleFrame(eff);  eff->Draw("COLZ"); drawSlabOutline(half); drawSiPMSquares(cfg, half, 8.0);
+            c->cd(1); stylePad(gPad); styleFrame(prod); prod->Draw("COLZ"); drawSlabOutline(cfg, half); drawSiPMSquares(cfg, half, 8.0);
+            c->cd(2); stylePad(gPad); styleFrame(coll); coll->Draw("COLZ"); drawSlabOutline(cfg, half); drawSiPMSquares(cfg, half, 8.0);
+            c->cd(3); stylePad(gPad); styleFrame(eff);  eff->Draw("COLZ"); drawSlabOutline(cfg, half); drawSiPMSquares(cfg, half, 8.0);
             c->SaveAs(TString::Format("%s/light_eff_c%d_r%d_%s.png", outDir.c_str(), cfg, refl, selTag.Data()));
             c->SaveAs(TString::Format("%s/light_eff_c%d_r%d_%s.pdf", outDir.c_str(), cfg, refl, selTag.Data()));
         }
@@ -473,7 +522,7 @@ void plot_collection_efficiency(const char* dir = "data_output_whole",
             eff->GetXaxis()->SetRangeUser(xLo, xHi);
             eff->GetYaxis()->SetRangeUser(yLo, yHi);
             eff->Draw("COLZ");
-            drawSlabOutline(half);
+            drawSlabOutline(cfg, half);
             drawSiPMSquares(cfg, half, 8.0);
         }
         cv->SaveAs(TString::Format("%s/efficiency_grid_cfg%d_%s.png", outDir.c_str(), cfg, selTag.Data()));

@@ -1,8 +1,8 @@
-// sipm_layouts.C -- schematic plan view of the four detector layouts used in
+// sipm_layouts.C -- schematic plan view of the five detector layouts used in
 // the matrix scan, drawn on the 250x250 mm scintillator footprint.  One figure
-// with four side-by-side panels (config 1/2/3/4) showing where the side-mounted
-// SiPMs (or the Config 4 WLS fibre clamp) sit; produced as a vector PDF for the
-// report and a PNG preview.
+// with five panels (config 1, 2, 2 (mod), 3, 4) in a 2x3 grid (the last cell is
+// empty) showing where the side-mounted SiPMs (or the Config 4 WLS fibre clamp)
+// sit; produced as a vector PDF for the report and a PNG preview.
 //
 // Positions follow the geometry presets in src/GeometryMuonScint.cc and are
 // drawn in the report frame (paper plan view: top=+y, bottom=-y, left=-x,
@@ -11,6 +11,12 @@
 //   cfg1 : 8 SiPMs, 2/side at u = +/-0.5
 //   cfg2 : 4 SiPMs, one per side at the cfg1 offsets (cfg1 minus one/side):
 //          +X u=-0.5, -X u=+0.5, +Y u=+0.5, -Y u=-0.5
+//   cfg12 ("Config 2 (mod)") : 4 SiPMs on the four 45-deg chamfers of the
+//          corner-cut octagon.  Each square corner of the slab is truncated
+//          with a 12 mm leg, leaving a 17.0 mm cut face centred at
+//          (+/-119, +/-119) mm.  One 4x4 mm SiPM sits flush on each cut face;
+//          report-frame channel order 0..3 = BR, TR, TL, BL.
+//          Octagon: |x|+|y| <= 238 mm.
 //   cfg3 : 2 SiPMs, both on the +y (top) edge at u = -0.5, +0.5
 //   cfg4 : single SiPM + WLS fibre clamp: green bar along the +y (top) edge,
 //          with the black read-out SiPM at its left end (drawn as in
@@ -24,6 +30,7 @@
 #include <TLine.h>
 #include <TLatex.h>
 #include <TPad.h>
+#include <TPolyLine.h>
 #include <TStyle.h>
 #include <TSystem.h>
 #include <TString.h>
@@ -39,6 +46,9 @@ namespace {
 const double kHalf = 125.0;          // slab half-extent [mm]
 const double kTile = 8.0;            // drawn SiPM square side [mm] (schematic)
 const double kEdge = 0.5 * kHalf;    // +/-50% of half-length = +/-62.5 mm
+const double kCutLeg = 12.0;         // 45-deg corner-cut leg [mm] (cfg 12)
+const double kCutVertex = kHalf - kCutLeg;          // 113 mm (octagon vertex coord)
+const double kCutFaceCentre = kHalf - 0.5 * kCutLeg; // 119 mm (chamfer centre)
 
 struct Tile { double x, y; };
 
@@ -72,6 +82,12 @@ std::vector<Tile> tiles(int cfg)
             return {{-kEdge, kHalf}, { kEdge, kHalf}};   // both on the top (+y) edge
         case 4:
             return {{ kHalf, kHalf}};   // (unused; cfg4 draws a bar, see panel)
+        case 12:
+            // One SiPM on each 45-deg chamfer, channel order 0..3 = BR/TR/TL/BL.
+            return {{ kCutFaceCentre, -kCutFaceCentre},   // 0 BR (119,-119)
+                    { kCutFaceCentre,  kCutFaceCentre},   // 1 TR (119,119)
+                    {-kCutFaceCentre,  kCutFaceCentre},   // 2 TL (-119,119)
+                    {-kCutFaceCentre, -kCutFaceCentre}};  // 3 BL (-119,-119)
     }
     return {};
 }
@@ -88,11 +104,30 @@ void panel(int cfg, const char* title)
     frame->GetYaxis()->SetTitleOffset(1.05);
     gStyle->SetTitleFontSize(0.045);
     gStyle->SetTitleSize(0.045, "t");
-    TBox* slab = new TBox(-kHalf, -kHalf, kHalf, kHalf);
-    slab->SetFillColorAlpha(kAzure - 9, 0.16);
-    slab->SetLineColor(kGray + 2);
-    slab->SetLineWidth(2);
-    slab->Draw("SAME");
+
+    if (cfg == 12) {
+        // Corner-cut octagon: the four square corners are truncated by a 45-deg
+        // cut of leg kCutLeg, so |x|+|y| <= 2*(kHalf - kCutLeg/2) = 238 mm.
+        double ox[9] = { kHalf, kHalf, kCutVertex, -kCutVertex,
+                        -kHalf, -kHalf, -kCutVertex, kCutVertex, kHalf};
+        double oy[9] = {-kCutVertex, kCutVertex, kHalf, kHalf,
+                         kCutVertex, -kHalf, -kHalf, -kHalf, -kCutVertex};
+        TPolyLine* fill = new TPolyLine(9, ox, oy);
+        fill->SetFillColorAlpha(kAzure - 9, 0.16);
+        fill->SetLineColor(kGray + 2);
+        fill->SetLineWidth(2);
+        fill->Draw("F");
+        TPolyLine* edge = new TPolyLine(9, ox, oy);
+        edge->SetLineColor(kGray + 2);
+        edge->SetLineWidth(2);
+        edge->Draw("SAME");
+    } else {
+        TBox* slab = new TBox(-kHalf, -kHalf, kHalf, kHalf);
+        slab->SetFillColorAlpha(kAzure - 9, 0.16);
+        slab->SetLineColor(kGray + 2);
+        slab->SetLineWidth(2);
+        slab->Draw("SAME");
+    }
 
     TLine* hx = new TLine(-kHalf, 0., kHalf, 0.);
     TLine* vy = new TLine(0., -kHalf, 0., kHalf);
@@ -115,6 +150,51 @@ void panel(int cfg, const char* title)
         sipm->SetFillColor(kBlack);
         sipm->SetLineColor(kBlack);
         sipm->Draw("SAME");
+        return;
+    }
+
+    if (cfg == 12) {
+        // One diamond per chamfer.  The square is rotated 45 deg so its outer
+        // side lies flush on the cut face; the face centre itself is the
+        // midpoint of that side, hence the body grows inwards along -n.
+        // Channel order 0..3 = BR, TR, TL, BL (same as tiles(12)).
+        const char* names[4] = {"0 BR", "1 TR", "2 TL", "3 BL"};
+        const double inv = 1.0 / std::sqrt(2.0);
+        int idx = 0;
+        for (const auto& s : tiles(cfg)) {
+            const double nx = (s.x > 0 ? inv : -inv);   // outward face normal
+            const double ny = (s.y > 0 ? inv : -inv);
+            const double tx =  nx;                      // along the cut face
+            const double ty = -ny;
+            const double h  = 0.5 * kTile;              // half side
+
+            double vx[4], vy[4];
+            vx[0] = s.x + h * tx;                 // outer side, + tangent end
+            vy[0] = s.y + h * ty;
+            vx[1] = s.x - kTile * nx + h * tx;    // inner side, + tangent end
+            vy[1] = s.y - kTile * ny + h * ty;
+            vx[2] = s.x - kTile * nx - h * tx;    // inner side, - tangent end
+            vy[2] = s.y - kTile * ny - h * ty;
+            vx[3] = s.x - h * tx;                 // outer side, - tangent end
+            vy[3] = s.y - h * ty;
+
+            TPolyLine* d = new TPolyLine(4, vx, vy);
+            d->SetFillColor(kBlack);
+            d->SetLineColor(kBlack);
+            d->SetLineWidth(1);
+            d->Draw("F");
+            d->Draw("SAME");
+
+            // Label nudged inwards along -n so it clears the diamond and the
+            // octagon outline (24 mm is ~2.3 text heights at this pad size).
+            const double off = 24.0;
+            TLatex* lab = new TLatex(s.x - off * nx, s.y - off * ny, names[idx]);
+            lab->SetTextAlign(22);       // centred
+            lab->SetTextSize(0.034);
+            lab->SetTextColor(kBlack);
+            lab->Draw("SAME");
+            ++idx;
+        }
         return;
     }
 
@@ -150,21 +230,27 @@ void sipm_layouts(const char* outdir = "report/figures")
     gStyle->SetOptTitle(1);
     gSystem->mkdir(outdir, kTRUE);
 
-    const int n[5] = {0, 8, 4, 2, 1};
-    TCanvas* c = new TCanvas("c_sipm_layouts", "SiPM layouts", 1100, 1060);
-    c->Divide(2, 2, 0.004, 0.004);
+    const int n[13] = {0, 8, 4, 2, 1, 0, 0, 0, 0, 0, 0, 0, 4};
+    const int cfgs[5] = {1, 2, 12, 3, 4};
+    TCanvas* c = new TCanvas("c_sipm_layouts", "SiPM layouts", 1100, 1500);
+    c->Divide(2, 3, 0.004, 0.004);
 
-    for (int cfg = 1; cfg <= 4; ++cfg) {
-        c->cd(cfg);
+    for (int k = 0; k < 5; ++k) {
+        const int cfg = cfgs[k];
+        c->cd(k + 1);
         gPad->SetLeftMargin(0.12);
         gPad->SetRightMargin(0.05);
         gPad->SetBottomMargin(0.13);
         gPad->SetTopMargin(0.10);
         if (cfg == 4)
             panel(cfg, "Config 4 (1 SiPM + WLS clamp)");
+        else if (cfg == 12)
+            panel(cfg, TString::Format("Config 2 (mod) (%d SiPMs)", n[12]));
         else
             panel(cfg, TString::Format("Config %d (%d SiPMs)", cfg, n[cfg]));
     }
+    // The sixth cell is intentionally empty (no frame drawn).
+    c->cd(6);
 
     c->SaveAs(TString::Format("%s/sipm_layouts.pdf", outdir));
     c->SaveAs(TString::Format("%s/sipm_layouts.png", outdir));

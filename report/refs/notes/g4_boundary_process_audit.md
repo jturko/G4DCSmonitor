@@ -3,11 +3,11 @@
 Read-only consistency audit of every use of the optical **boundary process** in this
 project against the Geant4 v11.3.2 source in `.refs/`.
 
-- Ground truth: `.refs/source/processes/optical/{src/G4OpBoundaryProcess.cc,include/G4OpBoundaryProcess.hh}`,
-  `.refs/source/processes/electromagnetic/utils/src/G4OpticalParameters{,Messenger}.cc`,
-  `.refs/source/physics_lists/constructors/electromagnetic/src/G4OpticalPhysics.cc`,
-  `.refs/source/materials/{src/G4OpticalSurface.cc,include/G4OpticalSurface.hh}`,
-  `.refs/source/geometry/volumes/src/G4Logical{Border,Skin}Surface.cc`.
+- Ground truth: `.refs/geant4/source/processes/optical/{src/G4OpBoundaryProcess.cc,include/G4OpBoundaryProcess.hh}`,
+  `.refs/geant4/source/processes/electromagnetic/utils/src/G4OpticalParameters{,Messenger}.cc`,
+  `.refs/geant4/source/physics_lists/constructors/electromagnetic/src/G4OpticalPhysics.cc`,
+  `.refs/geant4/source/materials/{src/G4OpticalSurface.cc,include/G4OpticalSurface.hh}`,
+  `.refs/geant4/source/geometry/volumes/src/G4Logical{Border,Skin}Surface.cc`.
 - No file outside `report/refs/notes/` was written or modified. `.refs/` untouched.
 - Verdict vocabulary: **CONSISTENT**, **INCONSISTENT**, **UNSUPPORTED-BY-SOURCE**.
 - Line numbers of our code refer to `src/`; the report text refers to `report/matrix_report.tex`.
@@ -256,7 +256,7 @@ explained by `:288-306` (G4_Al has no `RINDEX`).
 
 ## 7. Method / limitations
 
-- All Geant4 statements read directly from the v11.3.2 tree under `.refs/source/`; quotes were
+- All Geant4 statements read directly from the v11.3.2 tree under `.refs/geant4/source/`; quotes were
   taken from `G4OpBoundaryProcess.cc` (1831 lines) and the header, not from memory.
 - No run was performed; conclusions are static-source only. A targeted runtime confirmation of
   D3 (e.g. two `groundbackpainted`+`sigma_alpha` runs with a non-zero lobe fraction) would

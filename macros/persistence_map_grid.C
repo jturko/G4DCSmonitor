@@ -1,6 +1,7 @@
 // persistence_map_grid.C -- oscilloscope-style "persistence" map of the SiPM
-// arrival-time profile, one panel per SiPM configuration (1-4), from the
-// whole-plate irradiation.
+// arrival-time profile, one panel per SiPM configuration (1, 2, 12, 3, 4),
+// from the whole-plate irradiation.  A missing/partial config file omits its
+// panel (with a warning) and leaves the others untouched.
 //
 // For each event the per-SiPM arrival times (sipmHits.tDetected, one entry per
 // detected photoelectron, global ns) are summed over all of the layout's SiPMs
@@ -49,8 +50,12 @@
 #include "style.h"
 
 namespace {
-const char* kCfgName[5] = {"", "config 1 (8 SiPMs)", "config 2 (4 SiPMs)",
-                           "config 3 (2 SiPMs)", "config 4 (WLS + 1 SiPM)"};
+// Panel order: configs 1, 2, 12 (corner-cut "Config 2 (mod)"), 3, 4.
+const int kCfgOrder[5] = {1, 2, 12, 3, 4};
+const int kNPad      = 5;       // five panels + one empty cell in a 2x3 grid
+const char* kCfgName[5] = {"config 1 (8 SiPMs)", "config 2 (4 SiPMs)",
+                           "C2 (mod) (4 diagonal SiPMs)", "config 3 (2 SiPMs)",
+                           "config 4 (WLS + 1 SiPM)"};
 }  // namespace
 
 void persistence_map_grid(const char* dir = "slurm/data_v2.2/whole",
@@ -72,23 +77,32 @@ void persistence_map_grid(const char* dir = "slurm/data_v2.2/whole",
     const double ymax  = 30.0;   // ... over 0-30 p.e. (linear, shared)
 
     // Per-event photoelectron count in each time bin, kept for every config so
-    // all four maps can be booked after the read pass.
+    // all maps can be booked after the read pass.
     std::map<int, std::map<int, std::vector<int>>> cfgEv;
+    std::vector<bool> present(5, false);
 
-    for (int cfg = 1; cfg <= 4; ++cfg) {
+    for (int slot = 0; slot < kNPad; ++slot) {
+        const int cfg = kCfgOrder[slot];
         const TString fname = TString::Format("%s/muon_whole_out_c%d_r%d.root",
                                               dir, cfg, refl);
         TFile* f = TFile::Open(fname, "READ");
         if (!f || f->IsZombie()) {
-            std::cerr << "persistence_map_grid: cannot open " << fname << "\n";
+            std::cerr << "persistence_map_grid: cannot open " << fname
+                      << " -- omitting this panel\n";
             delete f;
             continue;
         }
         TTree* t = (TTree*)f->Get("sipmHits");
-        if (!t) { delete f; continue; }
+        if (!t) {
+            std::cerr << "persistence_map_grid: no sipmHits tree in " << fname
+                      << " -- omitting panel\n";
+            delete f;
+            continue;
+        }
         if (!t->GetBranch("tDetected")) {
             std::cerr << "persistence_map_grid: no tDetected branch in " << fname
-                      << " (regenerate the data with the timing columns)\n";
+                      << " (regenerate the data with the timing columns)"
+                      << " -- omitting panel\n";
             delete f;
             continue;
         }
@@ -114,16 +128,23 @@ void persistence_map_grid(const char* dir = "slurm/data_v2.2/whole",
                 if (b >= 0 && b < ntb) ++bins[b];
             }
         }
+        if (evBins.empty()) {
+            std::cerr << "persistence_map_grid: no events in " << fname
+                      << " -- omitting this panel\n";
+        } else {
+            present[slot] = true;
+        }
         delete f;
     }
 
-    // One 2-D map per config.  All four panels share a single linear photoelectron
+    // One 2-D map per config.  All panels share a single linear photoelectron
     // axis, 0-30 p.e. at 1 p.e./bin, so the amplitudes are directly comparable.
     std::map<int, TH2D*> hMap;
-    for (int cfg = 1; cfg <= 4; ++cfg) {
+    for (int slot = 0; slot < kNPad; ++slot) {
+        const int cfg = kCfgOrder[slot];
         TH2D* h = new TH2D(TString::Format("h_persist_c%d", cfg),
                            TString::Format("%s;arrival time [ns];p.e. / 0.1 ns bin",
-                                           kCfgName[cfg]),
+                                           kCfgName[slot]),
                            ntb, tmin, tmax, nyb, ymin, ymax);
         h->SetDirectory(nullptr);
         hMap[cfg] = h;
@@ -133,7 +154,9 @@ void persistence_map_grid(const char* dir = "slurm/data_v2.2/whole",
     // position is the instantaneous photoelectron count, the weight is one
     // event.  Empty time bins are omitted (the baseline would otherwise
     // dominate); the map therefore shows where light actually arrives.
-    for (int cfg = 1; cfg <= 4; ++cfg) {
+    for (int slot = 0; slot < kNPad; ++slot) {
+        if (!present[slot]) continue;
+        const int cfg = kCfgOrder[slot];
         TH2D* h = hMap[cfg];
         long samples = 0;
         int peak = 0;
@@ -151,10 +174,12 @@ void persistence_map_grid(const char* dir = "slurm/data_v2.2/whole",
                   << " p.e. / " << dt << " ns bin\n";
     }
 
-    // Shared logarithmic z-range over the four maps (event counts span decades).
+    // Shared logarithmic z-range over the present maps (event counts span
+    // decades).
     double zMax = 0., zMinPos = 0.;
-    for (int cfg = 1; cfg <= 4; ++cfg) {
-        TH2D* h = hMap[cfg];
+    for (int slot = 0; slot < kNPad; ++slot) {
+        if (!present[slot]) continue;
+        TH2D* h = hMap[kCfgOrder[slot]];
         for (int bx = 1; bx <= h->GetNbinsX(); ++bx)
             for (int by = 1; by <= h->GetNbinsY(); ++by) {
                 const double v = h->GetBinContent(bx, by);
@@ -165,8 +190,8 @@ void persistence_map_grid(const char* dir = "slurm/data_v2.2/whole",
     if (zMax <= 0.) zMax = 1.;
     const double zMin = (zMinPos > 0.) ? zMinPos / 1.5 : zMax * 1e-3;
 
-    for (int cfg = 1; cfg <= 4; ++cfg) {
-        TH2D* h = hMap[cfg];
+    for (int slot = 0; slot < kNPad; ++slot) {
+        TH2D* h = hMap[kCfgOrder[slot]];
         h->SetMinimum(zMin);
         h->SetMaximum(zMax * 1.05);
         h->GetXaxis()->SetTitleSize(0.048);
@@ -180,16 +205,19 @@ void persistence_map_grid(const char* dir = "slurm/data_v2.2/whole",
         h->GetZaxis()->SetTitleOffset(1.40);
     }
 
-    TCanvas* c = new TCanvas("c_persist", "arrival-time persistence", 1100, 900);
-    c->Divide(2, 2, 0.004, 0.004);
-    for (int cfg = 1; cfg <= 4; ++cfg) {
-        c->cd(cfg);
+    // 2 columns x 3 rows: five panels plus one empty cell.  The old 2x2
+    // panel size is preserved, so the canvas grows only in height.
+    TCanvas* c = new TCanvas("c_persist", "arrival-time persistence", 1100, 1350);
+    c->Divide(2, 3, 0.004, 0.004);
+    for (int slot = 0; slot < kNPad; ++slot) {
+        if (!present[slot]) continue;   // e.g. cfg12 while its run is partial
+        c->cd(slot + 1);
         gPad->SetLeftMargin(0.12);
         gPad->SetRightMargin(0.16);
         gPad->SetBottomMargin(0.14);
         gPad->SetTopMargin(0.10);
         gPad->SetLogz();
-        hMap[cfg]->Draw("COLZ");
+        hMap[kCfgOrder[slot]]->Draw("COLZ");
     }
     for (auto ex : {"pdf", "png"})
         c->SaveAs(TString::Format("%s/fig_persistence_grid.%s", outdir, ex));

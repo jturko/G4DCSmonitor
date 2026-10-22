@@ -10,12 +10,10 @@
 #                -> ${DATAROOT}/data_${VERSION}/matrix/muon_out_c12_r<R>_<pos>.root
 #   2. whole   : cfg 12 x reflectors 0-3, full 250 x 250 mm^2 plate
 #                -> ${DATAROOT}/data_${VERSION}/whole/muon_whole_out_c12_r<R>.root
-#   3. opt     : the c2_cornercut whole-plate entry of the v7_opt campaign
-#                -> ${DATAROOT}/data_${OPT_VERSION}/whole/
-#                   muon_whole_out_c12_r3_c2_cornercut.root
-#
-# Only the c2_cornercut array index of the v7_opt manifest is submitted, so the
-# ten existing designs are never re-run.
+#   3. opt     : legacy v7_opt row (muon_whole_out_c12_r3_c2_cornercut.root),
+#                kept only as an optional replay; SKIPPED BY DEFAULT.  The
+#                corner-cut design is now a standard config in the v7 matrix
+#                and whole trees above, not a row of the Sec. 10 design campaign.
 #
 # Usage:
 #   slurm/run_cornercut.sh
@@ -26,9 +24,10 @@
 #   DATAROOT               default /bigdata/DCS-Monitor-II/turko46/MuonScinti
 #   VERSION                default v7      (matrix + whole data tag)
 #   OPT_VERSION            default v7_opt  (optimization whole-plate tag)
-#   MATRIX_EVENTS          default 1000    events per beam position
-#   WHOLE_EVENTS           default 10000   events for the v7 full-plate runs
-#   OPT_EVENTS             default 25000   events for the v7_opt design run (table row)
+#   MATRIX_EVENTS          default 2500    events per beam position
+#   WHOLE_EVENTS           default 25000   events for the v7 full-plate runs
+#   OPT_EVENTS             default 25000   events for the legacy v7_opt replay
+#                          (used only when SKIP_OPT=0)
 #   MATRIX_THREADS         default 32      must match --cpus-per-task
 #   WHOLE_THREADS          default 32      must match --cpus-per-task
 #   MATRIX_PARTITION/ACCOUNT/TIME/MEM  default low / low / 01:00:00 / 4G
@@ -37,6 +36,8 @@
 #                          module stack (default: pre-built HZDR path, else
 #                          <repo>/build/G4DCSmonitor)
 #   SKIP_MATRIX=1 / SKIP_WHOLE=1 / SKIP_OPT=1   skip an individual stage
+#                          (SKIP_OPT defaults to 1: the legacy v7_opt row is
+#                          no longer part of the design campaign)
 #
 # Typical HPC use:
 #   export BIN=/home/turko46/geant4/muon_trigger_test/build/G4DCSmonitor
@@ -60,8 +61,8 @@ DATAROOT="${DATAROOT:-/bigdata/DCS-Monitor-II/turko46/MuonScinti}"
 VERSION="${VERSION:-v7}"
 OPT_VERSION="${OPT_VERSION:-v7_opt}"
 
-MATRIX_EVENTS="${MATRIX_EVENTS:-1000}"
-WHOLE_EVENTS="${WHOLE_EVENTS:-10000}"
+MATRIX_EVENTS="${MATRIX_EVENTS:-2500}"
+WHOLE_EVENTS="${WHOLE_EVENTS:-25000}"
 OPT_EVENTS="${OPT_EVENTS:-25000}"
 MATRIX_THREADS="${MATRIX_THREADS:-32}"
 WHOLE_THREADS="${WHOLE_THREADS:-32}"
@@ -78,7 +79,7 @@ WHOLE_MEM="${WHOLE_MEM:-4G}"
 
 SKIP_MATRIX="${SKIP_MATRIX:-0}"
 SKIP_WHOLE="${SKIP_WHOLE:-0}"
-SKIP_OPT="${SKIP_OPT:-0}"
+SKIP_OPT="${SKIP_OPT:-1}"
 
 # ---- the design under study -------------------------------------------------
 CFG=12
@@ -150,7 +151,11 @@ echo "  binary        : ${BIN}"
 echo "  data root     : ${DATAROOT}"
 echo "  matrix data   : ${MATRIX_DATA}  (${MATRIX_EVENTS} ev/position, ${MATRIX_THREADS} threads)"
 echo "  whole data    : ${WHOLE_DATA}   (${WHOLE_EVENTS} ev, ${WHOLE_THREADS} threads)"
-echo "  opt data      : ${OPT_DATA}     (${OPT_EVENTS} ev, ${WHOLE_THREADS} threads)"
+if [[ "${SKIP_OPT}" == "1" ]]; then
+    echo "  opt data      : skipped (legacy v7_opt row; SKIP_OPT=1) -- ${OPT_DATA}"
+else
+    echo "  opt data      : ${OPT_DATA}     (legacy replay: ${OPT_EVENTS} ev, ${WHOLE_THREADS} threads)"
+fi
 
 mkdir -p "${HERE}/logs"
 
@@ -242,13 +247,15 @@ else
 fi
 
 # =============================================================================
-# 3. optimization campaign: submit ONLY the c2_cornercut manifest entry
+# 3. legacy v7_opt replay (optional, skipped by default): submit ONLY the
+#    c2_cornercut manifest entry.  The design is now a standard config, so
+#    this stage exists solely to reproduce the old campaign file.
 # =============================================================================
 if [[ "${SKIP_OPT}" != "1" ]]; then
     echo
-    echo "--- [3/3] generating optimization macros -> ${OPT_OUT}/ ---"
-    # Regenerates the full v7_opt macro table, but only one array index is
-    # submitted below; the other ten designs are NOT re-run.
+    echo "--- [3/3] generating legacy optimization macros -> ${OPT_OUT}/ ---"
+    # Regenerates the v7_opt macro table, but only the c2_cornercut array index
+    # is submitted below; the other designs are NOT re-run.
     "${HERE}/generate_opt_whole.sh" "${OPT_EVENTS}" "${WHOLE_THREADS}" "${OPT_DATA}"
 
     opt_base="muon_whole_opt_${TAG}.mac"
@@ -291,8 +298,8 @@ cat <<EOF
                   muon_whole_out_c12_r{0,1,2,3}.root  (4 files)
                   job: ${jid_whole}
   opt output    : ${OPT_DATA}
-                  muon_whole_out_c${CFG}_r${OPT_REFL}_${TAG}.root  (1 file)
-                  job: ${jid_opt}  (array index ${opt_idx})
+                  muon_whole_out_c${CFG}_r${OPT_REFL}_${TAG}.root  (1 file, legacy)
+                  job: ${jid_opt}  (array index ${opt_idx}; skipped by default)
 
   REMINDER: BIN must point at a G4DCSmonitor built on the cluster module stack
             (e.g. via slurm/build.sbatch); the login-node build is NOT usable

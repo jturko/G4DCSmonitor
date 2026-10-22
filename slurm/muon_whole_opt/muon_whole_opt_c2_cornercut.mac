@@ -5,7 +5,7 @@
 # used to build a light-collection-efficiency map as a function of the muon
 # interaction position (x,y).
 #
-# This template supports the v7_opt candidate designs: new presets (8,9,10,11),
+# This template supports the v7_opt candidate designs: presets (8,9,10,11,12),
 # edge-reflector treatments, coupling-index variations, and clamp-surface
 # variants.  Output filenames use c12_r3_c2_cornercut so existing
 # downstream macros that glob muon_whole_out_c*_r*.root still find them.

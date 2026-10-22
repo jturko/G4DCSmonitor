@@ -14,13 +14,20 @@
 // This macro keeps the three positions separate and produces:
 //
 //   fig_pos_layouts.pdf   efficiency vs {centre,edge,corner}, one panel per
-//                         layout, four reflector curves (log y)
+//                         layout, four reflector curves (log y); five layouts
+//                         (config 1, 2, 12, 3, 4) on a 2 x 3 grid
 //   fig_pos_refl.pdf      efficiency vs {centre,edge,corner}, one panel per
-//                         reflector, four layout curves (log y)
+//                         reflector, five layout curves (log y)
 //   fig_uniformity.pdf    position contrast max/min across the three patches,
-//                         one panel per layout, four reflector bars
+//                         one panel per layout, four reflector bars; five
+//                         layouts on a 2 x 3 grid
 //   fig_sipm_sharing.pdf  per-sensor share of collected light (direction-
 //                         aware), cfg 1, Al vs glossy, three patches
+//
+// Config 12 (tag c12) is the corner-cut octagon, presented as "Config 2 (mod)"
+// (short C2m) alongside configs 1-4.  Its sensors are on the four 45-degree
+// faces at (+-119,+-119) mm; this macro plots no per-config sensor markers, so
+// only the data/curve/CSV entries are added here.
 //
 // Report-frame convention (as plot_collection_efficiency.C): top = +y,
 // bottom = -y, left = -x, right = +x.  The internal simulation frame for
@@ -59,6 +66,21 @@ namespace {
 
 const char* kReflName[4] = {"none", "TiO2", "Al", "glossy"};
 const int   kStyle[4]    = {kSolid, kDashed, kDotted, kDashDotted};
+
+// Layout order used throughout the report: configs 1, 2, 12 (= "Config 2
+// (mod)", short C2m), 3, 4.
+const int kCfgOrder[5] = {1, 2, 12, 3, 4};
+const int kNConfig     = 5;
+
+TString cfgLabel(int cfg)
+{
+    return (cfg == 12) ? TString("Config 2 (mod)")
+                       : TString::Format("Config %d", cfg);
+}
+TString cfgShort(int cfg)
+{
+    return (cfg == 12) ? TString("C2m") : TString::Format("C%d", cfg);
+}
 
 // Config-1 SD order (geometry PlaceSiPMs preset): the eight SiPMs are written
 // as, for each edge e = 0..3 (+X, -X, +Y, -Y), (e, u=-0.5) then (e, u=+0.5).
@@ -126,7 +148,8 @@ void matrix_positions(const char* dir = "slurm/data_output",
 
     std::map<int, std::map<int, std::map<int, PosData>>> data;   // cfg/refl/pos
 
-    for (int cfg = 1; cfg <= 4; ++cfg) {
+    for (int ci = 0; ci < kNConfig; ++ci) {
+        const int cfg = kCfgOrder[ci];
         for (int r = 0; r < 4; ++r) {
             for (int p = 0; p < 3; ++p) {
                 TString fn = TString::Format("%s/muon_out_c%d_r%d_%s.root",
@@ -181,21 +204,25 @@ void matrix_positions(const char* dir = "slurm/data_output",
     // is left below the smallest point; the top is raised slightly for the
     // legend-bearing panels later.
     double gLo = 1e30, gHi = 0.;
-    for (int cfg = 1; cfg <= 4; ++cfg)
+    for (int ci = 0; ci < kNConfig; ++ci)
         for (int r = 0; r < 4; ++r)
             for (int p = 0; p < 3; ++p)
-                axisRange(gLo, gHi, data[cfg][r][p].eff());
+                axisRange(gLo, gHi, data[kCfgOrder[ci]][r][p].eff());
     if (gLo <= 0.) gLo = 1e-6;
     if (gHi <= 0.) gHi = 1.;
     const double yLo = gLo * 0.5;
     const double yHi = gHi * 2.0;
 
     // ================= Fig A: efficiency vs position, per layout ===========
+    // 2 x 3 grid at the original 525 x 450 px per panel: five layouts plus one
+    // empty cell.  The canvas grows to 1050 x 1350 px rather than shrinking the
+    // panels.
     {
-        TCanvas* c = new TCanvas("c_pos_layouts", "", 1050, 900);
-        c->Divide(2, 2, 0.005, 0.005);
-        for (int cfg = 1; cfg <= 4; ++cfg) {
-            c->cd(cfg);
+        TCanvas* c = new TCanvas("c_pos_layouts", "", 1050, 1350);
+        c->Divide(2, 3, 0.005, 0.005);
+        for (int ci = 0; ci < kNConfig; ++ci) {
+            const int cfg = kCfgOrder[ci];
+            c->cd(ci + 1);
             gStyle->SetOptTitle(1);
             gPad->SetLeftMargin(0.20);
             gPad->SetRightMargin(0.04);
@@ -209,7 +236,7 @@ void matrix_positions(const char* dir = "slurm/data_output",
             // Identical range on every tile (shared with Fig B) so the panels
             // can be compared directly.
             TH1D* frame = makePosFrame(TString::Format("fr_layout_%d", cfg), yLo, yHi);
-            frame->SetTitle(TString::Format("Config %d", cfg));
+            frame->SetTitle(cfgLabel(cfg));
             frame->GetYaxis()->SetTitle(
                 "collection efficiency  #varepsilon = "
                 "#font[132]{#it{N}}_{pe}/#font[132]{#it{N}}_{#gamma}");
@@ -279,15 +306,23 @@ void matrix_positions(const char* dir = "slurm/data_output",
 
             // Shared legend drawn only on the bare (top-left) tile, in the
             // top-margin strip to avoid covering the lower config 2/3/4 traces.
-            TLegend* leg = new TLegend(0.20, 0.83, 0.97, 0.985);
+            // Five curves (1, 2, 12, 3, 4) in a 3-column x 2-row legend, kept
+            // inside the 0.20 top strip but BELOW the panel title (the old
+            // 0.82-0.985 box overlapped it).  Colours are P6(0..3) for configs
+            // 1-4 and P6(4) for config 12; the latter also gets a square marker
+            // so it stays distinguishable from config 1 (both solid).
+            TLegend* leg = new TLegend(0.20, 0.805, 0.97, 0.925);
             leg->SetBorderSize(0); leg->SetFillStyle(0);
             leg->SetFillColorAlpha(0., 0.);
-            leg->SetTextSize(0.040);
-            leg->SetNColumns(4);
-            const int cfgColor[5] = {0, PetroffPalette::getP6(0), PetroffPalette::getP6(1),
-                                     PetroffPalette::getP6(2), PetroffPalette::getP6(3)};
-            const int cfgStyle[5] = {0, kSolid, kDashed, kDotted, kDashDotted};
-            for (int cfg = 1; cfg <= 4; ++cfg) {
+            leg->SetTextSize(0.034);
+            leg->SetNColumns(3);
+            const int cfgColor[5]  = {PetroffPalette::getP6(0), PetroffPalette::getP6(1),
+                                      PetroffPalette::getP6(4), PetroffPalette::getP6(2),
+                                      PetroffPalette::getP6(3)};
+            const int cfgStyle[5]  = {kSolid, kDashed, kSolid, kDotted, kDashDotted};
+            const int cfgMarker[5] = {20, 20, 21, 20, 20};
+            for (int ci = 0; ci < kNConfig; ++ci) {
+                const int cfg = kCfgOrder[ci];
                 std::vector<double> x, y, ey;
                 for (int p = 0; p < 3; ++p) {
                     const PosData& d = data[cfg][r][p];
@@ -296,9 +331,10 @@ void matrix_positions(const char* dir = "slurm/data_output",
                     ey.push_back(d.coll > 0 ? std::sqrt(d.coll) / d.prod : 0.);
                 }
                 TGraphErrors* g = new TGraphErrors((int)x.size(), x.data(), y.data(), nullptr, ey.data());
-                styleGraph(g, cfgColor[cfg], cfgStyle[cfg]);
+                styleGraph(g, cfgColor[ci], cfgStyle[ci]);
+                g->SetMarkerStyle(cfgMarker[ci]);
                 g->Draw("PL SAME");
-                leg->AddEntry(g, TString::Format("config %d", cfg), "lp");
+                leg->AddEntry(g, cfgShort(cfg), "lp");
             }
             if (r == 0) leg->Draw();
         }
@@ -307,11 +343,14 @@ void matrix_positions(const char* dir = "slurm/data_output",
     }
 
     // ================= Fig C: position contrast (uniformity) ===============
+    // 2 x 3 grid, five layouts + one empty cell (1050 x 1350 px keeps the
+    // original 525 x 450 px panels).
     {
-        TCanvas* c = new TCanvas("c_uniformity", "", 1050, 900);
-        c->Divide(2, 2, 0.005, 0.005);
-        for (int cfg = 1; cfg <= 4; ++cfg) {
-            c->cd(cfg);
+        TCanvas* c = new TCanvas("c_uniformity", "", 1050, 1350);
+        c->Divide(2, 3, 0.005, 0.005);
+        for (int ci = 0; ci < kNConfig; ++ci) {
+            const int cfg = kCfgOrder[ci];
+            c->cd(ci + 1);
             gStyle->SetOptTitle(1);
             gPad->SetLeftMargin(0.18);
             gPad->SetRightMargin(0.04);
@@ -333,7 +372,7 @@ void matrix_positions(const char* dir = "slurm/data_output",
                 h->GetXaxis()->SetBinLabel(r + 1, kReflName[r]);
                 ymax = std::max(ymax, ratio);
             }
-            h->SetTitle(TString::Format("Config %d", cfg));
+            h->SetTitle(cfgLabel(cfg));
             h->GetYaxis()->SetTitle(
                 "position contrast  #kappa = "
                 "#font[132]{#it{#varepsilon}}_{max}/"
@@ -456,8 +495,12 @@ void matrix_positions(const char* dir = "slurm/data_output",
     // Plain-text dump so the report can quote exact values.
     FILE* fp = fopen(TString::Format("%s/position_efficiency.csv", outdir).Data(), "w");
     if (fp) {
-        fprintf(fp, "config,reflector,position,produced,collected,efficiency,contrast\n");
-        for (int cfg = 1; cfg <= 4; ++cfg)
+        // Config 12 (C2m) rows are written with config = 12, in the report
+        // layout order 1, 2, 12, 3, 4; the `label` column carries the human
+        // name ("Config 2 (mod)" for 12), as in whole_yield.csv.
+        fprintf(fp, "config,label,reflector,position,produced,collected,efficiency,contrast\n");
+        for (int ci = 0; ci < kNConfig; ++ci) {
+            const int cfg = kCfgOrder[ci];
             for (int r = 0; r < 4; ++r) {
                 double emax = 0., emin = 1e30;
                 for (int p = 0; p < 3; ++p) {
@@ -467,10 +510,12 @@ void matrix_positions(const char* dir = "slurm/data_output",
                 double ctr = (emin > 0.) ? emax / emin : 0.;
                 for (int p = 0; p < 3; ++p) {
                     const PosData& d = data[cfg][r][p];
-                    fprintf(fp, "%d,%s,%s,%.6g,%.6g,%.6g,%.4f\n",
-                            cfg, kReflName[r], kPosName[p], d.prod, d.coll, d.eff(), ctr);
+                    fprintf(fp, "%d,%s,%s,%s,%.6g,%.6g,%.6g,%.4f\n",
+                            cfg, cfgLabel(cfg).Data(), kReflName[r], kPosName[p],
+                            d.prod, d.coll, d.eff(), ctr);
                 }
             }
+        }
         fclose(fp);
     }
 }

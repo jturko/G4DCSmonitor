@@ -4,7 +4,8 @@
 //
 // The whole-slab GPS beam irradiates the entire 250 x 250 mm^2 plate uniformly,
 // so every primary-muon entry point samples the plate.  The SiPM layouts have
-// NO continuous rotational symmetry (configs 1-2 are four-fold, configs 3-4 are
+// NO continuous rotational symmetry (configs 1-2 are four-fold, config 12 is
+// the corner-cut octagon with one sensor on each diagonal face, configs 3-4 are
 // single-sided), and the plate is square, so the efficiency is a function of
 // BOTH radius and azimuth.  A radially-averaged contrast would be a geometric
 // artefact (for r > 125 mm only the four corner wedges of the plate are
@@ -19,11 +20,11 @@
 //              are marked on each panel.
 //
 // Figures (all in the report frame, top = +y, left = -x):
-//   fig_whole_polar.pdf          eps(r, phi) maps, rows = layout, columns =
-//                                reflector (shared log z); instrumented
-//                                azimuths marked.
+//   fig_whole_polar.pdf          eps(r, phi) maps, rows = layout (1, 2, 12, 3,
+//                                4), columns = reflector (shared log z);
+//                                instrumented azimuths marked.
 //   fig_whole_uniformity_map_cfg<C>.pdf  normalised eps/<eps> maps, one figure
-//                                per config, one panel per reflector (10 mm
+//                                per layout, one panel per reflector (10 mm
 //                                cells), with the slab outline and SiPM / WLS
 //                                markers overlaid as in plot_whole_slab.C
 //   whole_uniformity.csv         the kappa_2d numbers quoted in the report
@@ -41,6 +42,7 @@
 #include <TLine.h>
 #include <TMath.h>
 #include <TPad.h>
+#include <TPolyLine.h>
 #include <TStyle.h>
 #include <TSystem.h>
 #include <TSystemDirectory.h>
@@ -64,6 +66,24 @@
 namespace {
 
 const char* kReflName[4] = {"none", "TiO2", "Al", "glossy"};
+
+// Report layout order: configs 1, 2, 12 (= "Config 2 (mod)", short C2m), 3, 4.
+const int kCfgOrder[5] = {1, 2, 12, 3, 4};
+const int kNConfig     = 5;
+
+// Config 12 (preset 12, tag c12): each square corner is truncated by a 45-deg
+// cut with a 12 mm leg; the four SiPMs are flush on the diagonal faces.
+const double kCornerLeg = 12.0;
+
+TString cfgLabel(int cfg)
+{
+    return (cfg == 12) ? TString("Config 2 (mod)")
+                       : TString::Format("Config %d", cfg);
+}
+TString cfgShort(int cfg)
+{
+    return (cfg == 12) ? TString("C2m") : TString::Format("C%d", cfg);
+}
 
 // Sim frame -> report frame, applied to all configs: 90 deg clockwise,
 // (x,y) -> (y,-x) (report frame: top = +y, left = -x).
@@ -121,6 +141,13 @@ std::vector<std::pair<double, double>> sipmTiles(int cfg, double half)
         case 2:
             t = {{ H, -u}, {-H,  u}, { u,  H}, {-u, -H}};
             break;
+        case 12: {
+            // Corner-cut octagon: one sensor on each 45-degree face.  Report-
+            // frame order = sipmHits channel order (BR, TR, TL, BL).
+            const double c = H - 0.5 * kCornerLeg;   // 119 mm
+            t = {{ c, -c}, { c,  c}, {-c,  c}, {-c, -c}};
+            break;
+        }
         case 3:
             t = {{-u, H}, { u, H}};   // both on the top (+y) edge
             break;
@@ -135,13 +162,41 @@ std::vector<std::pair<double, double>> sipmTiles(int cfg, double half)
 // fibre clamp (red bar, top +y edge) with its single read-out SiPM (black) at
 // the top-left.  Identical convention to plot_whole_slab.C::drawOverlays, so
 // the uniformity maps match Fig. 21 of the report.
+// Diamond marker for a corner-cut face: a square of side `side` rotated 45 deg.
+void drawDiamond(double cx, double cy, double side = 8.0)
+{
+    const double d = 0.5 * side * std::sqrt(2.0);
+    double xs[5] = {cx + d, cx, cx - d, cx, cx + d};
+    double ys[5] = {cy, cy + d, cy, cy - d, cy};
+    TPolyLine* m = new TPolyLine(5, xs, ys);
+    m->SetFillColor(kBlack);
+    m->SetFillStyle(1001);
+    m->SetLineColor(kBlack);
+    m->SetLineWidth(1);
+    m->Draw("F");
+    m->Draw("L SAME");
+}
+
 void drawOverlays(int cfg, double half, double side = 8.0, double gap = 2.0)
 {
-    TBox* slab = new TBox(-half, -half, half, half);
-    slab->SetFillStyle(0);
-    slab->SetLineColor(kBlack);
-    slab->SetLineWidth(2);
-    slab->Draw("SAME");
+    if (cfg == 12) {
+        // Convex octagon (square corners cut by the 12 mm leg) in the report
+        // frame; (x,y) -> (y,-x) leaves |x|+|y| = 2*half - kCornerLeg invariant.
+        const double a = half - kCornerLeg;      // 113 mm
+        double xs[8] = { half,  half,     a,    -a, -half, -half,    -a,     a};
+        double ys[8] = {   -a,     a,  half,  half,     a,   -a, -half, -half};
+        TPolyLine* oct = new TPolyLine(8, xs, ys);
+        oct->SetFillStyle(0);
+        oct->SetLineColor(kBlack);
+        oct->SetLineWidth(2);
+        oct->Draw("SAME");
+    } else {
+        TBox* slab = new TBox(-half, -half, half, half);
+        slab->SetFillStyle(0);
+        slab->SetLineColor(kBlack);
+        slab->SetLineWidth(2);
+        slab->Draw("SAME");
+    }
 
     if (cfg == 4) {
         const double y0 = half + gap;
@@ -158,6 +213,14 @@ void drawOverlays(int cfg, double half, double side = 8.0, double gap = 2.0)
         sipm->SetLineColor(kBlack);
         sipm->SetLineWidth(1);
         sipm->Draw("SAME");
+        return;
+    }
+
+    if (cfg == 12) {
+        // The sensors sit flush on the diagonal faces: diamonds at
+        // (+-119,+-119) mm, rotated 45 deg.
+        for (const auto& t : sipmTiles(cfg, half))
+            drawDiamond(t.first, t.second, side);
         return;
     }
 
@@ -238,13 +301,26 @@ void whole_slab_uniformity(const char* dir = "slurm/data_output_whole",
     std::map<int, std::map<int, TH2D*>> normMap;              // cfg -> refl -> eps/<eps>
     std::map<int, std::map<int, TH2D*>> polMap;               // cfg -> refl -> eps(r,phi)
 
-    for (int cfg = 1; cfg <= 4; ++cfg) {
+    for (int ci = 0; ci < kNConfig; ++ci) {
+        const int cfg = kCfgOrder[ci];
         for (int r = 0; r < 4; ++r) {
             TString fn = TString::Format("%s/muon_whole_out_c%d_r%d.root", dir, cfg, r);
             TFile* f = TFile::Open(fn, "READ");
-            if (!f || f->IsZombie()) { delete f; continue; }
+            if (!f || f->IsZombie()) {
+                std::cerr << "warning: cfg" << cfg << " (" << cfgShort(cfg)
+                          << ") " << kReflName[r]
+                          << ": missing/unreadable whole-slab file; skipped\n";
+                delete f;
+                continue;
+            }
             TTree* t = (TTree*)f->Get("sipmHits");
-            if (!t) { delete f; continue; }
+            if (!t || t->GetEntries() == 0) {
+                std::cerr << "warning: cfg" << cfg << " (" << cfgShort(cfg)
+                          << ") " << kReflName[r]
+                          << ": partial whole-slab file (no sipmHits); skipped\n";
+                delete f;
+                continue;
+            }
 
             int evt = 0, det = 0, nDet = 0, nProd = 0;
             double mx = 0., my = 0.;
@@ -271,7 +347,12 @@ void whole_slab_uniformity(const char* dir = "slurm/data_output_whole",
             std::vector<Event> ev;
             ev.reserve(em.size());
             for (auto& kv : em) ev.push_back(kv.second);
-            if (ev.empty()) continue;
+            if (ev.empty()) {
+                std::cerr << "warning: cfg" << cfg << " (" << cfgShort(cfg)
+                          << ") " << kReflName[r]
+                          << ": no usable events; skipped\n";
+                continue;
+            }
 
             Result& R = res[cfg][r];
 
@@ -335,8 +416,8 @@ void whole_slab_uniformity(const char* dir = "slurm/data_output_whole",
                 TH2D* hP = (TH2D*)hcP->Clone(TString::Format("hP_%d_%d", cfg, r));
                 hP->SetDirectory(nullptr);
                 hP->Divide(hpP);
-                hP->SetTitle(TString::Format("Config %d: %s;entry radius r [mm];azimuth #phi [deg]",
-                                             cfg, kReflName[r]));
+                hP->SetTitle(TString::Format("%s: %s;entry radius r [mm];azimuth #phi [deg]",
+                                             cfgLabel(cfg).Data(), kReflName[r]));
                 for (int bx = 1; bx <= kPolR; ++bx)
                     for (int by = 1; by <= kPolPhi; ++by)
                         if (hpP->GetBinContent(bx, by) <= 0.) hP->SetBinContent(bx, by, 0.);
@@ -367,12 +448,16 @@ void whole_slab_uniformity(const char* dir = "slurm/data_output_whole",
             }
         if (zLo >= 1e30) zLo = 1e-6;
         if (zHi <= 0.)  zHi = 1.;
-        TCanvas* c = new TCanvas("c_ws_polar", "", 1500, 1300);
-        c->Divide(4, 4, 0.001, 0.001);
-        for (int cfg = 1; cfg <= 4; ++cfg) {
+        // Five layout rows (1, 2, 12, 3, 4) x four reflector columns.  The
+        // canvas grows from 1500 x 1300 to 1500 x 1625 px so each panel keeps
+        // its original 375 x 325 px size instead of shrinking to fit five rows.
+        TCanvas* c = new TCanvas("c_ws_polar", "", 1500, 1625);
+        c->Divide(4, 5, 0.001, 0.001);
+        for (int ci = 0; ci < kNConfig; ++ci) {
+            const int cfg = kCfgOrder[ci];
             for (int r = 0; r < 4; ++r) {
                 if (!polMap[cfg].count(r)) continue;
-                c->cd((cfg - 1) * 4 + r + 1);
+                c->cd(ci * 4 + r + 1);
                 gStyle->SetOptTitle(1);
                 gPad->SetLeftMargin(0.16);
                 gPad->SetRightMargin(0.16);
@@ -422,8 +507,8 @@ void whole_slab_uniformity(const char* dir = "slurm/data_output_whole",
     // minimum), while the reflective wrappers sit in a narrow band around
     // unity; the log scale resolves both.
     double gzLo = 1e30, gzHi = 0.;
-    for (int cfg = 1; cfg <= 4; ++cfg)
-        for (auto& rr : normMap[cfg]) {
+    for (int ci = 0; ci < kNConfig; ++ci)
+        for (auto& rr : normMap[kCfgOrder[ci]]) {
             TH2D* h = rr.second;
             for (int bx = 1; bx <= h->GetNbinsX(); ++bx)
                 for (int by = 1; by <= h->GetNbinsY(); ++by) {
@@ -437,7 +522,15 @@ void whole_slab_uniformity(const char* dir = "slurm/data_output_whole",
     if (gzHi <= 0.)  gzHi = 2.;
     printf("normalised maps: eps/<eps> in [%.4g, %.4g]  ->  log z range [%.3g, %.3g]\n",
            gzLo, gzHi, gzLo, gzHi);
-    for (int cfg = 1; cfg <= 4; ++cfg) {
+    for (int ci = 0; ci < kNConfig; ++ci) {
+        const int cfg = kCfgOrder[ci];
+        // A completely absent layout gets no (empty/fabricated) canvas; a
+        // partially present one shows only the reflector panels that exist.
+        if (normMap[cfg].empty()) {
+            std::cerr << "warning: cfg" << cfg << " (" << cfgShort(cfg)
+                      << "): no uniformity map (data missing/partial)\n";
+            continue;
+        }
         TCanvas* c = new TCanvas(TString::Format("c_ws_map_%d", cfg), "", 1150, 980);
         c->Divide(2, 2, 0.006, 0.006);
         for (int r = 0; r < 4; ++r) {
@@ -449,8 +542,8 @@ void whole_slab_uniformity(const char* dir = "slurm/data_output_whole",
             gPad->SetBottomMargin(0.13);
             gPad->SetTopMargin(0.12);
             TH2D* h = normMap[cfg][r];
-            h->SetTitle(TString::Format("Config %d: %s;x [mm];y [mm]",
-                                        cfg, kReflName[r]));
+            h->SetTitle(TString::Format("%s: %s;x [mm];y [mm]",
+                                        cfgLabel(cfg).Data(), kReflName[r]));
             h->GetZaxis()->SetTitle(
                 "#varepsilon / #LT#font[132]{#it{#varepsilon}}#GT");
             h->GetZaxis()->SetTitleSize(0.040);
@@ -477,11 +570,19 @@ void whole_slab_uniformity(const char* dir = "slurm/data_output_whole",
     // position contrast kappa_2D = eps_max/eps_min over the full plate, one bar
     // per reflector.  Linear y, each panel scaled to its own maximum, as in the
     // original matrix_positions.C three-patch figure.
+    // 2 x 3 grid, five layouts + one empty cell.  The canvas grows to
+    // 1050 x 1350 px so the panels keep their original 525 x 450 px size.
     {
-        TCanvas* c = new TCanvas("c_ws_kappa", "", 1050, 900);
-        c->Divide(2, 2, 0.005, 0.005);
-        for (int cfg = 1; cfg <= 4; ++cfg) {
-            c->cd(cfg);
+        TCanvas* c = new TCanvas("c_ws_kappa", "", 1050, 1350);
+        c->Divide(2, 3, 0.005, 0.005);
+        for (int ci = 0; ci < kNConfig; ++ci) {
+            const int cfg = kCfgOrder[ci];
+            if (res.find(cfg) == res.end() || res[cfg].empty()) {
+                std::cerr << "warning: cfg" << cfg << " (" << cfgShort(cfg)
+                          << "): no kappa_2D panel (data missing/partial)\n";
+                continue;                 // leave the cell empty
+            }
+            c->cd(ci + 1);
             gStyle->SetOptTitle(1);
             gPad->SetLeftMargin(0.15);
             gPad->SetRightMargin(0.04);
@@ -491,13 +592,15 @@ void whole_slab_uniformity(const char* dir = "slurm/data_output_whole",
             TH1D* h = new TH1D(TString::Format("hk_c%d", cfg), "", 4, 0, 4);
             double ymax = 0.;
             for (int r = 0; r < 4; ++r) {
-                const Result& R = res[cfg][r];
+                h->GetXaxis()->SetBinLabel(r + 1, kReflName[r]);
+                auto jt = res[cfg].find(r);
+                if (jt == res[cfg].end()) continue;   // no bar, not a zero bar
+                const Result& R = jt->second;
                 h->SetBinContent(r + 1, R.kappaCell);
                 h->SetBinError(r + 1, R.kappaCellErr);
-                h->GetXaxis()->SetBinLabel(r + 1, kReflName[r]);
                 ymax = std::max(ymax, R.kappaCell);
             }
-            h->SetTitle(TString::Format("Config %d", cfg));
+            h->SetTitle(cfgLabel(cfg));
             h->GetYaxis()->SetTitle(
                 "#font[132]{#it{#kappa}}_{2D} = "
                 "#font[132]{#it{#varepsilon}}_{max}/"
@@ -522,20 +625,36 @@ void whole_slab_uniformity(const char* dir = "slurm/data_output_whole",
 
     // ============== Fig E: plate-averaged efficiency bars =================
     // The whole-slab analogue of the pooled three-patch efficiency figure: a
-    // 2 x 2 grid (one panel per layout), one bar per reflector, linear y with a
-    // shared range.  Every event's entry point is uniform over the plate, so
-    // these are unbiased plate averages rather than a patch-pooled number.
+    // 2 x 3 grid (five layouts + one empty cell), one bar per reflector, linear
+    // y with a shared range.  Every event's entry point is uniform over the
+    // plate, so these are unbiased plate averages rather than a patch-pooled
+    // number.  The canvas grows to 1100 x 1590 px to keep the original
+    // 550 x 530 px panels.
     {
         double ymaxAll = 0.;
-        for (int cfg = 1; cfg <= 4; ++cfg)
-            for (int r = 0; r < 4; ++r)
-                ymaxAll = std::max(ymaxAll, res[cfg][r].meanEff);
+        for (int ci = 0; ci < kNConfig; ++ci) {
+            // Use find(), not operator[]: the latter would insert zero-valued
+            // entries for a missing layout and fabricate an empty panel.
+            auto it = res.find(kCfgOrder[ci]);
+            if (it == res.end()) continue;
+            for (int r = 0; r < 4; ++r) {
+                auto jt = it->second.find(r);
+                if (jt != it->second.end())
+                    ymaxAll = std::max(ymaxAll, jt->second.meanEff);
+            }
+        }
         if (ymaxAll <= 0.) ymaxAll = 1.;
 
-        TCanvas* c = new TCanvas("c_ws_eff", "efficiency", 1100, 1060);
-        c->Divide(2, 2, 0.004, 0.004);
-        for (int cfg = 1; cfg <= 4; ++cfg) {
-            c->cd(cfg);
+        TCanvas* c = new TCanvas("c_ws_eff", "efficiency", 1100, 1590);
+        c->Divide(2, 3, 0.004, 0.004);
+        for (int ci = 0; ci < kNConfig; ++ci) {
+            const int cfg = kCfgOrder[ci];
+            if (res.find(cfg) == res.end() || res[cfg].empty()) {
+                std::cerr << "warning: cfg" << cfg << " (" << cfgShort(cfg)
+                          << "): no efficiency-bar panel (data missing/partial)\n";
+                continue;                 // leave the cell empty
+            }
+            c->cd(ci + 1);
             gStyle->SetOptTitle(1);        // global style hides titles; show here
             gPad->SetLeftMargin(0.16);
             gPad->SetRightMargin(0.03);
@@ -543,10 +662,12 @@ void whole_slab_uniformity(const char* dir = "slurm/data_output_whole",
             gPad->SetTopMargin(0.12);
             TH1D* h = new TH1D(TString::Format("he_c%d", cfg), "", 4, 0, 4);
             for (int r = 0; r < 4; ++r) {
-                h->SetBinContent(r + 1, res[cfg][r].meanEff);
                 h->GetXaxis()->SetBinLabel(r + 1, kReflName[r]);
+                auto jt = res[cfg].find(r);
+                if (jt == res[cfg].end()) continue;   // no bar, not a zero bar
+                h->SetBinContent(r + 1, jt->second.meanEff);
             }
-            h->SetTitle(TString::Format("Config %d", cfg));
+            h->SetTitle(cfgLabel(cfg));
             h->GetYaxis()->SetTitle(
                 "collection efficiency  #varepsilon = "
                 "#font[132]{#it{N}}_{pe}/#font[132]{#it{N}}_{#gamma}");
@@ -568,14 +689,22 @@ void whole_slab_uniformity(const char* dir = "slurm/data_output_whole",
     // ============== CSV ====================================================
     FILE* fp = fopen(TString::Format("%s/whole_uniformity.csv", outdir).Data(), "w");
     if (fp) {
-        fprintf(fp, "config,reflector,mean_eff,mean_eff_err,kappa_2d,kappa_2d_err\n");
-        for (int cfg = 1; cfg <= 4; ++cfg)
+        // Numeric config + short label (C1, C2, C2m, C3, C4, in report order).
+        // Rows whose data are missing/partial are skipped, as in whole_yield.csv.
+        fprintf(fp, "config,label,reflector,mean_eff,mean_eff_err,kappa_2d,kappa_2d_err\n");
+        for (int ci = 0; ci < kNConfig; ++ci) {
+            const int cfg = kCfgOrder[ci];
+            auto it = res.find(cfg);
+            if (it == res.end()) continue;
             for (int r = 0; r < 4; ++r) {
-                const Result& R = res[cfg][r];
-                fprintf(fp, "%d,%s,%.6g,%.3g,%.4f,%.4f\n",
-                        cfg, kReflName[r], R.meanEff, R.meanEffErr,
-                        R.kappaCell, R.kappaCellErr);
+                auto jt = it->second.find(r);
+                if (jt == it->second.end()) continue;
+                const Result& R = jt->second;
+                fprintf(fp, "%d,%s,%s,%.6g,%.3g,%.4f,%.4f\n",
+                        cfg, cfgShort(cfg).Data(), kReflName[r],
+                        R.meanEff, R.meanEffErr, R.kappaCell, R.kappaCellErr);
             }
+        }
         fclose(fp);
     }
 

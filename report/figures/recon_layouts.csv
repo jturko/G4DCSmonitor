@@ -1,0 +1,13 @@
+layout,wrapper,sigma_x_mm,sigma_r_mm,r68_mm
+Config 1,bare,19.3779,27.5324,25.0148
+Config 1,TiO2,11.9319,17.0379,16.6656
+Config 1,Al (air),15.7340,22.5750,21.5773
+Config 1,glossy,15.9048,22.1427,20.7236
+Config 2,bare,33.1474,46.4638,41.1249
+Config 2,TiO2,20.9517,29.4273,30.3925
+Config 2,Al (air),31.4467,44.6736,39.1862
+Config 2,glossy,31.1562,44.2943,39.7445
+Config 2 (mod),bare,29.8754,41.9225,40.1800
+Config 2 (mod),TiO2,20.3701,28.6477,29.3566
+Config 2 (mod),Al (air),27.8357,39.2461,38.4249
+Config 2 (mod),glossy,27.6301,39.1175,38.2761

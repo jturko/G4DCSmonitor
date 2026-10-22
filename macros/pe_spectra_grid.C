@@ -5,12 +5,14 @@
 // measurement regions (centre, edge, corner) are the rows and the trigger
 // detector configurations are the columns, with the four reflective materials
 // overlaid in every cell.  Here the voltage pulse height is replaced by the
-// number of photoelectrons per event (the simulation analogue), and the fourth
-// configuration (single SiPM + WLS fibre clamp) is added as a fourth column.
+// number of photoelectrons per event (the simulation analogue), with five
+// configurations: 1, 2, the corner-cut "Config 2 (mod)" (12), 3 and 4.  The
+// fourth standard configuration (single SiPM + WLS fibre clamp) is the last
+// column.
 //
-// The result is a 3 (region) x 4 (config) grid; each cell overlays the four
+// The result is a 3 (region) x 5 (config) grid; each cell overlays the four
 // reflector treatments.  Spectra are probability densities (unit area).  The
-// lower panel uses logarithmic axes with one shared range so the four configs
+// lower panel uses logarithmic axes with one shared range so the five configs
 // can be compared directly; the upper panel gives every config column its own
 // linear abscissa and ordinate, sized to that config's data, because the
 // WLS-clamp layout (config 4) collects ~20x fewer photoelectrons than the
@@ -24,7 +26,9 @@
 // bottom-row pads, which hold the shared y/x tick labels; the axis titles,
 // region identifiers and column headers are drawn once on the canvas itself.
 //
-// Reads <dir>/muon_out_c<C>_r<R>_{centre,edge,corner}.root (tree "sipmHits").
+// Reads <dir>/muon_out_c<C>_r<R>_{centre,edge,corner}.root (tree "sipmHits"),
+// with C in {1,2,12,3,4}.  A missing/incomplete config simply leaves its column
+// empty (the histograms are booked for every layout) and never crashes.
 //
 // Usage:
 //   root -l -b -q 'macros/pe_spectra_grid.C("slurm/data_v2.2/matrix","report/figures")'
@@ -52,6 +56,12 @@ namespace {
 const char* kReflName[4] = {"none (bare)", "TiO2", "Al", "glossy"};
 const int   kStyle[4]    = {kSolid, kDashed, kDotted, kDashDotted};
 const char* kLocName[3]  = {"centre", "edge", "corner"};
+
+// Config order everywhere: 1, 2, 12 (corner-cut "Config 2 (mod)"), 3, 4.
+const int   kCfgVal[5]   = {1, 2, 12, 3, 4};
+const char* kCfgLong[5]  = {"Config 1", "Config 2", "Config 2 (mod)",
+                            "Config 3", "Config 4"};
+const int   kNcfg        = 5;
 
 // Logarithmic bin edges: one [0,0.5) bin to absorb zero-p.e. events, then
 // ~10%-wide log bins up to a generous maximum.  On the log-x display the
@@ -85,14 +95,16 @@ void pe_spectra_grid(const char* dir = "slurm/data_v2.2/matrix",
     const std::vector<double> edges = logEdges();
     const int nb = (int)edges.size() - 1;
 
-    // h[cfg][loc][refl]  (cfg 1..4, loc 0..2, refl 0..3) -- log-spaced bins
+    // h[cfg][loc][refl]  (cfg in kCfgVal, loc 0..2, refl 0..3) -- log bins
     std::map<int, std::map<int, std::map<int, TH1D*>>> h;
-    for (int c = 1; c <= 4; ++c)
+    for (int ci = 0; ci < kNcfg; ++ci) {
+        const int c = kCfgVal[ci];
         for (int l = 0; l < 3; ++l)
             for (int r = 0; r < 4; ++r) {
                 TString nm = TString::Format("hpe_c%d_%s_r%d", c, kLocName[l], r);
                 h[c][l][r] = new TH1D(nm, "", nb, edges.data());
             }
+    }
 
     // Raw pe/event samples per cell, kept so the linear-axes panel can use
     // linearly-spaced bins (log-spaced bins look wrong on a linear abscissa).
@@ -121,7 +133,9 @@ void pe_spectra_grid(const char* dir = "slurm/data_v2.2/matrix",
         int cfg  = TString(stem(p0 + 1, p1 - p0 - 1)).Atoi();
         int refl = TString(stem(p1 + 2, p2 - p1 - 2)).Atoi();
         TString loc = stem(p2 + 1, stem.Length());
-        if (cfg < 1 || cfg > 4 || refl < 0 || refl > 3) continue;
+        bool known = false;
+        for (int ci = 0; ci < kNcfg; ++ci) if (cfg == kCfgVal[ci]) known = true;
+        if (!known || refl < 0 || refl > 3) continue;
         int li = -1;
         for (int l = 0; l < 3; ++l) if (loc == kLocName[l]) li = l;
         if (li < 0) continue;
@@ -155,14 +169,15 @@ void pe_spectra_grid(const char* dir = "slurm/data_v2.2/matrix",
     // that config's data: the WLS-clamp layout (config 4) collects far fewer
     // photoelectrons than the directly-coupled layouts, so one shared linear
     // range would crush config 4 into the first percent of the axis (and
-    // over-spread configs 1-3).  Each column's range is the pooled 99.5th
-    // percentile of all its regions and reflectors (rounded up); the
+    // over-spread the other configs).  Each column's range is the pooled
+    // 99.5th percentile of all its regions and reflectors (rounded up); the
     // logarithmic panel keeps a single shared range so the configs stay
     // comparable there.
     const int nbl = 100;
-    double xhi_lin[4];                 // per config (index c-1)
+    double xhi_lin[kNcfg];             // index = config column (0..4)
     std::map<int, std::map<int, std::map<int, TH1D*>>> hlin;
-    for (int c = 1; c <= 4; ++c) {
+    for (int ci = 0; ci < kNcfg; ++ci) {
+        const int c = kCfgVal[ci];
         std::vector<double> pool;
         for (int l = 0; l < 3; ++l)
             for (int r = 0; r < 4; ++r)
@@ -171,7 +186,7 @@ void pe_spectra_grid(const char* dir = "slurm/data_v2.2/matrix",
         double xh = pool.empty() ? 100. : pool[(size_t)(0.995 * pool.size())];
         xh = std::ceil(xh / 100.0) * 100.0;
         if (xh < 100.) xh = 100.;
-        xhi_lin[c - 1] = xh;
+        xhi_lin[ci] = xh;
 
         std::vector<double> ledges(nbl + 1);
         for (int i = 0; i <= nbl; ++i) ledges[i] = xh * i / nbl;   // 0 .. xh
@@ -185,12 +200,14 @@ void pe_spectra_grid(const char* dir = "slurm/data_v2.2/matrix",
     }
 
     // ---- normalise all spectra, then fix SHARED x/y ranges -------------
-    // Every cell uses the same axes so configs and regions can be compared
+    // Every cell uses the same log axes so configs and regions can be compared
     // directly.  Only populated bins count; the zero-p.e. bin sits off the
-    // logarithmic abscissa.
+    // logarithmic abscissa.  Empty (missing) configs contribute nothing, so a
+    // partial data tree simply narrows the range instead of crashing.
     double gxmin = 1e30, gxmax = -1e30, gymin = 1e30, gymax = 0.;
-    for (int l = 0; l < 3; ++l)
-        for (int cfg = 1; cfg <= 4; ++cfg)
+    for (int ci = 0; ci < kNcfg; ++ci) {
+        const int cfg = kCfgVal[ci];
+        for (int l = 0; l < 3; ++l)
             for (int r = 0; r < 4; ++r) {
                 TH1D* hh = h[cfg][l][r];
                 double I = hh->Integral();          // includes the zero bin
@@ -207,6 +224,7 @@ void pe_spectra_grid(const char* dir = "slurm/data_v2.2/matrix",
                     }
                 }
             }
+    }
     if (gxmin > gxmax) { gxmin = 0.5; gxmax = 200.; }
     if (gymin > gymax) { gymin = 1e-5; }
     const double xlo = 0.8 * gxmin, xhi = 1.3 * gxmax;
@@ -219,8 +237,9 @@ void pe_spectra_grid(const char* dir = "slurm/data_v2.2/matrix",
     // exactly as in panel~(b) -- NOT the probability density: ROOT plots the
     // content, and sizing the axis from content/bin-width is what clipped every
     // peak flat against the frame top.
-    double yhi_lin[4];                 // per config (index c-1)
-    for (int c = 1; c <= 4; ++c) {
+    double yhi_lin[kNcfg];             // index = config column (0..4)
+    for (int ci = 0; ci < kNcfg; ++ci) {
+        const int c = kCfgVal[ci];
         double ymax = 0.;
         for (int l = 0; l < 3; ++l)
             for (int r = 0; r < 4; ++r) {
@@ -228,20 +247,21 @@ void pe_spectra_grid(const char* dir = "slurm/data_v2.2/matrix",
                 double I = hh->Integral();
                 if (I > 0) hh->Scale(1. / I);
                 for (int b = 1; b <= hh->GetNbinsX(); ++b) {
-                    double d = hh->GetBinContent(b);
-                    if (d > ymax) ymax = d;
+                    double v = hh->GetBinContent(b);
+                    if (v > ymax) ymax = v;
                 }
             }
         // ~1.35x headroom rounded up to a half-decade, so the top tick label is
         // a round number (config 1 -> 0.03) and the tallest peak sits well clear
         // of the frame instead of being clipped flat against it.
         double yh = 1.35 * ymax;
+        if (yh <= 0.) yh = 1.;         // empty (missing) config: harmless range
         double mag = std::pow(10.0, std::floor(std::log10(yh)));
         yh = std::ceil(yh / (mag / 2.0)) * (mag / 2.0);
-        yhi_lin[c - 1] = yh;
+        yhi_lin[ci] = yh;
     }
 
-    // ---- layout + draw one 3 x 4 grid inside the NDC band [y0, y1] ------
+    // ---- layout + draw one 3 x 5 grid inside the NDC band [y0, y1] ------
     // Frames are all W x H, packed with small inner gaps; only the outer border
     // of the band is wide enough for the shared labels.  Pads are placed by hand
     // so the frames stay identical without introducing inner whitespace.
@@ -264,20 +284,23 @@ void pe_spectra_grid(const char* dir = "slurm/data_v2.2/matrix",
     const double xRegionLbl = 0.018;                     // left-margin text x
     const double xYTitle    = 0.052;   // centred between region labels and the
                                        // (now wider) per-config y tick labels
-    const double W  = (1.0 - ML - MR - 3.0 * GX) / 4.0;
+    const double W  = (1.0 - ML - MR - (kNcfg - 1) * GX) / (double)kNcfg;
 
-    TCanvas* c = new TCanvas("c_pe_grid", "pe spectra grid", 1560, 2000);
+    // Wider than tall enough for five columns: at the report's
+    // width=textwidth,height=0.73textheight the panels and their text keep
+    // their physical size instead of shrinking with a fifth column.
+    TCanvas* c = new TCanvas("c_pe_grid", "pe spectra grid", 1950, 2000);
 
     auto drawGrid = [&](std::map<int, std::map<int, std::map<int, TH1D*>>>& M,
                         double y0, double y1, bool useLog,
-                        const double* xa4, const double* xb4,
-                        const double* ya4, const double* yb4,
+                        const double* xa, const double* xb,
+                        const double* ya, const double* yb,
                         const char* tag) {
         const double H = ((y1 - y0) - MTb - MBb - 2.0 * GY) / 3.0;
 
         for (int l = 0; l < 3; ++l) {
-            for (int cc = 0; cc < 4; ++cc) {
-                int cfg = cc + 1;
+            for (int cc = 0; cc < kNcfg; ++cc) {
+                const int cfg = kCfgVal[cc];
                 const double fx = ML + cc * (W + GX);          // frame left
                 const double fy = y0 + MBb + (2 - l) * (H + GY);  // frame bottom
 
@@ -320,13 +343,13 @@ void pe_spectra_grid(const char* dir = "slurm/data_v2.2/matrix",
                     hh->SetLineColor(kColor[r]);
                     hh->SetLineStyle(kStyle[r]);
                     hh->SetLineWidth(2);
-                    hh->GetXaxis()->SetRangeUser(xa4[cc], xb4[cc]);
+                    hh->GetXaxis()->SetRangeUser(xa[cc], xb[cc]);
                     // Fix the y-range with SetMinimum/SetMaximum: for a TH1 the
                     // y-axis autoscales from the bin maximum and ignores a
                     // SetRangeUser on the y-axis, which was silently clipping the
                     // tallest peak flat against the frame top.
-                    hh->SetMinimum(ya4[cc]);
-                    hh->SetMaximum(yb4[cc]);
+                    hh->SetMinimum(ya[cc]);
+                    hh->SetMaximum(yb[cc]);
                     hh->GetYaxis()->SetMoreLogLabels(kFALSE);  // decade labels only
                     hh->GetYaxis()->SetTitle("");   // shared: drawn on canvas
                     // ROOT scales the label size by the pad height, and only the
@@ -347,11 +370,11 @@ void pe_spectra_grid(const char* dir = "slurm/data_v2.2/matrix",
                     else        hh->Draw("HIST SAME");
                 }
 
-                // shared legend in the top-right cell (pad coords == frame)
-                if (l == 0 && cc == 3) {
+                // shared legend in the top-right cell (Config 4 column)
+                if (l == 0 && cc == kNcfg - 1) {
                     // Clamp x2 to stay inside the pad (x2 > 1 puts the right
                     // edge outside the pad and flush with the canvas border).
-                    TLegend* leg = new TLegend(0.574, 0.55, 0.985, 0.89);
+                    TLegend* leg = new TLegend(0.500, 0.530, 0.985, 0.890);
                     leg->SetBorderSize(0);
                     leg->SetFillStyle(0);
                     leg->SetTextSize(0.040);
@@ -363,15 +386,17 @@ void pe_spectra_grid(const char* dir = "slurm/data_v2.2/matrix",
         }
 
         // ---- shared outer labels for this band (canvas NDC) -------------
-        c->cd();
-        for (int cc = 0; cc < 4; ++cc) {                    // column headers
+        c->cd();   // canvas NDC, not the last pad's NDC
+        for (int cc = 0; cc < kNcfg; ++cc) {                // column headers
             TLatex* tc = new TLatex();
             tc->SetNDC();
-            tc->SetTextSize(0.026);
+            // The corner-cut label ("Config 2 (mod)") is the longest; 0.021
+            // keeps every header inside its own frame at this canvas width.
+            tc->SetTextSize(0.021);
             tc->SetTextFont(42);
             tc->SetTextAlign(21);
             tc->DrawLatex(ML + cc * (W + GX) + W / 2.0, y1 - MTb * 0.45,
-                          TString::Format("Config %d", cc + 1));
+                          kCfgLong[cc]);
         }
         for (int l = 0; l < 3; ++l) {                       // region identifiers
             TLatex* tx = new TLatex();
@@ -413,13 +438,13 @@ void pe_spectra_grid(const char* dir = "slurm/data_v2.2/matrix",
 
     // (a) linear, truncated abscissa, linearly-binned; (b) logarithmic, full
     // range.  Both share the same reflector colours/styles and the same units.
-    double lad_xlo[4], lad_xhi[4], lad_ylo[4], lad_yhi[4];   // linear panel
-    double log_xlo[4], log_xhi[4], log_ylo[4], log_yhi[4];   // shared ranges
-    for (int c = 0; c < 4; ++c) {
-        lad_xlo[c] = 0.0;    lad_xhi[c] = xhi_lin[c];
-        lad_ylo[c] = 0.0;    lad_yhi[c] = yhi_lin[c];
-        log_xlo[c] = xlo;    log_xhi[c] = xhi;
-        log_ylo[c] = ylo;    log_yhi[c] = yhi;
+    double lad_xlo[kNcfg], lad_xhi[kNcfg], lad_ylo[kNcfg], lad_yhi[kNcfg];
+    double log_xlo[kNcfg], log_xhi[kNcfg], log_ylo[kNcfg], log_yhi[kNcfg];
+    for (int ci = 0; ci < kNcfg; ++ci) {
+        lad_xlo[ci] = 0.0;    lad_xhi[ci] = xhi_lin[ci];
+        lad_ylo[ci] = 0.0;    lad_yhi[ci] = yhi_lin[ci];
+        log_xlo[ci] = xlo;    log_xhi[ci] = xhi;
+        log_ylo[ci] = ylo;    log_yhi[ci] = yhi;
     }
     drawGrid(hlin, 0.510, 0.995, false, lad_xlo, lad_xhi, lad_ylo, lad_yhi, "(a)");
     drawGrid(h,    0.005, 0.490, true,  log_xlo, log_xhi, log_ylo, log_yhi, "(b)");

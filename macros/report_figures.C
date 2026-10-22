@@ -6,7 +6,8 @@
 //   fig_yield.pdf         per-event optical-photon yield (produced) per reflector
 //   fig_detected.pdf      per-event photoelectron count per reflector
 //   fig_wavelength.pdf    detected-photon wavelength spectrum per reflector
-//   fig_wavelength_cfg.pdf  detected-photon wavelength per reflector, cfg 1-4
+//   fig_wavelength_cfg.pdf  detected-photon wavelength per reflector,
+//                           configs 1, 2, 2 (mod) [12], 3, 4
 //
 // Position- and direction-resolved figures for the three-patch matrix scan
 // live in macros/matrix_positions.C.
@@ -40,6 +41,11 @@
 namespace {
 const char* kReflName[4] = {"none", "TiO2", "Al", "glossy"};
 const int   kStyle[4]    = {kSolid, kDashed, kDotted, kDashDotted};
+
+// Config order everywhere: 1, 2, 12 (corner-cut "Config 2 (mod)"), 3, 4.
+const int   kCfgVal[5]   = {1, 2, 12, 3, 4};
+const char* kCfgShort[5] = {"C1", "C2", "C2m", "C3", "C4"};
+const int   kNcfg        = 5;
 }  // namespace
 
 void report_figures(const char* dir = "slurm/data_output",
@@ -87,9 +93,11 @@ void report_figures(const char* dir = "slurm/data_output",
         // so the weakly-collecting bare case is resolved near zero.
         hProduced[r] = new TH1D(TString::Format("hp_r%d", r), "", 1400, 0, 70000);
         hDetected[r] = new TH1D(TString::Format("hd_r%d", r), "", 2400, 0, 2400);
-        for (int cfg = 1; cfg <= 4; ++cfg)
+        for (int ci = 0; ci < kNcfg; ++ci) {
+            const int cfg = kCfgVal[ci];
             hWave[waveKey(cfg, r)] = new TH1D(TString::Format("hw_c%dr%d", cfg, r),
                                               "", 90, 360, 630);
+        }
     }
 
     for (const auto& full : files) {
@@ -107,6 +115,11 @@ void report_figures(const char* dir = "slurm/data_output",
         cfg  = TString(stem(p0 + 1, p1 - p0 - 1)).Atoi();
         refl = TString(stem(p1 + 2, stem.Length())).Atoi();
         if (refl < 0 || refl > 3) { delete f; continue; }
+        // Accept only the five booked configs: an unexpected cfg in the
+        // directory must not dereference a missing hWave entry.
+        bool known = false;
+        for (int ci = 0; ci < kNcfg; ++ci) if (cfg == kCfgVal[ci]) known = true;
+        if (!known) { delete f; continue; }
 
         int evt = 0, det = 0, sipm = 0, nDet = 0, nProd = 0;
         double mx = 0., my = 0., wl = 0.;
@@ -281,14 +294,21 @@ void report_figures(const char* dir = "slurm/data_output",
                   false, false, 0.045, 0.044, 1.25, 0.008);
     }
 
-    // ============ Fig 3b: detected wavelength, configs 1-4 ================
-    // 2x2 grid, one panel per reflector; each panel overlays configs 1-4 so
-    // the WLS green-shift of config 4 is visible against the direct-coupled
-    // layouts (which detect the blue scintillation spectrum).
+    // ===== Fig 3b: detected wavelength, configs 1,2,2m,3,4 ================
+    // 2x2 grid, one panel per reflector; each panel overlays the five layouts
+    // (order 1, 2, 12, 3, 4) so the WLS green-shift of config 4 is visible
+    // against the direct-coupled layouts (which detect the blue scintillation
+    // spectrum).  The corner-cut "Config 2 (mod)" is the fifth curve; its
+    // histograms stay empty (and simply do not appear) if its files are
+    // missing, so a partial c12 tree cannot crash the figure.
     {
-        const int cfgColor[5] = {0, PetroffPalette::getP6(0), PetroffPalette::getP6(1),
-                                 PetroffPalette::getP6(2), PetroffPalette::getP6(3)};
-        const int cfgStyle[5] = {0, kSolid, kDashed, kDotted, kDashDotted};
+        // Colours keep the original 1-4 assignment; cfg12 takes P6(4).
+        const int cfgColor[kNcfg] = {PetroffPalette::getP6(0), PetroffPalette::getP6(1),
+                                     PetroffPalette::getP6(4), PetroffPalette::getP6(2),
+                                     PetroffPalette::getP6(3)};
+        // Line styles 1..5 in the same order: solid, dashed, dotted,
+        // dash-dot, dash-dot-dot.
+        const int cfgStyle[kNcfg] = {kSolid, kDashed, kDotted, kDashDotted, 5};
         TCanvas* c = new TCanvas("c_wave_cfg", "wavelength by config", 1000, 900);
         c->Divide(2, 2, 0.004, 0.004);
         for (int r = 0; r < 4; ++r) {
@@ -299,29 +319,32 @@ void report_figures(const char* dir = "slurm/data_output",
             gPad->SetBottomMargin(0.15);
             gPad->SetTopMargin(0.12);
             double ymax = 0.;
-            for (int cfg = 1; cfg <= 4; ++cfg) {
-                TH1D* h = hWave[waveKey(cfg, r)];
+            for (int ci = 0; ci < kNcfg; ++ci) {
+                TH1D* h = hWave[waveKey(kCfgVal[ci], r)];
                 double I = h->Integral();
                 if (I > 0) h->Scale(1. / I / h->GetBinWidth(1));
                 for (int b = 1; b <= h->GetNbinsX(); ++b)
                     ymax = std::max(ymax, h->GetBinContent(b));
             }
             if (ymax > 0) ymax *= 1.30;
-            // Only the bottom-right panel (r == 3) carries the legend; it is
-            // pushed to the right so it sits in the high-wavelength blank area
-            // (above ~550 nm) and clear of the WLS config-4 peak at ~510 nm.
+            // Only the bottom-right panel (r == 3) carries the legend.  Five
+            // entries need more height than the old four: the block stays in
+            // the high-wavelength blank area (left edge ~543 nm, clear of the
+            // WLS config-4 peak at ~510 nm) and grows downward instead of
+            // spanning across the peaks.
             TLegend* leg = (r == 3)
-                ? new TLegend(0.70, 0.45, 0.97, 0.78) : nullptr;
+                ? new TLegend(0.70, 0.34, 0.97, 0.80) : nullptr;
             if (leg) {
                 leg->SetBorderSize(0);
                 leg->SetFillStyle(0);
                 leg->SetFillColorAlpha(0, 0.);
+                leg->SetTextSize(0.034);
             }
-            
-            for (int cfg = 1; cfg <= 4; ++cfg) {
-                TH1D* h = hWave[waveKey(cfg, r)];
-                h->SetLineColor(cfgColor[cfg]);
-                h->SetLineStyle(cfgStyle[cfg]);
+
+            for (int ci = 0; ci < kNcfg; ++ci) {
+                TH1D* h = hWave[waveKey(kCfgVal[ci], r)];
+                h->SetLineColor(cfgColor[ci]);
+                h->SetLineStyle(cfgStyle[ci]);
                 h->SetLineWidth(2);
                 h->SetTitle(kReflName[r]);
                 h->GetXaxis()->SetTitle("detected photon wavelength [nm]");
@@ -332,9 +355,9 @@ void report_figures(const char* dir = "slurm/data_output",
                 h->GetYaxis()->SetLabelSize(0.040);
                 h->GetYaxis()->SetTitleOffset(1.25);
                 h->GetYaxis()->SetRangeUser(0, ymax);
-                if (cfg == 1) h->Draw("HIST");
-                else          h->Draw("HIST SAME");
-                if (leg) leg->AddEntry(h, TString::Format("cfg %d", cfg), "l");
+                if (ci == 0) h->Draw("HIST");
+                else         h->Draw("HIST SAME");
+                if (leg) leg->AddEntry(h, kCfgShort[ci], "l");
             }
             if (leg) leg->Draw();
         }

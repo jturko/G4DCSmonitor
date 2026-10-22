@@ -64,15 +64,19 @@ parameters---a mean-field plate--holder contact fraction $f$ and the optical
 backing of the aluminium foil---and then show that the measured ordering is
 recovered for every directly-coupled layout.
 
-With $f=\num{0.045}$ and an air-backed foil, a \num{48}-file matrix scan
-(4 SiPM layouts $\times$ 4 treatments $\times$ 3 beam positions,
+The five layouts include a corner-cut variant, Config~2 (mod), which replaces
+the square corners by \SI{45}{\degree} chamfers and mounts one sensor on each
+cut face. With $f=\num{0.045}$ and an air-backed foil, a \num{60}-file matrix
+scan (5 SiPM layouts $\times$ 4 treatments $\times$ 3 beam positions,
 \num{2500} events each) and a whole-plate irradiation (\num{25000} events per
-configuration and treatment) give, for all four layouts,
+configuration and treatment) give, for all five layouts,
 \[
   \text{bare} < \text{TiO}_2 < \text{Al} < \text{glossy},
 \]
 with glossy paper brightest, air-backed aluminium within
-\SI{92}{\percent} of it, and the contact-limited bare plate weakest. The
+\SIrange{91}{92}{\percent} of it, and the contact-limited bare plate weakest.
+Config~2 (mod) keeps the ordering but moves the brightest patch to the
+instrumented corner and leaves the plate centre relatively dark. The
 ordering is explained by a single mechanism:
 the response tracks the \emph{distance from the interaction point to the
 nearest sensor} whenever the cavity is not a perfect light mixer, so the
@@ -91,7 +95,13 @@ for the bare plate). We also report per-event photon
 yields, photoelectron spectra, wavelength and arrival-time distributions, and
 a systematic comparison with the published measurements, including the one
 wrapper for which the simulation and the measurement disagree on the sign of
-the position trend.
+the position trend. A ten-design controlled campaign then isolates what each
+design knob is worth: the larger sensor is the only near-total improvement
+(\num{2.1} times the light and \num{1.4} times better position resolution
+for \num{2.25} times its area), blackening the four narrow faces buys a
+factor \num{3.6} in timing at \SI{88}{\percent} of the light, and a fibre
+read-out on every face buys the flattest response and the best resolution per
+photoelectron at the price of speed.
 \end{abstract}
 
 \tableofcontents
@@ -137,7 +147,7 @@ calibrated against data.
 This report documents a \gfour\ (v11.3.2)~\cite{Agostinelli2003,Allison2016}
 simulation built to address that question for the specific geometry and
 surface treatments of Ref.~\cite{Rao2025}. The deliverable is a
-self-contained ``matrix scan'': every combination of four SiPM layouts and
+self-contained ``matrix scan'': every combination of five SiPM layouts and
 four reflector treatments, at three beam positions on the plate, plus a
 uniform whole-plate irradiation. The goal is not to fit a single number but
 to test how far the simulation reproduces the \emph{ordering} and the
@@ -159,23 +169,25 @@ per-axis resolution with which the eight-channel pattern localises the muon.
 muon crossing, from the uniform whole-plate irradiation (\num{25000} events per
 cell). \emph{Right}: the position contrast $\kappa_{\rm 2D}$ of the full-plate
 efficiency field, i.e.\ the ratio of the brightest to the darkest
-\SI{50}{\milli\meter} cell. \emph{Last column}: the per-axis resolution
+\SI{50}{\milli\meter} cell. C2m abbreviates Config~2 (mod); its
+photoelectron yields are per generated event and are \SI{0.48}{\percent}
+higher per entering event. \emph{Last column}: the per-axis resolution
 $\sigma_x$ with which the eight SiPM channels of config~1 localise the muon
 (Sec.~\ref{sec:recon}).}
 \label{tab:glance}
 \small
 \setlength{\tabcolsep}{5pt}
-\begin{tabular}{@{}lrrrr|rrrr|r@{}}
+\begin{tabular}{@{}lrrrrr|rrrrr|r@{}}
 \toprule
- & \multicolumn{4}{c|}{photoelectrons / event} &
-   \multicolumn{4}{c}{position contrast $\kappa_{\rm 2D}$} & \\
-\cmidrule(lr){2-5}\cmidrule(lr){6-9}
-Treatment & C1 & C2 & C3 & C4 & C1 & C2 & C3 & C4 & $\sigma_x$ [mm] \\
+ & \multicolumn{5}{c|}{photoelectrons / event} &
+   \multicolumn{5}{c}{position contrast $\kappa_{\rm 2D}$} & \\
+\cmidrule(lr){2-6}\cmidrule(lr){7-11}
+Treatment & C1 & C2 & C2m & C3 & C4 & C1 & C2 & C2m & C3 & C4 & $\sigma_x$ [mm] \\
 \midrule
-Bare   & 79.9  & 40.4  & 20.5  & 19.5  & 1.56 & 2.08 & 4.14 & 3.35 & 19.4 \\
-TiO$_2$ & 186.1 & 94.1  & 47.9  & 36.9  & 1.91 & 2.56 & 8.41 & 10.90 & 11.9 \\
-Al     & 480.8 & 253.8 & 129.2 & 82.8  & 1.07 & 1.14 & 1.30 & 1.37 & 15.7 \\
-Glossy & 520.7 & 275.1 & 140.7 & 87.0  & 1.07 & 1.13 & 1.28 & 1.36 & 15.9 \\
+Bare   & 79.9  & 40.4  & 38.8  & 20.5  & 19.5  & 1.56 & 2.08 & 2.84 & 4.14 & 3.35 & 19.4 \\
+TiO$_2$ & 186.1 & 94.1  & 92.6  & 47.9  & 36.9  & 1.91 & 2.56 & 3.69 & 8.41 & 10.90 & 11.9 \\
+Al     & 480.8 & 253.8 & 242.6 & 129.2 & 82.8  & 1.07 & 1.14 & 1.22 & 1.30 & 1.37 & 15.7 \\
+Glossy & 520.7 & 275.1 & 267.4 & 140.7 & 87.0  & 1.07 & 1.13 & 1.18 & 1.28 & 1.36 & 15.9 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -185,8 +197,9 @@ Section~\ref{sec:measurement} states precisely what Ref.~\cite{Rao2025}
 measured, which of its statements this simulation can be tested against, and
 where the model deliberately departs from the experimental geometry.
 Section~\ref{sec:detector} describes the detector model: the scintillator,
-the SiPM read-out, the four read-out layouts (including the
-wavelength-shifting fibre clamp of config~4), the reflector treatments, the
+the SiPM read-out, the five read-out layouts (including the
+wavelength-shifting fibre clamp of config~4 and the corner-cut Config 2
+(mod)), the reflector treatments, the
 tabulated optical inputs that the transport actually consumes, and the
 optical-physics implementation. The line-by-line verification of the
 \gfour\ boundary process against the \gfour\ source is collected in
@@ -203,6 +216,10 @@ temporal signature of the detected light.
 Section~\ref{sec:recon} turns the whole-plate data set into a
 position-reconstruction study, and Sec.~\ref{sec:comparison} compares the
 whole set of results with the published measurements.
+Section~\ref{sec:design} isolates the design knobs themselves---the finish of
+the four narrow faces, the sensor area, the sensor arrangement and a
+wavelength-shifting read-out on every face---in a ten-design controlled
+campaign.
 Section~\ref{sec:caveats} documents the open items, and
 Sec.~\ref{sec:summary} summarises.
 
@@ -246,13 +263,17 @@ in addition to the bare plate:
 These are the four treatments modelled here, one-to-one.
 
 Four \emph{read-out configurations} were then assembled (Table~IV of
-Ref.~\cite{Rao2025}), and are the four layouts of this report:
+Ref.~\cite{Rao2025}); these are modelled here, and a fifth variant is added:
 \begin{description}
   \item[Config 1] eight SiPMs, two on each of the four narrow faces
         (\texttt{TBLR1}, \texttt{TBLR2}), \SI{128}{\milli\meter\squared} of
         active area in total;
   \item[Config 2] four SiPMs, one on each narrow face (\texttt{TBLR1}),
         \SI{64}{\milli\meter\squared};
+  \item[Config 2 (mod)] the same four \SI{4}{\milli\meter}$\times$\SI{4}{\milli\meter}
+        sensors and \SI{64}{\milli\meter\squared} of active area as Config~2,
+        but mounted on four \SI{45}{\degree} corner chamfers instead of the
+        lateral faces; the plate becomes a convex octagon (Sec.~\ref{sec:detector});
   \item[Config 3] two SiPMs, both on the same narrow face (\texttt{T1},
         \texttt{T2}), \SI{32}{\milli\meter\squared};
   \item[Config 4] one SiPM plus a wavelength-shifting fibre clamp, whose
@@ -366,6 +387,18 @@ and \v{C}erenkov photons are produced and tracked; the optical grid spans
 \SIrange{310}{700}{\nano\meter} so that the \v{C}erenkov continuum, which
 extends well below the scintillation band, is covered.
 
+For Config 2 (mod) only, the plate is a convex octagon rather than a box: each
+corner is cut by a \SI{45}{\degree} plane with a \SI{12}{\milli\meter} leg, so
+the outline is $\lvert x\rvert+\lvert y\rvert \le \SI{238}{\milli\meter}$ and
+the eight vertices are $(125,\pm113)$, $(-125,\pm113)$, $(\pm113,125)$ and
+$(\pm113,-125)\,\si{\milli\meter}$. The solid is built
+analytically as a \gfour\ \texttt{G4ExtrudedSolid}, so the four diagonal faces
+have exact normals; the four \SI{4}{\milli\meter} sensors are centred on them at
+$(\pm119,\pm119)\,\si{\milli\meter}$ (report frame) and are flush with the
+face. The cut removes \SI{0.461}{\percent} of the plate area, all at the
+corners. Setting the cut length to zero restores the plain \texttt{G4Box}
+bit-for-bit, which is how the other layouts are built.
+
 \subsection{SiPM readout and coupling}
 
 Each SiPM~\cite{Gundacker2020} is modelled mechanically as a
@@ -374,7 +407,8 @@ coupled to a side face of the plate through a
 \SI{0.1}{\milli\meter} silicone grease pad ($n = 1.46$). The coupling chain is
 therefore \emph{scintillator\,$\to$\,grease\,$\to$\,SiPM}, with Fresnel
 transmission at each dielectric interface and photodetection at the final
-grease/SiPM boundary. This describes the side-mounted sensors of configs~1--3.
+grease/SiPM boundary. This describes the side-mounted sensors of
+configs~1, 2, 2 (mod) and~3.
 In config~4 the read-out SiPM instead sits at the $-y$ end of the WLS fibre
 bundle, and its \SI{4}{\milli\meter}$\times$\SI{4}{\milli\meter} grease pad
 overlaps the slab's $-y$ face: the pad centre is at
@@ -385,13 +419,20 @@ scintillator. That contact is modelled explicitly and is on by default
 (Sec.~\ref{sec:wls}), so the config-4 SiPM receives both direct blue light
 through the contact and green wavelength-shifted light from the fibre ends.
 
-Four layouts are studied (schematic in Fig.~\ref{fig:layouts}):
+Five layouts are studied (schematic in Fig.~\ref{fig:layouts}):
 \begin{description}
   \item[Config 1 (8 SiPMs)] two SiPMs per side face, at $\pm 50\%$ of the half-length.
   \item[Config 2 (4 SiPMs)] one SiPM per side face, at the \emph{same} $\pm 50\%$
         offsets as config~1---i.e.\ config~1 with one device removed per side,
         the removed slot rotated from side to side so the layout remains
         four-fold symmetric.
+  \item[Config 2 (mod) (4 SiPMs)] the four corners of the square are truncated
+        by \SI{45}{\degree} cuts with a \SI{12}{\milli\meter} leg, giving a convex
+        octagon with four \SI{17.0}{\milli\meter}-wide diagonal faces at
+        $(\pm119,\pm119)\,\si{\milli\meter}$ in the report frame. One
+        \SI{4}{\milli\meter}$\times$\SI{4}{\milli\meter} SiPM is centred on each
+        cut face, so the four sensor normals point towards the plate centre.
+        This is a variant of Config~2, not one of the four Table~IV layouts.
   \item[Config 3 (2 SiPMs)] both SiPMs on the \emph{same} narrow
         face---the $-x$ face in the simulation frame, which is the report
         plan view's top edge (Sec.~\ref{sec:sim})---at $\pm 50\%$, matching
@@ -405,13 +446,17 @@ SiPM footprints are clamped so they cannot overhang the slab face.
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.7\textwidth]{figures/sipm_layouts.pdf}
-\caption{Schematic plan view of the four detector layouts on the
-\SI{250}{\milli\meter}$\times$\SI{250}{\milli\meter} plate footprint. Black
-squares mark the side-mounted SiPMs (drawn oversized for visibility; the active
-area is \SI{4}{\milli\meter}$\times$\SI{4}{\milli\meter}), and the dashed grey
+\caption{Schematic plan view of the five detector layouts on the
+\SI{250}{\milli\meter}$\times$\SI{250}{\milli\meter} plate footprint, in a
+$2\times3$ grid whose last cell is empty. Black
+squares mark the SiPMs (drawn oversized for visibility; the active area is
+\SI{4}{\milli\meter}$\times$\SI{4}{\milli\meter}; side-mounted except for the
+diagonal faces of Config~2 (mod)), and the dashed grey
 lines are the $x=0$, $y=0$ axes. Config~1 places two SiPMs on each of the four
 edges; config~2 places one SiPM per edge at the same offsets as config~1 (one
-device removed per side); config~3 places both SiPMs on the top ($+y$, report
+device removed per side); Config~2 (mod) cuts the four corners at
+\SI{45}{\degree} and puts one SiPM on each diagonal face at
+$(\pm119,\pm119)$; config~3 places both SiPMs on the top ($+y$, report
 frame) edge; config~4 uses a single SiPM reading out a WLS fibre clamp on the
 same top edge, with the read-out SiPM at its left end (green bar), following
 Fig.~3(b) of Ref.~\cite{Rao2025}. In the simulation frame both configs~3 and~4
@@ -423,7 +468,8 @@ the perimeter, so ``1'' sits at the top-right (T1), bottom-right (R1),
 bottom-left (B1) and top-left (L1) corners. This is the scheme used in the
 light-sharing discussion below. The same black-square
 markers are overlaid on
-the collection-efficiency maps of Figs.~\ref{fig:wholeslab}--\ref{fig:wholeslab4}.}
+the collection-efficiency maps of
+Figs.~\ref{fig:wholeslab}--\ref{fig:wholeslab4}.}
 \label{fig:layouts}
 \end{figure}
 
@@ -586,7 +632,8 @@ diffuse component we do not model. (ii) The foil is assumed to cover the plate
 uniformly, whereas real wrapping leaves wrinkles and trapped air. The production
 campaign uses the \texttt{air} backing, which retains the full TIR cone and
 recovers the measured near-equality of aluminium and glossy paper, reaching
-$\approx\SI{92}{\percent}$ of the glossy yield in the direct-coupled layouts.
+\SIrange{91}{92}{\percent} of the glossy yield in the five direct-coupled
+layouts.
 The \texttt{grease} backing is retained as the lower-bound systematic
 (Sec.~\ref{sec:albacking}). Note that the air backing is itself the
 \emph{optimistic} end of the physical range: it is the limiting case of a
@@ -1072,8 +1119,8 @@ three points of a curve are directly comparable. Each
 (config, reflector, position) runs \num{2500} events after a single
 \texttt{/run/initialize}. The matrix therefore comprises
 \[
-  4\ \text{configs} \times 4\ \text{reflectors} \times 3\ \text{positions}
-  = 48\ \text{files}, \qquad 48 \times \num{2500} = \num{120000}\ \text{events}.
+  5\ \text{configs} \times 4\ \text{reflectors} \times 3\ \text{positions}
+  = 60\ \text{files}, \qquad 60 \times \num{2500} = \num{150000}\ \text{generated events}.
 \]
 Two focused calibration campaigns bracket the remaining surface inputs and are
 presented first. A bare-contact scan
@@ -1086,9 +1133,21 @@ $3 \times 2 \times 3 = \num{18}$ files with \num{1000} events each
 (\num{18000} events). The Al scan is taken from the earlier production
 campaign because the Al model is unchanged and that scan is complete; the
 contact scan is the new extended campaign. Together with the whole-plate run of
-Sec.~\ref{sec:yield} ($16 \times \num{25000} = \num{400000}$ events), the
-campaign totals \num{637000} events, of which \num{237000} are matrix-style
+Sec.~\ref{sec:yield} ($20 \times \num{25000} = \num{500000}$ events), the
+campaign totals \num{767000} events, of which \num{267000} are matrix-style
 ($\text{matrix} + \text{contact} + \text{Al}$).
+
+For Config 2 (mod) the corner patch is not entirely on the solid: the
+\SI{12}{\milli\meter} chamfer removes a right triangle of
+\SI{72}{\milli\meter\squared} from the $50\times\SI{50}{\milli\meter}$ patch,
+i.e.\ \SI{2.88}{\percent} of it (and \SI{0.461}{\percent} of the whole plate,
+split equally over the four corners). A muon that lands in a removed triangle
+does not enter the scintillator and writes no \texttt{sipmHits} row. The
+efficiency of Eq.~\ref{eq:eff} is a ratio of detected to \emph{produced}
+photons for events that do enter, so it is unaffected by this loss; yields
+quoted per generated event are \SI{2.88}{\percent} low at the corner and
+\SI{0.46}{\percent} low in the whole-plate run. Whole-plate detection
+probabilities use distinct event numbers, not row counts.
 
 Production runs were executed on the HPC cluster.
 The optional per-slab optical track-length flux map is disabled for the matrix
@@ -1409,24 +1468,34 @@ separate and compare them directly.
 
 Figure~\ref{fig:poslayouts} groups the three patches by layout (one panel per
 config, four reflector curves) and Fig.~\ref{fig:posrefl} groups them by
-reflector (one panel per wrapper, four layout curves). The conspicuous feature
-is that the specular wrappers are nearly \emph{flat} across the three patches:
-across all four layouts the maximum/minimum patch ratio spans \SIrange{1.0}{4.2}{\percent}
-for aluminium and \SIrange{0.8}{3.6}{\percent} for glossy paper. The diffuse
-TiO$_2$ paint is the opposite extreme, varying by \SIrange{74.9}{88.9}{\percent}
-(a factor \num{1.75}--\num{1.89}). The contact-limited bare plate lies between
-them: \SIrange{8.3}{17.5}{\percent}, with the four-sided and config-3 layouts
-all near \SI{17}{\percent} and config~4 at \SI{8.3}{\percent}.
+reflector (one panel per wrapper, five layout curves). The conspicuous feature
+is that the specular wrappers are nearly \emph{flat} across the three patches
+in the four Table~IV layouts: there the maximum/minimum patch ratio spans
+\SIrange{1.0}{4.2}{\percent} for aluminium and \SIrange{0.8}{3.6}{\percent} for
+glossy paper. Config~2 (mod) is the exception, because its corner patch sits
+next to an instrumented chamfer; including it, the ratios reach
+\SI{20.5}{\percent} (Al) and \SI{17.3}{\percent} (glossy). The diffuse
+TiO$_2$ paint is the opposite extreme, varying by
+\SIrange{74.9}{257.9}{\percent} (a factor \num{1.75}--\num{3.58}). The
+contact-limited bare plate lies between them:
+\SIrange{8.3}{164.8}{\percent}, with the four-sided layouts~1 and~2 and
+config~3 near \SI{17}{\percent}, config~4 at \SI{8.3}{\percent}, and the
+corner-cut layout at \SI{164.8}{\percent}.
 
 The \emph{sign} of the position trend is wrapper- and layout-dependent, and
 this is the first place where the simulation and the measurement part company.
 For the bare plate, aluminium and glossy paper the three-patch ordering is
-centre $>$ edge $>$ corner in every layout, i.e.\ the corner is the dimmest
-patch, exactly as reported in Ref.~\cite{Rao2025}. For the diffuse TiO$_2$
-paint the trend is \emph{reversed} in the four-sided layouts~1 and~2
+centre $>$ edge $>$ corner in the four Table~IV layouts, i.e.\ the corner is
+the dimmest patch, exactly as reported in Ref.~\cite{Rao2025}. For the diffuse
+TiO$_2$ paint the trend is \emph{reversed} in the four-sided layouts~1 and~2
 (corner $>$ edge $>$ centre, a factor $\approx\!\num{1.75}$), while in the
-single-sided layouts~3 and~4 the centre is again the brightest patch. The
-mechanism behind this reversal is discussed in Sec.~\ref{sec:mechanism}; it is
+single-sided layouts~3 and~4 the centre is again the brightest patch.
+Config~2 (mod) is a deliberate exception to the paper's corner rule: its
+corner beam lands beside an instrumented chamfer, and the corner is therefore
+the brightest patch for \emph{every} wrapper (corner/centre ratios
+\num{2.65} bare, \num{3.58} TiO$_2$, \num{1.21} Al and \num{1.17} glossy).
+The mechanism behind the TiO$_2$ reversal is discussed in
+Sec.~\ref{sec:mechanism}; it is
 the same mechanism that sets the uniformity of the full-plate maps and the
 ability of the SiPM pattern to localise the muon.
 
@@ -1436,10 +1505,14 @@ ability of the SiPM pattern to localise the muon.
 \caption{Collection efficiency at the three irradiation patches (centre, edge,
 corner), one panel per detector layout, with the four reflector curves
 (logarithmic $y$-axis). All three patches have equal area and lie fully on the
-plate, so the points are directly comparable. Aluminium and glossy paper are
-nearly flat across the three patches in every layout; the contact-limited bare
-plate varies by up to \SI{18}{\percent}, and the diffuse TiO$_2$ paint shows by
-far the strongest position dependence.}
+plate, so the points are directly comparable; the one exception is the corner
+patch of Config 2 (mod), \SI{2.88}{\percent} of which falls outside the
+chamfered solid (the efficiencies themselves are normalised to entering muons).
+Aluminium and glossy paper are nearly flat across the three patches in the
+four Table~IV layouts; the contact-limited bare plate varies by up to
+\SI{18}{\percent} there, and the diffuse TiO$_2$ paint shows by far the
+strongest position dependence. In Config 2 (mod) the corner is the brightest
+patch for every wrapper because it is next to an instrumented chamfer.}
 \label{fig:poslayouts}
 \end{figure}
 
@@ -1447,12 +1520,14 @@ far the strongest position dependence.}
 \centering
 \includegraphics[width=\textwidth]{figures/fig_pos_refl.pdf}
 \caption{The same data grouped by reflector (one panel per wrapper), with the
-four layouts as curves. Aluminium and glossy paper are nearly flat in every
-layout, while the contact-limited bare plate varies by up to
+five layouts as curves. Aluminium and glossy paper are nearly flat in the four
+Table~IV layouts, while the contact-limited bare plate varies by up to
 \SI{18}{\percent}. The diffuse TiO$_2$ paint varies by a factor
 $\approx\!\num{1.75}$ in the four-sided layouts (corner highest); in the
 single-sided layouts (3 and~4) it drops from centre toward the edge and corner
-patches, which sit on the far side of the plate from its sensors.}
+patches, which sit on the far side of the plate from its sensors. In
+Config 2 (mod) all four wrappers rise towards the corner patch, because that
+patch lies beside an instrumented chamfer.}
 \label{fig:posrefl}
 \end{figure}
 
@@ -1515,22 +1590,24 @@ Glossy & $2.649\times10^{-2}$ & $2.578\times10^{-2}$ & $2.569\times10^{-2}$ \\
 
 Figure~\ref{fig:pegrid} collects the per-event photoelectron spectra over the
 whole matrix scan in the layout of Fig.~10 of Rao et al.~\cite{Rao2025}: the
-three irradiation regions (centre, edge, corner) are the rows and the detector
-configurations are the columns, with the four reflector treatments overlaid in
+three irradiation regions (centre, edge, corner) are the rows and the five
+detector configurations are the columns, in the order
+C1, C2, C2m, C3, C4, with the four reflector treatments overlaid in
 every cell. Two adaptations are made. First, the voltage pulse-height spectra of
 the measurement are replaced by the simulation's number of photoelectrons per
 event, the quantity that is directly comparable between our model and the
-experiment. Second, the fourth configuration (single SiPM $+$ WLS fibre clamp)
-is added as a fourth column, so that all four layouts appear in one figure on a
-common logarithmic axis (panel~(b)) rather than in a separate figure.
+experiment. Second, the WLS-clamp configuration and Config 2 (mod) are added
+as extra columns, so that all five layouts appear in one figure on a
+common logarithmic axis (panel~(b)) rather than in separate figures.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth,height=0.73\textheight,keepaspectratio]{figures/fig_pe_grid.pdf}
 \caption{Photoelectron spectra in the layout of Fig.~10 of Rao et
 al.~\cite{Rao2025}: rows are the irradiation regions (centre, edge, corner) and
-columns the detector configurations (1--4, with the WLS-clamp layout as the
-fourth column). Each cell overlays the four reflector treatments. The histograms
+columns the detector configurations in the order C1, C2, C2m, C3, C4 (C2m is
+Config~2 (mod); the WLS-clamp layout is the last column). Each cell overlays
+the four reflector treatments. The histograms
 are normalised entry distributions (each cell is scaled so its entries sum to
 unity). The \emph{upper} grid~(a) uses linear axes and the \emph{lower}
 grid~(b) logarithmic axes; both
@@ -1541,13 +1618,13 @@ of every layout is resolved. A single shared linear abscissa would instead
 collapse the WLS-clamp layout (config~4), which collects roughly an order of
 magnitude fewer photoelectrons than the direct-coupled layouts, into the first
 few percent of the axis. Panel~(b) shows every cell over its full distribution on
-a single shared logarithmic abscissa with logarithmic bins, so the four layouts
+a single shared logarithmic abscissa with logarithmic bins, so the five layouts
 remain directly comparable there. Zero-photoelectron events form a
 pulse below threshold and lie off the abscissa. The
 wrappers shift and broaden the spectrum from the low, contact-limited bare
 distribution through TiO$_2$ and air-backed Al to the wide, bright glossy one;
-apart from TiO$_2$ and the bare plate the spectra vary by at most
-\SI{3.4}{\percent} across positions.}
+in the four Table~IV layouts, apart from TiO$_2$ and the bare plate, the spectra
+vary by at most \SI{3.4}{\percent} across positions.}
 \label{fig:pegrid}
 \end{figure}
 
@@ -1558,10 +1635,14 @@ $\text{bare} < \text{TiO}_2 < \text{Al} < \text{glossy}$ holds in every
 direct-coupled cell, with the contact-limited bare plate the lowest and glossy
 the highest. The position dependence is wrapper-specific: for the diffuse
 TiO$_2$ paint the corner spectrum is shifted highest in the four-sided
-layouts (a factor $\approx\!\num{1.75}$ in the mean, configurations~1 and~2)
-but the centre is highest in the single-sided layouts~3 and~4. Aluminium and
+layouts (a factor $\approx\!\num{1.75}$ in the mean, configurations~1 and~2,
+and \num{3.58} in the corner-cut layout) but the centre is highest in the
+single-sided layouts~3 and~4. In the four Table~IV layouts, aluminium and
 glossy paper vary by at most \SI{4.2}{\percent} across positions, whereas the
-contact-limited bare plate varies by up to \SI{17.5}{\percent}. This is the same
+contact-limited bare plate varies by up to \SI{17.5}{\percent}; in Config 2
+(mod) the corner is brightest for all four wrappers and the variation reaches
+\SI{21}{\percent} (Al), \SI{17}{\percent} (glossy) and \SI{165}{\percent}
+(bare). This is the same
 reflector-versus-position interplay summarised in Table~\ref{tab:positions} and
 the efficiency maps, presented here as the pulse-height distributions that a
 threshold-based read-out would actually see.
@@ -1583,20 +1664,26 @@ appropriate global figure of merit. Figure~\ref{fig:bars} shows it for every
 With the calibrated surfaces every layout reproduces the measured ordering,
 \[
   \text{bare} < \text{TiO}_2 < \text{Al} < \text{glossy}
-  \quad(\text{configs 1--4}),
+  \quad(\text{all five layouts}),
 \]
 with glossy paper the brightest wrapper in every layout and air-backed
-aluminium within \SI{92}{\percent} of its yield in configs~1--3
-(\SI{95}{\percent} in config~4). The contact-limited bare plate is now the
-weakest wrapper in every layout, as the experiment finds. The spread from
-weakest to brightest is a factor \num{6.5}--\num{6.9} in configs~1--3, set
-mainly by the bare contact loss, and \num{4.5} in config~4.
+aluminium within \SI{92}{\percent} of its yield in the four Table~IV layouts
+(\SI{95}{\percent} in config~4, \SI{91}{\percent} in Config 2 (mod)). The
+contact-limited bare plate is now the weakest wrapper in every layout, as the
+experiment finds. The spread from weakest to brightest is a factor
+\num{6.5}--\num{6.9} in the four directly-coupled layouts, set mainly by the
+bare contact loss, and \num{4.5} in config~4.
 The efficiency scales roughly with the photosensitive area: the eight-SiPM
-layout (config~1, $\eff = 4.08\times10^{-3}$) is highest, four SiPMs on
-four faces (config~2, $2.06\times10^{-3}$) roughly halve it, and concentrating
-the two sensors of config~3 on a single face ($1.05\times10^{-3}$) halves it
-again. The single-SiPM WLS-fibre layout (config~4, $1.01\times10^{-3}$) is
-comparable to config~3:
+layout (config~1, $\eff = 4.081\times10^{-3}$) is highest, four SiPMs on
+four faces (config~2, $2.068\times10^{-3}$) roughly halve it, and concentrating
+the two sensors of config~3 on a single face ($1.048\times10^{-3}$) halves it
+again. Config~2 (mod) has the same four sensors and active area as config~2,
+but its sensors sit at the corners, farther from most of the plate, and the
+cut removes \SI{0.46}{\percent} of the area; it reaches
+$1.993\times10^{-3}$, \SI{3.6}{\percent} below config~2. Re-aiming the
+sensors at the plate centre therefore does not recover the light sharing that
+the side-mounted layout lacks. The single-SiPM WLS-fibre layout (config~4,
+$1.007\times10^{-3}$) is comparable to config~3:
 it is lower for TiO$_2$, Al and glossy by \SI{20}{\percent}--\SI{40}{\percent},
 and now slightly lower for the bare plate as well ($1.007$ versus
 $1.048\times10^{-3}$).
@@ -1605,11 +1692,11 @@ $1.048\times10^{-3}$).
 \centering
 \includegraphics[width=0.85\textwidth]{figures/fig_eff_bars.pdf}
 \caption{Plate-averaged collection efficiency
-$\varepsilon = \sum \pe / \sum \ngam$ for the four reflector treatments and four
-detector layouts, from the uniform whole-plate irradiation (\num{25000} events
-per panel). Glossy paper is brightest in every layout and air-backed aluminium
-is second; the contact-limited bare plate is the weakest wrapper in every
-layout.}
+$\varepsilon = \sum \pe / \sum \ngam$ for the four reflector treatments and five
+detector layouts, from the uniform whole-plate irradiation (\num{25000} generated
+events per panel). Glossy paper is brightest in every layout and air-backed
+aluminium is second; the contact-limited bare plate is the weakest wrapper in
+every layout.}
 \label{fig:bars}
 \end{figure}
 
@@ -1626,6 +1713,7 @@ Layout & Bare & TiO$_2$ & Al & Glossy \\
 \midrule
 Config 1 (8 SiPMs) & $4.081\times10^{-3}$ & $9.551\times10^{-3}$ & $2.445\times10^{-2}$ & $2.649\times10^{-2}$ \\
 Config 2 (4 SiPMs) & $2.068\times10^{-3}$ & $4.834\times10^{-3}$ & $1.289\times10^{-2}$ & $1.398\times10^{-2}$ \\
+Config 2 (mod) (4 SiPMs) & $1.993\times10^{-3}$ & $4.773\times10^{-3}$ & $1.244\times10^{-2}$ & $1.368\times10^{-2}$ \\
 Config 3 (2 SiPMs) & $1.048\times10^{-3}$ & $2.447\times10^{-3}$ & $6.588\times10^{-3}$ & $7.158\times10^{-3}$ \\
 Config 4 (1 SiPM, WLS) & $1.007\times10^{-3}$ & $1.891\times10^{-3}$ & $4.228\times10^{-3}$ & $4.448\times10^{-3}$ \\
 \bottomrule
@@ -1638,10 +1726,13 @@ experiment reports a pulse height (or a threshold crossing) rather than a
 dimensionless efficiency. It is also the quantity that does \emph{not} carry
 the model dependence of the PDE and the coupling, which is why both are quoted.
 Because the whole-plate beam covers the entire scintillator, almost every
-primary enters the slab, and \num{399986} of the \num{400000} events
-register at least one photoelectron (detection probability $0.999965$).
-All 14 events without a detected photoelectron are in config~3 bare. The mean per event and the mean per \emph{detected} event
-therefore differ negligibly.
+primary enters the slab, and \num{499510} of the \num{500000} events
+register at least one photoelectron (detection probability $0.99902$).
+Of the 490 without one, 14 are in config~3 bare and 476 (119 per wrapper) are
+in Config 2 (mod), where the muon hits a removed corner; the latter is the
+geometric loss of Sec.~\ref{sec:sim}, not a light-collection failure. The mean
+per event and the mean per \emph{detected} event therefore differ by at most
+\SI{0.5}{\percent} (Config 2 (mod)).
 Table~\ref{tab:wholeyield} lists the mean per event for every (config, wrapper)
 pair.
 Since the optical-photon production is set by the muon energy deposit and is
@@ -1653,11 +1744,12 @@ produced per event, so it reproduces exactly the same wrapper ordering.
 \centering
 \caption{Mean photoelectron yield per event for the full-slab irradiation
 (whole-plate beam, \num{25000} events per cell), for each layout and reflector
-treatment. Of the \num{400000} whole-plate events, \num{399986} detect at least
-one photoelectron (detection probability $0.999965$; all 14 events without a
-detected photoelectron are in config~3 bare), so the
-mean per detected event differs negligibly from the mean per event; the
-statistical uncertainties are below the quoted digits.}
+treatment. Of the \num{500000} whole-plate events, \num{499510} detect at least
+one photoelectron (detection probability $0.99902$; 14 events without a
+detected photoelectron are in config~3 bare and 476 are corner-clipped muons
+of Config 2 (mod)). The Config 2 (mod) entries are per generated event; per
+entering event they are \SI{0.48}{\percent} higher. The statistical
+uncertainties are below the quoted digits.}
 \label{tab:wholeyield}
 \small
 \begin{tabular}{@{}lcccc@{}}
@@ -1666,6 +1758,7 @@ Layout & Bare & TiO$_2$ & Al & Glossy \\
 \midrule
 Config 1 (8 SiPMs)     & 79.86 & 186.13 & 480.75 & 520.70 \\
 Config 2 (4 SiPMs)     & 40.38 & 94.12  & 253.79 & 275.13 \\
+Config 2 (mod) (4 SiPMs) & 38.82 & 92.56 & 242.63 & 267.37 \\
 Config 3 (2 SiPMs)     & 20.45 & 47.86  & 129.22 & 140.73 \\
 Config 4 (1 SiPM, WLS) & 19.52 & 36.88  & 82.81  & 87.00 \\
 \bottomrule
@@ -1707,9 +1800,13 @@ is a good mixer; a cavity whose walls are Lambertian is a poor one, because
 each re-emission randomises the direction and the light leaves towards
 whichever wall is nearest, so the probability of reaching a sensor depends on
 the geometry of the plate and on the sensor positions. The three-patch data of
-Sec.~\ref{sec:yield} already shows the two extremes: the specular wrappers are
-flat to within \SIrange{0.8}{3.4}{\percent} across the three patches, while
-the diffuse paint varies by a factor \num{1.75}--\num{1.87}.
+Sec.~\ref{sec:yield} already shows the two extremes: in the four Table~IV
+layouts the specular wrappers are flat to within
+\SIrange{0.8}{4.2}{\percent} across the three patches, while the diffuse paint
+varies by a factor \num{1.75}--\num{2.21}. Config 2 (mod) exaggerates the
+effect without changing its order: even there the paint varies by a factor
+\num{3.58} against \num{1.21} (Al) and \num{1.17} (glossy), because the
+corner sensor is much closer to the illuminated corner than to the centre.
 
 The useful statement, and the one that organises the rest of the report, is
 that these two axes are \emph{not} independent. The wrappers that survive
@@ -1805,6 +1902,47 @@ almost flat, and each efficiency is about half the config-1 value.}
 \label{fig:wholeslab2}
 \end{figure}
 
+Figure~\ref{fig:wholeslab12} shows Config 2 (mod). The integrated efficiencies
+are $1.993\times10^{-3}$ (bare), $4.773\times10^{-3}$ (TiO$_2$),
+$1.244\times10^{-2}$ (Al) and $1.368\times10^{-2}$ (glossy),
+\SIrange{1}{4}{\percent} below their config-2 values, so the cut and the
+corner placement cost very little total light. The \emph{shape} of the field is
+different, however. All four wrappers now have a pronounced central deficit:
+inside $r<\SI{60}{\milli\meter}$ the efficiency is
+$1.397\times10^{-3}$ versus $2.126\times10^{-3}$ outside for the bare plate
+(a ratio \num{0.657}), $2.974$ versus $5.177\times10^{-3}$ for TiO$_2$
+(\num{0.574}), and \SIrange{93}{94}{\percent} of the outer value for Al and
+glossy. There is no top--bottom asymmetry at all---the top/bottom ratios are
+\num{1.006}, \num{1.016}, \num{1.002} and \num{1.003}---because the four
+sensors are four-fold symmetric. The maps show a bright four-pointed star at
+the chamfers around a dark centre, and the contrast is larger than in
+config~2 for every wrapper ($\kappa_{\rm 2D} = \num{2.84}$, \num{3.69},
+\num{1.22} and \num{1.18} against \num{2.08}, \num{2.56}, \num{1.14} and
+\num{1.13}).
+
+This is the nearest-sensor rule in its clearest form. The four sensor normals
+point at the plate centre, but the light is not focused: the centre is
+\SI{168}{\milli\meter} from every sensor, the largest such distance in the
+study, whereas the corner beam lies about \SI{27}{\milli\meter} from a
+chamfer sensor. Re-aiming the sensors therefore does not make the cavity a
+better mixer; it moves the bright region from the edges to the corners and
+makes the centre relatively darker. The \SI{0.461}{\percent} of the plate
+removed by the cuts is too small to be visible in the maps or in the
+plate-averaged efficiencies.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.74\textwidth]{figures/whole_slab_cfg12.pdf}
+\caption{Full-plate collection-efficiency maps for Config 2 (mod), the
+corner-cut four-sensor layout, otherwise identical to
+Figs.~\ref{fig:wholeslab}--\ref{fig:wholeslab2}. The octagon outline and the
+four SiPMs on the diagonal faces are marked; the cut removes
+\SI{0.461}{\percent} of the plate. All four wrappers show a dark centre and a
+bright star at the chamfers, because the centre is farther from every sensor
+than any other point of the plate, and there is no top--bottom asymmetry.}
+\label{fig:wholeslab12}
+\end{figure}
+
 Figure~\ref{fig:wholeslab3} shows config~3, in which both sensors sit on
 the same (top, $+y$) face. The integrated efficiencies are
 bare $1.048\times10^{-3}$, TiO$_2$ $2.447\times10^{-3}$, Al
@@ -1859,16 +1997,18 @@ logarithmic colour scale.}
 \label{fig:wholeslab4}
 \end{figure}
 
-Across all four layouts glossy paper is the brightest wrapper and air-backed
+Across all five layouts glossy paper is the brightest wrapper and air-backed
 aluminium the second, while the weakest is the contact-limited bare plate in
-every layout. The efficiency
-scales roughly with the collected photosensitive area, confirming that the
-readout layout sets the overall scale while the wrapper sets the ordering.
+every layout. The efficiency scales roughly with the collected photosensitive
+area, confirming that the read-out layout sets the overall scale while the
+wrapper sets the ordering. The corner-cut layout has the same area as
+config~2 and sits \SI{3.6}{\percent} below it (bare), the small residual of
+placing the same sensors farther from the plate centroid.
 
-\subsection{A single number for the spread: $\kappa_{\rm 2D}$}
+\subsection{A single number for the spread: \texorpdfstring{$\kappa_{\rm 2D}$}{kappa 2D}}
 
 A purely radial contrast is deliberately \emph{not} used.  The read-out layouts
-have no continuous rotational symmetry---configs~1 and~2 are four-fold
+have no continuous rotational symmetry---configs~1, 2 and 2 (mod) are four-fold
 symmetric, configs~3 and~4 single-sided---and the plate is square, so the
 collection efficiency is not a function of radius alone.  Beyond the inscribed
 circle ($r > \SI{125}{\milli\meter}$) only the four corner wedges of the plate
@@ -1905,17 +2045,18 @@ transport mixes the light so thoroughly that the entry position is largely
 erased ($\kappa_{\rm 2D}\approx1.1$--\num{1.4}), whereas the diffuse paint
 retains a pronounced positional response. The contact-limited bare plate sits
 between them because the holder loss is itself position dependent.
-Numerically the TiO$_2$ contrast grows from $\kappa_{\rm 2D} = \num{1.911}$ and \num{2.579}
-in the four-sided layouts~1 and~2 to \num{8.413} and \num{10.897} in the
-single-sided layouts~3 and~4; the bare plate spans
-\num{1.56}--\num{4.14}, aluminium \num{1.07}--\num{1.37} and glossy
-\num{1.07}--\num{1.36}. A muon crossing anywhere on the plate is therefore
-collected within about \SI{40}{\percent} of the most favourable point for
-Al/glossy, within a factor of \num{4.1} for the contact-limited bare plate, and
-within a factor of \num{10.9} for TiO$_2$ in the single-sided layouts.
-Figure~\ref{fig:wholecontrast} collects all sixteen values as bar charts, one
-panel per layout; Table~\ref{tab:wholerefl} lists the same values numerically,
-resolving the near-unity entries that the linear bar scale cannot.
+Numerically the TiO$_2$ contrast grows from $\kappa_{\rm 2D} = \num{1.911}$,
+\num{2.579} and \num{3.688} in the four-sided layouts~1, 2 and 2 (mod) to
+\num{8.413} and \num{10.897} in the single-sided layouts~3 and~4; the bare
+plate spans \num{1.56}--\num{4.14}, aluminium \num{1.07}--\num{1.37} and
+glossy \num{1.07}--\num{1.36}. A muon crossing anywhere on the plate is
+therefore collected within about \SI{40}{\percent} of the most favourable
+point for Al/glossy, within a factor of \num{4.1} for the contact-limited bare
+plate, and within a factor of \num{10.9} for TiO$_2$ in the single-sided
+layouts. Figure~\ref{fig:wholecontrast} collects all twenty values as bar
+charts, one panel per layout; Table~\ref{tab:wholerefl} lists the same values
+numerically, resolving the near-unity entries that the linear bar scale
+cannot.
 
 \begin{figure}[H]
 \centering
@@ -1946,15 +2087,17 @@ Poisson uncertainty is a lower bound on the true spread.}
 \small
 \begin{tabular}{@{}l
                 S[table-format=3.3(2)] S[table-format=3.3(2)]
-                S[table-format=3.3(2)] S[table-format=3.3(2)]@{}}
+                S[table-format=3.3(2)] S[table-format=3.3(2)]
+                S[table-format=3.3(2)]@{}}
 \toprule
 Reflector & \multicolumn{1}{c}{Config 1} & \multicolumn{1}{c}{Config 2}
-          & \multicolumn{1}{c}{Config 3} & \multicolumn{1}{c}{Config 4} \\
+          & \multicolumn{1}{c}{Config 2 (mod)} & \multicolumn{1}{c}{Config 3}
+          & \multicolumn{1}{c}{Config 4} \\
 \midrule
-Bare    & 1.562(8)  & 2.077(14) & 4.145(43) & 3.346(33)  \\
-TiO$_2$ & 1.911(7)  & 2.561(12) & 8.413(67) & 10.897(104)  \\
-Al      & 1.073(2)  & 1.138(3)  & 1.303(5)  & 1.371(6)  \\
-Glossy  & 1.068(2)  & 1.130(3)  & 1.275(5)  & 1.356(6)  \\
+Bare    & 1.562(8)  & 2.077(14) & 2.841(20) & 4.145(43) & 3.346(33)  \\
+TiO$_2$ & 1.911(7)  & 2.561(12) & 3.688(17) & 8.413(67) & 10.897(104)  \\
+Al      & 1.073(2)  & 1.138(3)  & 1.215(3)  & 1.303(5)  & 1.371(6)  \\
+Glossy  & 1.068(2)  & 1.130(3)  & 1.182(3)  & 1.275(5)  & 1.356(6)  \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -2006,22 +2149,28 @@ measures is the trend that survives the averaging.
 
 Figure~\ref{fig:nearest} tests this directly, by binning the whole-slab
 events in the distance $d$ to the nearest collection site and plotting the
-efficiency normalised to the plate average against it. For configs~1--3 the
-collection sites are the SiPM tiles; for config~4 the collection aperture is
-the fibre clamp, a line along the top edge, so $d$ is the distance to that
-line. The four curves of each panel share one shape but not one level:
+efficiency normalised to the plate average against it. For the four
+direct-coupled layouts the collection sites are the SiPM tiles; for config~4
+the collection aperture is the fibre clamp, a line along the top edge, so $d$
+is the distance to that line. The four curves of each panel share one shape
+but not one level:
 \begin{itemize}
-  \item the two specular wrappers are flat to within \SI{5}{\percent} over
-        the whole range, in every layout---they are near-perfect light mixers;
+  \item in the four Table~IV layouts the two specular wrappers are flat to
+        within \SI{5}{\percent} over the whole range---they are near-perfect
+        light mixers. In Config 2 (mod) the first bin is
+        $1.28\times$ (Al) and $1.25\times$ (glossy) the plate average,
+        because the nearest sensor is only about \SI{27}{\milli\meter} from
+        the corner;
   \item the contact-limited bare plate shows a clear excess in the first
-        \SI{25}{\milli\meter} ($1.44\times$, $2.12\times$ and
-        $3.36\times$ the plate average for configs~1--3) and then relaxes to
-        slightly \emph{below} unity, which is the signature of a cavity that
-        mixes well but loses a little light on every extra bounce;
+        \SI{25}{\milli\meter} ($1.44\times$, $2.12\times$, $2.72\times$ and
+        $3.36\times$ the plate average for configs~1, 2, 2 (mod) and~3) and
+        then relaxes to slightly \emph{below} unity, which is the signature
+        of a cavity that mixes well but loses a little light on every extra
+        bounce;
   \item the diffuse paint shows the largest excess ($1.63\times$,
-        $2.40\times$ and $4.52\times$) and the steepest decay, reaching
-        $0.36$--$0.37$ of the average at the far side of the plate in the
-        single-sided layouts.
+        $2.40\times$, $3.32\times$ and $4.52\times$) and the steepest decay,
+        reaching $0.36$--$0.37$ of the average at the far side of the plate
+        in the single-sided layouts and $0.59$--$0.63$ in Config 2 (mod).
 \end{itemize}
 This single figure therefore contains the explanation of the whole uniformity
 result: the specular wrappers are uniform because they mix, the paint is
@@ -2029,7 +2178,8 @@ non-uniform because it does not, and the bare plate sits in between because
 the contact loss destroys the perfect mixing of the air-gap guide without
 destroying its geometry. It also explains the sign flip of the position trend
 seen in the three-patch scan: in the four-sided layouts the corner patch is
-close to two sensors and is therefore the brightest, while in the single-sided
+close to two sensors and is therefore the brightest, and in Config 2 (mod) it
+is close to one sensor and still brighter than the centre; in the single-sided
 layouts the sensors are on the far side of the plate and the centre of the
 plate---the point furthest from any sensor---is not the dimmest point, because
 what matters is the distance to the \emph{nearest} sensor, and the single
@@ -2040,10 +2190,11 @@ sensor still beats the far corners.
 \includegraphics[width=0.92\textwidth]{figures/fig_nearest_sensor.pdf}
 \caption{The response as a function of the distance to the nearest collection
 site. Each panel is one layout; the abscissa is the distance $d$ from the
-muon's entry point to the nearest SiPM tile (configs~1--3) or to the WLS fibre
-line along the top edge (config~4), and the ordinate is the collection
+muon's entry point to the nearest SiPM tile (configs~1, 2, 2 (mod), 3) or to
+the WLS fibre line along the top edge (config~4), and the ordinate is the collection
 efficiency normalised to the plate average of the same layout and treatment.
-The dashed line is the plate average. The four treatments share one shape and
+The inset in the Config 2 (mod) panel marks its octagonal outline and the four
+diagonal sensors. The dashed line is the plate average. The four treatments share one shape and
 differ only in level: the specular wrappers are flat because they mix the
 light thoroughly, while the diffuse paint and the contact-limited bare plate
 are brightest close to a sensor and fall away from it. Error bars are the
@@ -2081,11 +2232,12 @@ by self-absorption over the multi-bounce path.}
 \label{fig:wavelength}
 \end{figure}
 
-Figure~\ref{fig:wavelengthcfg} compares the detected-photon spectrum of the four
-configurations for each wrapper. Configurations~1--3, in which the SiPMs view the
-tile directly, all detect the same blue scintillation spectrum: the
-\emph{mean} wavelength is essentially independent of the number of sensors,
-moving only from \SI{457.01}{\nano\meter} (glossy, config~1) to
+Figure~\ref{fig:wavelengthcfg} compares the detected-photon spectrum of the five
+configurations for each wrapper. Configurations~1, 2, 2 (mod) and~3, in which
+the SiPMs view the tile directly, all detect the same blue scintillation
+spectrum: the \emph{mean} wavelength is essentially independent of the number
+and placement of the sensors, moving only from \SI{457.01}{\nano\meter}
+(glossy, config~1) through \SI{456.97}{\nano\meter} (Config 2 (mod)) to
 \SI{457.50}{\nano\meter} (config~3), the small increase reflecting the slightly
 longer collection path of the single-sided layouts. Config~4 is qualitatively
 different: the WLS fibres absorb the blue light and re-emit it at their own
@@ -2102,10 +2254,10 @@ reaching the read-out.
 \centering
 \includegraphics[width=0.9\textwidth]{figures/fig_wavelength_cfg.pdf}
 \caption{Detected-photon wavelength distribution, weighted by photoelectron
-count, for each wrapper (panel) and each configuration (curves), using the
-pooled data of the three irradiation positions. Configurations~1--3 follow the
-\SI{457}{\nano\meter} blue scintillation spectrum regardless of sensor count,
-whereas the WLS-fibre readout of config~4 is green-shifted to
+count, for each wrapper (panel) and each configuration (five curves), using the
+pooled data of the three irradiation positions. Configurations~1, 2, 2 (mod)
+and~3 follow the \SI{457}{\nano\meter} blue scintillation spectrum regardless
+of sensor count, whereas the WLS-fibre readout of config~4 is green-shifted to
 $\approx\SI{510}{\nano\meter}$ by the Y-11(200) emission band and the
 self-absorption along the fibre.}
 \label{fig:wavelengthcfg}
@@ -2118,7 +2270,7 @@ The collection-efficiency maps above treat every detected photoelectron as a
 point; the per-photoelectron timing columns of the \texttt{sipmHits} tree
 let the \emph{arrival-time structure} of the detected light be examined as well.
 Figure~\ref{fig:persistence} shows the oscilloscope-style persistence map of the
-arrival-time profile for the four layouts (glossy paper). For each event the
+arrival-time profile for the five layouts (glossy paper). For each event the
 per-SiPM arrival times are summed over the layout's sensors and histogrammed in
 time, giving a trace of photoelectron count versus arrival time; stacking events
 and recording, for every \SI{0.1}{\nano\second} time bin, how many events showed
@@ -2126,19 +2278,21 @@ a given count, yields a two-dimensional map whose abscissa is the arrival time, 
 ordinate is the instantaneous photoelectron count, and whose colour is the number
 of events. The rising edge and the decaying tail therefore show how the detected
 light builds up and dies away, and the vertical spread at a given time is the
-event-to-event fluctuation of the instantaneous rate. For the three directly-read
+event-to-event fluctuation of the instantaneous rate. For the four directly-read
 layouts the modal mean arrival times are \SI{3.85}{\nano\second},
-\SI{3.95}{\nano\second} and \SI{3.75}{\nano\second}; the prompt peaks reach
-\num{54}, \num{43} and \num{47} photoelectrons per \SI{0.1}{\nano\second} bin in
-configs~1--3, well above the \num{30} photoelectrons per bin that the shared
-ordinate of the figure can show, so the top of the prompt peak is clipped in
-the display; the single-fibre WLS read-out (config~4) peaks markedly later, at
-\SI{7.95}{\nano\second} and at only \num{18} photoelectrons per bin, which is
-therefore fully visible. The fractions arriving within \SI{5}{\nano\second} are
-\num{31.6}, \num{30.4}, \num{29.8} and \SI{13.4}{\percent} for configs~1--4,
-within \SI{10}{\nano\second} \num{63.2}, \num{61.3}, \num{60.2} and
+\SI{3.95}{\nano\second}, \SI{3.70}{\nano\second} and
+\SI{3.75}{\nano\second} (configs~1, 2, 2 (mod), 3); the prompt peaks reach
+\num{54}, \num{43}, \num{50} and \num{47} photoelectrons per
+\SI{0.1}{\nano\second} bin, well above the \num{30} photoelectrons per bin that
+the shared ordinate of the figure can show, so the top of the prompt peak is
+clipped in the display; the single-fibre WLS read-out (config~4) peaks markedly
+later, at \SI{7.95}{\nano\second} and at only \num{18} photoelectrons per bin,
+which is therefore fully visible. The fractions arriving within
+\SI{5}{\nano\second} are \num{31.6}, \num{30.4}, \num{31.0}, \num{29.8} and
+\SI{13.4}{\percent} for configs~1, 2, 2 (mod), 3 and~4, within
+\SI{10}{\nano\second} \num{63.2}, \num{61.3}, \num{62.2}, \num{60.2} and
 \SI{40.3}{\percent}, while the late ($t>\SI{20}{\nano\second}$) tail carries
-\num{10.7}, \num{12.3}, \num{13.1} and \SI{21.5}{\percent} of the
+\num{10.7}, \num{12.3}, \num{11.6}, \num{13.1} and \SI{21.5}{\percent} of the
 photoelectrons.
 
 \begin{figure}[H]
@@ -2149,12 +2303,13 @@ per layout (glossy paper, whole-plate irradiation). The abscissa is the global
 arrival time, the ordinate the number of photoelectrons in the corresponding
 \SI{0.1}{\nano\second} time bin (summed over the layout's SiPMs), and the colour
 the number of events reaching that point (shared logarithmic scale). Empty time
-bins are omitted; the ordinate is shared across the four panels and linear over
-$0$--$30$ photoelectrons per bin ($1$ p.e.\ per bin), the arrival-time axis over
-$0$--$60$ ns. The prompt rise reflects the direct scintillation and
-\v{C}erenkov light, while the slower tail is the multi-bounce transport and
-delayed (self-absorbed and re-emitted) light. The prompt peak of configs~1--3
-extends above the shared ordinate and is therefore clipped; the WLS layout
+bins are omitted; the ordinate is shared across the five panels (the sixth
+cell is empty) and linear over $0$--$30$ photoelectrons per bin ($1$ p.e.\ per
+bin), the arrival-time axis over $0$--$60$ ns. The prompt rise reflects the
+direct scintillation and \v{C}erenkov light, while the slower tail is the
+multi-bounce transport and delayed (self-absorbed and re-emitted) light. The
+prompt peaks of the four directly-read layouts (configs~1, 2, 2 (mod), 3)
+extend above the shared ordinate and are therefore clipped; the WLS layout
 (config~4) builds up roughly \SI{4.1}{\nano\second} later than the others, its
 prompt peak shifted by the fibre absorption and re-emission.}
 \label{fig:persistence}
@@ -2162,15 +2317,15 @@ prompt peak shifted by the fibre absorption and re-emission.}
 
 The same arrival-time data can be collapsed into one average waveform per layout
 by averaging the per-event traces of Fig.~\ref{fig:persistence} over events;
-Fig.~\ref{fig:avgwaveform} overlays the four averages. This makes the amplitude
+Fig.~\ref{fig:avgwaveform} overlays the five averages. This makes the amplitude
 hierarchy and the time shifts explicit. Integrating the mean rate over the full
-\SI{60}{\nano\second} window recovers \num{520.7}, \num{275.1}, \num{140.7} and
-\num{87.0} photoelectrons per event for configs~1--4 (the same ordering found in
-the collection-efficiency maps), and the rising edges of the three directly-read
-layouts coincide within a fraction of a nanosecond, whereas the WLS read-out of
-config~4 rises about \SI{4}{\nano\second} later and decays more slowly -- its
-late tail stands out on the logarithmic ordinate as a straighter, shallower
-fall.
+\SI{60}{\nano\second} window recovers \num{520.0}, \num{274.5}, \num{268.1},
+\num{140.3} and \num{86.8} photoelectrons per event for configs~1, 2,
+2 (mod), 3 and~4 (the same ordering found in the collection-efficiency maps),
+and the rising edges of the four directly-read layouts coincide within a
+fraction of a nanosecond, whereas the WLS read-out of config~4 rises about
+\SI{4}{\nano\second} later and decays more slowly -- its late tail stands out
+on the logarithmic ordinate as a straighter, shallower fall.
 
 \begin{figure}[H]
 \centering
@@ -2180,24 +2335,26 @@ per layout (glossy paper, whole-plate irradiation), obtained by averaging the
 per-event traces of Fig.~\ref{fig:persistence} over events. The abscissa is the
 global arrival time and the ordinate the mean number of photoelectrons in each
 \SI{0.1}{\nano\second} bin per event. The left panel uses a linear ordinate and
-the right a logarithmic one; all four configurations are drawn on each panel
-(the prompt peaks of configs~1--3 nearly coincide and extend above the linear
-range). The integrated mean yields are \num{520.7}, \num{275.1}, \num{140.7} and
-\num{87.0} photoelectrons per event for configs~1--4. The WLS layout (config~4)
+the right a logarithmic one; all five configurations are drawn on each panel
+(the prompt peaks of the four directly-read layouts nearly coincide and extend
+above the linear range). The integrated mean yields are \num{520.0},
+\num{274.5}, \num{268.1}, \num{140.3} and \num{86.8} photoelectrons per event
+for configs~1, 2, 2 (mod), 3 and~4. The WLS layout (config~4)
 peaks roughly \SI{4.1}{\nano\second} later than the others and retains a long,
 slowly-decaying tail, the average-waveform counterpart of the persistence map.}
 \label{fig:avgwaveform}
 \end{figure}
 
 Figure~\ref{fig:wltime} combines the two offline observables: the arrival time
-and the wavelength of each detected photoelectron. Configurations~1--3 collect
-the blue scintillation spectrum directly, with a photoelectron-weighted mean of
-$456.7$--$457.2$ \si{\nano\meter}, whereas the Y-11 WLS read-out of config~4 is
-green-shifted to \SI{498.5}{\nano\meter}, consistent with the steady-state
-spectra of Fig.~\ref{fig:wavelengthcfg}. In every layout the spectrum reddens
-with arrival time: the mean wavelength rises from \SI{450.9}{\nano\meter}
-($t<\SI{5}{\nano\second}$) to \SI{467.7}{\nano\meter}
-($t>\SI{20}{\nano\second}$) for configs~1--3, and from \SI{471.8}{\nano\meter}
+and the wavelength of each detected photoelectron. Configurations~1, 2,
+2 (mod) and~3 collect the blue scintillation spectrum directly, with a
+photoelectron-weighted mean of $456.7$--$457.2$ \si{\nano\meter}, whereas the
+Y-11 WLS read-out of config~4 is green-shifted to \SI{498.5}{\nano\meter},
+consistent with the steady-state spectra of Fig.~\ref{fig:wavelengthcfg}. In
+every layout the spectrum reddens with arrival time: the mean wavelength rises
+from \SI{450.9}{\nano\meter} ($t<\SI{5}{\nano\second}$) to
+\SI{467.7}{\nano\meter} ($t>\SI{20}{\nano\second}$) for the four direct
+configurations, and from \SI{471.8}{\nano\meter}
 to \SI{507.7}{\nano\meter} for config~4, while the rms spread narrows
 ($37.9\to35.5$ \si{\nano\meter} and $44.1\to26.5$ \si{\nano\meter},
 respectively). The config-4 early light is the direct blue component transmitted
@@ -2211,11 +2368,13 @@ wavelength-dependent attenuation of the WLS fibres.
 \includegraphics[width=0.95\textwidth]{figures/fig_wavelength_time_grid.pdf}
 \caption{Detected wavelength versus arrival time, one panel per layout (glossy
 paper, whole-plate irradiation), on a shared logarithmic colour scale (number of
-photoelectrons). Configurations~1--3 populate a narrow band around the
-\SI{457}{\nano\meter} blue scintillation spectrum; config~4 is green-shifted by
+photoelectrons). Configurations~1, 2, 2 (mod) and~3 populate a narrow band
+around the \SI{457}{\nano\meter} blue scintillation spectrum; config~4 is
+green-shifted by
 the Y-11 WLS fibres. The time dependence of the mean wavelength traces the
 self-absorption of the shorter-wavelength light over the multi-bounce path
-(from \SI{450.9}{\nano\meter} to \SI{467.7}{\nano\meter} in configs~1--3 and
+(from \SI{450.9}{\nano\meter} to \SI{467.7}{\nano\meter} in the four direct
+configurations and
 from \SI{471.8}{\nano\meter} to \SI{507.7}{\nano\meter} in config~4, between the
 early and late arrival windows).}
 \label{fig:wltime}
@@ -2356,19 +2515,46 @@ paper), because the charges and the prompt share continue to carry the
 position information, whereas the transparent timing read-out loses half of
 its sensitivity.
 
+Panel~(a) of the figure measures what the argument is actually about: the
+width of the CFD time difference at fixed muon position.  For the bare plate
+and for the diffuse paint it is flat over the whole scan
+($\SI{1.38}{\nano\second} \rightarrow \SI{1.34}{\nano\second}$ and
+$\SI{0.89}{\nano\second} \rightarrow \SI{0.85}{\nano\second}$ between
+$\alpha = \SI{3}{\percent}$ and \SI{50}{\percent}), as expected when the
+arrival-time spread is set by the light sharing rather than by the ballistic
+wavefront.  For the two specular wrappers the same width grows by about
+\SI{70}{\percent} (glossy paper \SI{0.39}{\nano\second} $\rightarrow$
+\SI{0.68}{\nano\second}, air-backed aluminium \SI{0.39}{\nano\second}
+$\rightarrow$ \SI{0.67}{\nano\second}): beyond $\alpha \approx
+\SI{20}{\percent}$ the wavefront time has become a tail time.  That the
+linear resolution nevertheless \emph{improves} up to
+$\alpha \approx \SI{15}{\percent}$ (panel~b) shows that it is not the width
+alone that sets the resolution: over the same range the opposite-pair slope
+$|\mathrm{d}T_{\mathrm{CFD},x}/\mathrm{d}x|$ grows from \SI{0.0018}{\nano\second\per\milli\meter}
+to \SI{0.0029}{\nano\second\per\milli\meter} (glossy), i.e.\ faster than the
+width, and only the ratio of the two --- the resolution itself --- has an
+interior minimum.  Neither quantity alone is therefore a good tuning
+criterion: the pulse width would drive $\alpha$ to its smallest scanned value,
+the slope to $\alpha \approx \SI{20}{\percent}$.
+
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_recon_alpha_scan.pdf}
 \caption{Position resolution as a function of the constant fraction $\alpha$ of
-the optical CFD time.  \emph{Left}: the transparent linear opposite-pair
-read-out; \emph{right}: the learned eight-channel estimator, with the optical
-CFD channel (filled markers, solid lines) and the combined estimator (open
-markers, dashed lines).  One curve per wrapper; the dashed vertical line marks
-the nominal $\alpha = \SI{12.5}{\percent}$.  The learned estimator is almost
-insensitive to the choice of $\alpha$, while the linear timing read-out of the
-two specular wrappers has a clear minimum near $\alpha = \SIrange{10}{15}{\percent}$
-and degrades by a factor $\sim 1.5$ once the fraction reaches the multi-bounce
-reverberation tail.}
+the optical CFD time, one curve per wrapper.  (a) The width of the CFD time
+difference at fixed muon position, i.e.\ the rms of $T_{\mathrm{CFD},x}$
+pooled within \SI{25}{\milli\meter} bins of $x$ --- the quantity a constant
+fraction is normally tuned on: it is flat for the bare plate and the diffuse
+paint, and it grows by about \SI{70}{\percent} for the two specular wrappers,
+whose wavefront time gradually becomes a tail time.  (b) The transparent
+linear opposite-pair read-out.  (c) The learned eight-channel estimator, with
+the optical CFD channel (filled markers, solid lines) and the combined
+estimator (open markers, dashed lines).  (d) Key.  The dashed vertical line
+marks the nominal $\alpha = \SI{12.5}{\percent}$.  The learned estimator is
+almost insensitive to the choice of $\alpha$, while the linear timing read-out
+of the two specular wrappers has a clear minimum near
+$\alpha = \SIrange{10}{15}{\percent}$ and degrades by a factor $\sim 1.5$ once
+the fraction reaches the multi-bounce reverberation tail.}
 \label{fig:recon-alpha}
 \end{figure}
 
@@ -2623,7 +2809,7 @@ learned estimator (Table~\ref{tab:recon}) for comparison.}
 \scriptsize
 \setlength{\tabcolsep}{1.2pt}
 \newcolumntype{C}{>{\centering\arraybackslash}X}
-\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{0.085\textwidth} C C C C C C C C C C@{}}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{0.078\textwidth} C C C C C C C C C C@{}}
 \toprule
  & \multicolumn{3}{c}{\textbf{Pulse integral $A_x$}} &
    \multicolumn{3}{c}{\textbf{First arrival $T_x$}} &
@@ -2857,10 +3043,85 @@ practical requirements are worth stating explicitly:
 
 The practical conclusion is that a side-read-out muon trigger of this
 geometry can be operated as a two-dimensional position detector at the
-\SI{12}--\SI{18}{\milli\meter} level per axis (\SI{5}--\SI{7}{\percent} of the
+\SIrange{12}{18}{\milli\meter} level per axis (\SI{5}--\SI{7}{\percent} of the
 plate width) without any modification to the optical hardware, provided the
 read-out electronics and reconstruction metric are matched to the wrapper's
 light-mixing regime.
+
+\subsection{What the eight-sensor read-out buys}
+\label{sec:recon-layouts}
+
+The preceding results use the eight sensors of config~1.  Two of the reduced
+layouts of Sec.~\ref{sec:yield} also have four channels, and replaying the same
+combined estimator on their whole-plate runs isolates the cost of removing
+half of the read-out.  Config~2 keeps one sensor per side at the config-1
+offsets (a pinwheel with fourfold rotational symmetry but no reflection
+symmetry), whereas config~2 (mod) places one sensor on each \ang{45} corner
+face and therefore retains the full eight-element symmetry group of the
+square.  Both data sets are the \num{25000}-event $v7$ whole-plate runs used
+above.
+
+\begin{table}[H]
+\centering
+\caption{Combined-estimator position resolution for the three four-sided
+read-outs, from the whole-plate $v7$ runs (\num{25000} generated events per
+wrapper).  Entries are the rms error along one axis $\sigma_x$ with the radial
+rms $\sigma_r$ in parentheses, in millimetres.  Config~2 (mod) retains
+\num{24881} events per wrapper after requiring at least one detected
+photoelectron; the missing \num{119} muons per wrapper are the ones that miss
+the truncated corners.}
+\label{tab:recon-layouts}
+\small
+\setlength{\tabcolsep}{8pt}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+Layout & bare & TiO$_2$ & Al (air) & glossy \\
+\midrule
+Config~1          & 19.4 (27.5) & 11.9 (17.0) & 15.7 (22.6) & 15.9 (22.1) \\
+Config~2          & 33.1 (46.5) & 21.0 (29.4) & 31.4 (44.7) & 31.2 (44.3) \\
+Config~2 (mod)    & 29.9 (41.9) & 20.4 (28.6) & 27.8 (39.2) & 27.6 (39.1) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.78\textwidth]{figures/fig_recon_layouts.pdf}
+\caption{Combined-estimator rms error $\sigma_x$ along one axis for the
+config-1, config-2 and config-2 (mod) read-outs, one group of bars per
+wrapper.  The two four-sensor layouts lose a factor \numrange{1.5}{2.0} in
+resolution relative to the eight-sensor config~1, but the wrapper ordering
+(TiO$_2$ best, bare worst) survives.  Config~2 (mod) is slightly better than
+config~2 in every wrapper; part of that difference is geometric (corner
+sensors and the full eightfold symmetry) and part is statistical (config~2
+keeps only four of the eight symmetry operations, so its training set is
+\num{80000} rather than \num{160000} patterns).}
+\label{fig:recon-layouts}
+\end{figure}
+
+Table~\ref{tab:recon-layouts} lists the corresponding $\sigma_x$ and
+$\sigma_r$, and Fig.~\ref{fig:recon-layouts} shows the $\sigma_x$ comparison.
+The penalty is largest for the two specular wrappers, where the position
+information is carried by the arrival-time pattern: $\sigma_x$ rises from
+\SI{15.7}{\milli\meter} (Al) and \SI{15.9}{\milli\meter} (glossy) in config~1
+to \SI{31.4}{\milli\meter} and \SI{31.2}{\milli\meter} in config~2, and to
+\SI{27.8}{\milli\meter} and \SI{27.6}{\milli\meter} in config~2 (mod).
+The diffuse TiO$_2$ plate remains the best four-sensor wrapper, at
+\SI{21.0}{\milli\meter} in config~2 and \SI{20.4}{\milli\meter} in config~2
+(mod), because its light sharing is already first order and does not need the
+extra channels to break the left--right ambiguity.  The bare plate moves from \SI{19.4}{\milli\meter} to
+\SI{33.1}{\milli\meter} in config~2 and \SI{29.9}{\milli\meter} in config~2
+(mod).  Even the worst four-sensor case remains a factor \num{2.2} better than
+the \SI{72}{\milli\meter} rms of a uniform prior over the
+\SI{250}{\milli\meter} plate, so four channels still carry genuine position
+information; they are simply not enough to reach the
+\SIrange{12}{18}{\milli\meter} level of the eight-sensor design.
+
+Config~2 (mod) is consistently a little better than config~2 at the same
+sensor count (by \SIrange{3}{12}{\percent}), and it is the fairer comparison
+with config~1 for sensor \emph{number}, since both keep the full eightfold
+symmetry.  The residual gap to config~1 is therefore the intrinsic cost of
+four instead of eight views of the event, not a shortage of training patterns.
 
 % =====================================================================
 \section{Comparison with the measurement}
@@ -2887,16 +3148,16 @@ Configurations without a reflective layer consistently produce the lowest
 detected photon yield at the SiPMs
 &
 The contact-limited bare plate is the weakest wrapper in every layout,
-by a factor \num{6.5}--\num{6.9} in yield in configs~1--3 and \num{4.5} in
-config~4
+by a factor \num{6.5}--\num{6.9} in yield in the four direct-coupled layouts
+and \num{4.5} in config~4
 &
-Reproduced in all four layouts \\
+Reproduced in all five layouts \\
 \addlinespace
 The signal-to-noise ratios are highest and nearly identical for the aluminium
 foil and the high-gloss paper
 &
-Air-backed aluminium reaches \SI{92}{\percent} of the glossy yield in
-configs~1--3 and \SI{95}{\percent} in config~4
+Air-backed aluminium reaches \SIrange{91}{92}{\percent} of the glossy yield
+in the four direct-coupled layouts and \SI{95}{\percent} in config~4
 &
 Reproduced \\
 \addlinespace
@@ -2904,17 +3165,20 @@ The lowest detected photon yield occurs when the MCD is positioned at the
 corner of the plate
 &
 The corner is the dimmest patch for the bare plate, aluminium and glossy
-paper in every layout; for the diffuse TiO$_2$ paint the corner is the
-\emph{brightest} patch in the four-sided layouts
+paper in the four Table~IV layouts; for the diffuse TiO$_2$ paint the corner
+is the \emph{brightest} patch in the four-sided layouts. Config~2 (mod) is not
+a test of this statement: its corner is instrumented, and there the corner is
+brightest for every wrapper
 &
-Reproduced for 3 of 4 treatments; contradicted for TiO$_2$ \\
+Reproduced for the paper's four layouts; contradicted for TiO$_2$ \\
 \addlinespace
 All configurations except those without a reflective layer reach a detection
 efficiency of $\ge\SI{80}{\percent}$ at the working threshold; the bare
 configuration is the only one that falls short
 &
-There is a non-empty threshold window in configs~1--3 in which the three
-reflective treatments exceed \SI{80}{\percent} and the bare one does not
+There is a non-empty threshold window in configs~1, 2, 2 (mod) and~3 in
+which the three reflective treatments exceed \SI{80}{\percent} and the bare one
+does not
 &
 Reproduced (Table~\ref{tab:compareDE}) \\
 \addlinespace
@@ -2961,8 +3225,9 @@ detection-efficiency curves of Fig.~11 of Ref.~\cite{Rao2025}: the bare
 plate's curve is shifted far to the left, and the three reflective curves are
 nearly on top of one another. Table~\ref{tab:compareDE} lists, for each
 layout, the window of thresholds in which the experiment's statement holds.
-In the three directly-coupled layouts the window is non-empty and wide
-($58$--$130$ photoelectrons for config~1), and it is empty only for config~4.
+In the four directly-coupled layouts the window is non-empty and wide
+($58$--$130$ photoelectrons for config~1, $26$--$56$ for Config 2 (mod)), and
+it is empty only for config~4.
 There the bare plate is now the weakest wrapper, as in the other layouts, but
 its photoelectron distribution, set by the single SiPM behind the
 wavelength-shifting fibres, overlaps TiO$_2$'s closely enough that no threshold
@@ -3002,6 +3267,7 @@ Layout & Window [pe/event] & $\mathrm{DE}$(bare) & Note \\
 \midrule
 Config 1 & $58$--$130$ & $0.067$--$0.790$ & statement holds \\
 Config 2 & $28$--$63$  & $0.083$--$0.788$ & statement holds \\
+Config 2 (mod) & $26$--$56$ & $0.119$--$0.779$ & statement holds \\
 Config 3 & $14$--$18$  & $0.510$--$0.752$ & statement holds, narrow window \\
 Config 4 & ---          & ---              & window empty; no bare measurement \\
 \bottomrule
@@ -3011,12 +3277,20 @@ Config 4 & ---          & ---              & window empty; no bare measurement \
 \subsection{The one disagreement: the position trend of the diffuse paint}
 
 For three of the four treatments the simulation reproduces the measured sign of
-the position trend: the corner of the plate is the dimmest place, as reported
-in Ref.~\cite{Rao2025}. The diffuse TiO$_2$ paint is the exception. In the
-four-sided layouts~1 and~2 the corner patch is the \emph{brightest} of the
-three, a factor \num{1.75} above the centre, and in the single-sided
-layouts~3 and~4 the centre is the brightest and the corner the dimmest, which
-is the measured sign.
+the position trend in the four Table~IV layouts: the corner of the plate is
+the dimmest place, as reported in Ref.~\cite{Rao2025}. The diffuse TiO$_2$
+paint is the exception. In the four-sided layouts~1 and~2 the corner patch is
+the \emph{brightest} of the three, a factor \num{1.75} above the centre, and
+in the single-sided layouts~3 and~4 the centre is the brightest and the corner
+the dimmest, which is the measured sign.
+
+Config~2 (mod) is outside this comparison because its corner is instrumented.
+There the corner patch is the brightest for all four treatments, including the
+bare plate and the two specular wrappers (corner/centre ratios \num{2.65},
+\num{3.58}, \num{1.21} and \num{1.17}). That is not a contradiction of the
+measurement but a direct confirmation of the nearest-sensor rule: the paper's
+corner is dim because it is far from every sensor, whereas here it lies about
+\SI{27}{\milli\meter} from one.
 
 The mechanism is the one of Sec.~\ref{sec:nearest}. A Lambertian paint is a
 poor light mixer, so the response tracks the distance to the nearest sensor.
@@ -3025,11 +3299,14 @@ therefore the brightest, while the centre of the plate is the furthest point
 from any of the eight sensors and is the dimmest---which is what the
 three-patch scan of Table~\ref{tab:positions} shows
 ($6.398\times10^{-3}$ at the centre against $1.119\times10^{-2}$ at the
-corner). In a single-sided layout the same rule applies with a single
-collection site, and there the centre of the plate is closer to the sensor
-than the far corners are, so the sign of the trend is reversed.
+corner). Config~2 (mod) is the limiting case: its corner is close to
+\emph{one} sensor, but the centre is \SI{168}{\milli\meter} from all four, so
+the corner is still the brightest and the centre the darkest. In a
+single-sided layout the same rule applies with a single collection site, and
+there the centre of the plate is closer to the sensor than the far corners
+are, so the sign of the trend is reversed.
 
-The same rule explains why the paint is the *least* uniform wrapper
+The same rule explains why the paint is the \emph{least} uniform wrapper
 ($\kappa_{\rm 2D} = \num{1.91}$--\num{10.90}) while the specular wrappers are
 nearly flat, and why the paint is the only wrapper whose light sharing
 carries a first-order position signal. The disagreement with the measurement
@@ -3039,6 +3316,589 @@ experiment's own report does not state which of the two competing effects
 dominates in the paint, so the discrepancy cannot be attributed from the
 published data alone; in the model, the sign is set by the number of sensors
 on the illuminated side of the plate.
+
+% =====================================================================
+\section{What the design knobs are worth: a controlled design study}
+\label{sec:design}
+% =====================================================================
+
+Everything up to here varies the \emph{wrapper} of a fixed plate read out by
+a fixed set of SiPMs. The builder of such a monitor faces a different
+question: given a plate, a wrapper and a sensor budget, which change buys the
+most? The wrapper comparison cannot answer it, because all of those runs share
+one read-out layout and put the same treatment on all six faces. The four
+knobs that the model actually exposes are the finish of the four \emph{narrow}
+faces, the SiPM active area, the arrangement of the sensors, and a
+wavelength-shifting fibre read-out on every face. This section isolates them.
+
+Ten designs were run, each a single deliberate change from the v7 baseline,
+\num{25000} whole-plate muons each, with identical beam, identical surface
+parameters ($f=\num{0.045}$, air-backed aluminium where a foil is present,
+$n_{\text{coup}}=\num{1.55}$) and identical optical tables.
+Table~\ref{tab:designs} states what each design changes and
+Table~\ref{tab:designres} collects the observables used below: the light
+yield, the \emph{fractional} width of the per-event yield (its rms over its
+mean, which is what a threshold has to accommodate), the position contrast
+\kap, the threshold at which the detection efficiency of
+Sec.~\ref{sec:comparison} reaches \SI{90}{\percent}, and two timing numbers.
+The last column, the per-axis position resolution $\sigma_x$, is the
+observable of Sec.~\ref{sec:recon} measured for each design in turn.
+
+\begin{table}[H]
+\caption{The ten completed designs of the campaign. Every design changes one
+thing relative to the control (bottom row): the finish of the four
+\SI{10}{\milli\meter}-tall narrow faces, the SiPM active area, the SiPM
+arrangement, or the read-out, which for the last four designs is a
+wavelength-shifting fibre clamp on every narrow face instead of SiPMs coupled
+to the plate. The two fibre pairs are deliberately confounded: the
+TiO$_2$-wrapped plate is read through a white Lambertian clamp, the glossy
+plate through a mirror clamp, because that is how each wrapper would actually
+be built. In the four-sided fibre layouts the read-out pads are displaced past
+the clamp, so there is \emph{no} direct plate-to-SiPM path and the yield is a
+pure measure of the fibre path.}
+\label{tab:designs}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lllll@{}}
+\toprule
+Design & SiPMs & Large faces & Narrow faces & Read-out \\
+\midrule
+C1 black edges            & \num{8}$\times$\SI{4}{\milli\meter}, C1 & glossy & black   & --- \\
+C8 black edges            & \num{8}$\times$\SI{4}{\milli\meter}, C8 & glossy & black   & --- \\
+\midrule
+C1 diffuse edges          & \num{8}$\times$\SI{4}{\milli\meter}, C1 & glossy & diffuse & --- \\
+C1 6 mm, diffuse edges    & \num{8}$\times$\SI{6}{\milli\meter}, C1 & glossy & diffuse & --- \\
+C8 6 mm, diffuse edges    & \num{8}$\times$\SI{6}{\milli\meter}, C8 & glossy & diffuse & --- \\
+\midrule
+4-sided WLS (4 ch), TiO$_2$          & \num{4}$\times$\SI{4}{\milli\meter}, 1/side & TiO$_2$ & TiO$_2$ & 4 clamps, single-ended \\
+4-sided WLS (8 ch, dual), TiO$_2$    & \num{8}$\times$\SI{4}{\milli\meter}, 2/side & TiO$_2$ & TiO$_2$ & 4 clamps, dual-ended \\
+4-sided WLS (4 ch), glossy           & \num{4}$\times$\SI{4}{\milli\meter}, 1/side & glossy  & glossy  & 4 clamps, single-ended \\
+4-sided WLS (8 ch, dual), glossy     & \num{8}$\times$\SI{4}{\milli\meter}, 2/side & glossy  & glossy  & 4 clamps, dual-ended \\
+\midrule
+C1 control, glossy        & \num{8}$\times$\SI{4}{\milli\meter}, C1 & glossy & glossy  & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\caption{The campaign in numbers, \num{25000} events per design.
+$\langle\pe\rangle$ is the mean photoelectron count per event throughout the
+plate; $\sigma_{\pe}/\langle\pe\rangle$ its relative rms width;
+$\kappa_{\rm 2D}$ the ratio of the brightest to the darkest \SI{50}{\milli\meter}
+cell of the efficiency map; $N_{\rm thr}$ the per-event photoelectron
+threshold at which the detection efficiency reaches \SI{90}{\percent} (this
+is the threshold that matters for a monitor, not the mean); the two timing
+columns are the fraction of the light arriving within \SI{3}{\nano\second}
+and the time that contains \SI{90}{\percent} of it. $\sigma_x$ is the
+per-axis position resolution obtained from the design's own channel pattern
+with the estimator of Sec.~\ref{sec:recon}.}
+\label{tab:designres}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lrrrrrrr@{}}
+\toprule
+Design & $\langle\pe\rangle$ & $\sigma_{\pe}/\langle\pe\rangle$ & $\kap$ &
+$N_{\rm thr}$ & $f(<3\,{\rm ns})$ & $t_{90}$ [\si{\nano\second}] & $\sigma_x$ [\si{\milli\meter}] \\
+\midrule
+C1 black edges                     & \num{68.8}  & \num{0.68} & \num{1.89} & \num{33.1}  & \num{0.649} & \num{5.65}  & \num{18.75} \\
+C8 black edges                     & \num{61.3}  & \num{0.76} & \num{3.01} & \num{32.4}  & \num{0.647} & \num{5.65}  & \num{17.41} \\
+\midrule
+C1 diffuse edges                   & \num{339.6} & \num{0.28} & \num{1.14} & \num{265.6} & \num{0.249} & \num{11.85} & \num{19.85} \\
+C1 6 mm, diffuse edges             & \num{715.2} & \num{0.27} & \num{1.14} & \num{565.5} & \num{0.263} & \num{11.25} & \num{11.48} \\
+C8 6 mm, diffuse edges             & \num{708.9} & \num{0.28} & \num{1.33} & \num{550.2} & \num{0.263} & \num{11.25} & \num{11.78} \\
+\midrule
+4-sided WLS (4 ch), TiO$_2$        & \num{96.6}  & \num{0.38} & \num{2.15} & \num{60.3}  & \num{0.033} & \num{25.05} & \num{13.89} \\
+4-sided WLS (8 ch, dual), TiO$_2$  & \num{115.0} & \num{0.40} & \num{2.26} & \num{71.5}  & \num{0.054} & \num{24.05} & \num{13.75} \\
+4-sided WLS (4 ch), glossy         & \num{220.3} & \num{0.26} & \num{1.04} & \num{173.8} & \num{0.023} & \num{28.15} & \num{60.71} \\
+4-sided WLS (8 ch, dual), glossy   & \num{273.0} & \num{0.26} & \num{1.06} & \num{216.3} & \num{0.036} & \num{27.55} & \num{55.23} \\
+\midrule
+C1 control, glossy                 & \num{568.2} & \num{0.25} & \num{1.07} & \num{455.4} & \num{0.153} & \num{20.35} & \num{15.94} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The control reproduces the v7 glossy value of \num{520.7}~\pe/event to within
+\SI{+9}{\percent}; the difference is the coupling grease, whose refractive
+index is \num{1.55} here against the \num{1.46} default of the v7 runs
+(\texttt{setCouplingIndex}). A higher grease index widens the escape cone at
+the plate--pad interface and therefore raises the collected fraction, which is
+what the \SI{9}{\percent} measures. The control is therefore the
+denominator for every ``change'' statement below, not the v7 number. The
+number of optical photons produced in the plate agrees across the ten designs
+to within \SI{1.4}{\percent} (\num{19322}--\num{19598}), a spread that is
+larger than the naive standard error of the mean but consistent with the
+heavy tail of the muon energy-loss distribution rather than with any
+difference in the optical model: the ten designs differ only in how the light
+is collected after it is made.
+
+% ---------------------------------------------------------------------
+\subsection{What the designs look like}
+\label{sec:design-geometry}
+% ---------------------------------------------------------------------
+
+The ten completed designs reduce to six distinct solid geometries, because only
+three of the four knobs change a shape: the sensor pattern (preset~1 places two
+\SI{4}{\milli\meter} sensors per face at $u=\pm0.5$, i.e.\ \SI{62.5}{\milli\meter}
+from the corners; preset~8 at $u=\pm0.75$, \SI{31.25}{\milli\meter} from the
+corners), the sensor area (\SI{4}{} or \SI{6}{\milli\meter} side), and the
+four-sided wavelength-shifting clamp with its single- or dual-ended read-out.
+Fig.~\ref{fig:designlayouts} draws the three sensor patterns in the report
+frame and names the designs that use each; the sensor \emph{positions} are to
+scale, the markers themselves are enlarged. The remaining axes are
+surface properties and change no solid: the narrow-face finish is a
+\SI{5}{\micro\meter} strip, and the clamp surface, the coupling index and the
+wrapper are optical tables. No rendering can show them, and
+Table~\ref{tab:designs} is the only place where they are visible.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_design_layouts.pdf}
+\caption{The three sensor patterns of the campaign, in the report frame
+(top $=+y$, right $=+x$). The sensor centres are to scale; the markers are
+drawn at \num{2.5} times their true edge length so that a
+\SI{4}{\milli\meter} sensor still reads at print size. Panel~1 (preset~1) is
+shared by the
+C1 designs (black edges, diffuse edges, the \SI{6}{\milli\meter} variant and
+the control); panel~2 (preset~8) by the C8 designs; panel~3 (preset~10) by the
+two 4-channel fibre designs and, with a second read-out at each far end, the
+two 8-channel dual-ended designs. Filled black markers are the
+\SI{4}{\milli\meter} read-out sensors, each with a white outline; the darker
+grey outline marks the \SI{6}{\milli\meter} footprint of the large-sensor
+variants. In the fibre panel the clamp runs along all four narrow faces. The
+fourth quadrant is a symbol and preset key, not a fourth layout.}
+\label{fig:designlayouts}
+\end{figure}
+
+Fig.~\ref{fig:designrenders} shows the three geometric differences at the
+scale at which they matter. A whole-plate view would not: a
+\SI{4}{\milli\meter} sensor is \SI{1.6}{\percent} of the plate width, so on a
+whole-plate panel it is a few points across and the \SI{6}{\milli\meter}
+variant differs from it by half of that. Panels (a) and (b) therefore look at
+a single sensor on the narrow face with a \SI{26}{\milli\meter} field of view,
+from the same camera, so the only difference between the two is its area. Panels (c)--(e) look at a read-out corner of the
+fibre clamp; comparing (c) with (d) and (e) shows what the clamp hides ---
+the four fibres, their \SI{41}{\milli\meter} convergence into the bundle and
+the read-out pads all sit behind it, and only the exposed fibre ends remain
+visible at the corner.
+
+Two caveats apply to these renders. They are visualisation geometry: the
+fibres are the faceted tessellated variant (24-gon core, square-section
+clamp channels), because the production analytic mitered tubes are built
+from \texttt{G4CutTubs}, whose boolean results carry no polyhedron and
+therefore cannot be drawn by the OpenGL driver. Centreline, radii, materials
+and surfaces are identical, but the faceted variant is the one measured
+\SI{20}{\percent} lower in yield, so the renders show where the fibres are,
+not how much light they collect. Second, the clamp is drawn opaque: the
+absence of a cutaway plane is deliberate, since the head-less renderer does
+not support one.
+
+\begin{figure}[H]
+\centering
+\begin{tabular}{@{}c@{\hspace{3pt}}c@{\hspace{3pt}}c@{}}
+\includegraphics[width=0.30\textwidth]{figures/design_ogl_c1_4mm.png} &
+\includegraphics[width=0.30\textwidth]{figures/design_ogl_c1_6mm.png} &
+\includegraphics[width=0.30\textwidth]{figures/design_ogl_wls10_clamp.png} \\
+\footnotesize (a) \SI{4}{\milli\meter} sensor & \footnotesize (b) \SI{6}{\milli\meter} sensor & \footnotesize (c) clamp fitted \\[2pt]
+\includegraphics[width=0.30\textwidth]{figures/design_ogl_wls10.png} &
+\includegraphics[width=0.30\textwidth]{figures/design_ogl_wls11.png} & \\
+\footnotesize (d) single-ended read-out & \footnotesize (e) dual-ended read-out & \\
+\end{tabular}
+\caption{The geometric design differences at the scale at which they act.
+(a), (b) the same sensor position on the narrow face with \SI{4}{} and
+\SI{6}{\milli\meter} active area, identical camera, \SI{26}{\milli\meter}
+across. (c) the four-sided clamp as built, opaque; (d) the same corner with
+the clamp, coupling film and grease hidden: four fibres converge into one
+read-out sensor, and the four far ends are mirror-capped; (e) the dual-ended
+layout, where the far bundle is instrumented as well. Colours: plate blue,
+fibres green, read-out sensors red, clamp near-black. The renders use the
+faceted visualisation fibres of Sec.~\ref{sec:wls}; the campaign itself used
+the analytic tubes.}
+\label{fig:designrenders}
+\end{figure}
+
+% ---------------------------------------------------------------------
+\subsection{What each knob buys in light}
+\label{sec:design-yield}
+% ---------------------------------------------------------------------
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{figures/fig_opt_yield.pdf}
+\caption{Light yield of the campaign designs, \num{25000} whole-plate muons each,
+grouped by the question they answer. Bars are coloured by design, and the
+colour follows the same design in every figure of this section. The two
+vertical reference lines are the v7 whole-plate values for config~1 (glossy,
+\num{520.7}~\pe, dashed) and config~3 (glossy, \num{140.7}~\pe, dash-dotted),
+i.e.\ the directly-coupled plate and the single-sided fibre clamp that the
+campaign extends.}
+\label{fig:designyield}
+\end{figure}
+
+The four knobs are not remotely equivalent
+(Fig.~\ref{fig:designyield}). Blackening the four narrow faces costs
+\SI{88}{\percent} of the light: \num{68.8}~\pe/event against
+\num{568.2} for the control in layout~1, and \num{61.3} against \num{568.2}
+in layout~8. This is not a small-area effect that one might expect from the
+geometry---the narrow faces are only \SI{7.4}{\percent} of the
+\SI{135000}{\milli\meter\squared} total surface---and the reason is the
+optics rather than the area. A photon trapped by total internal reflection at
+a large face necessarily travels at more than the critical angle
+(\SI{39.3}{\degree}) from the plate normal, so its direction is dominated by
+its in-plane component; and a photon whose in-plane direction is within
+\SI{39.3}{\degree} of a narrow-face normal escapes at that face. For the
+strongly trapped population the two conditions coincide over essentially every
+azimuth, so the trapped light drains out of the narrow faces within a few
+crossings, and a black narrow face converts the drain into an absorber. The measured
+\SI{12}{\percent} that survives is the light that reaches a SiPM before it
+makes that crossing.
+
+Replacing the black faces with the diffuse paint recovers most of it but not
+all: \num{339.6}~\pe/event, \SI{60}{\percent} of the control. The paint
+returns \SI{96}{\percent} of each encounter, so a single bounce is nearly
+free, but a Lambertian redirection sends the light back at a random angle and
+each subsequent crossing carries a fresh chance of being absorbed in the paint
+or lost elsewhere; the timing data of Sec.~\ref{sec:design-timing} confirm
+that the light in this design makes many more crossings than in the
+specular one. In light of this, the diffuse \emph{narrow} face is a
+surprisingly expensive way to avoid a black one.
+
+The SiPM area is the only knob with a near-unity return. Going from
+\SI{4}{\milli\meter} to \SI{6}{\milli\meter} sensors multiplies the yield by
+\num{2.11} in layout~1 and \num{2.09} in layout~8, i.e.\ it captures
+\SI{94}{\percent} of the \num{2.25}-fold area increase. The missing
+\SI{6}{\percent} is the lower photon flux at the outer edge of the larger
+pad, and it is the same in both layouts, which is what one expects if the
+mechanism is the local light field rather than the read-out.
+
+The fibre read-out on every face is the design that changes the most at once.
+With the glossy wrapper it delivers \num{220.3}~\pe/event with one SiPM per
+side---\num{1.57} times the single-sided config~3 (\num{140.7}) and
+\num{2.53} times the single-sided config~4 clamp (\num{87.0}) --- and
+\num{273.0}~\pe/event when both ends of every fibre bundle are read out, a
+further \num{1.24}. With the TiO$_2$ wrapper the same step is worth
+\num{2.02} (\num{47.9} to \num{96.6}) and \num{1.19} (\num{96.6} to
+\num{115.0}). The paint gains more from being read on every face because a
+poorly mixing cavity loses most of its light to the faces that have no
+collector; a fibre on every face removes that loss. None of the fibre designs,
+however, comes close to the directly-coupled plate in absolute yield: the
+best of them reaches \SI{48}{\percent} of the control, and even that is with
+the mirror wrapper. The fibre path is expensive, and
+Sec.~\ref{sec:design-timing} shows where the price is paid.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{figures/fig_opt_spectra.pdf}
+\caption{Per-event photoelectron spectra of the campaign designs, in a common
+abscissa range, normalised to unit area with a logarithmic ordinate. The
+mean is printed in each panel. Every event in the campaign records at least
+one photoelectron, so the zero-photoelectron bin is empty throughout and the
+distributions are not truncated. The panels are ordered as in
+Table~\ref{tab:designres}.}
+\label{fig:designspectra}
+\end{figure}
+
+The spectra (Fig.~\ref{fig:designspectra}) show the second half of the story,
+which the mean alone hides: filling the plate with collectors does not only
+move the distribution to the right, it narrows it. The relative width of the
+per-event yield is \num{0.25} for the control, \num{0.26} for the glossy
+fibre designs, \num{0.27}--\num{0.28} for the diffuse-edge designs,
+\num{0.38}--\num{0.40} for the TiO$_2$-wrapped fibre designs, and
+\num{0.68}/\num{0.76} for the two black-edge designs. The absolute widths are
+the opposite: \num{144} photoelectrons in the control against \num{47} in the
+C1 black-edge design, because \SI{25}{\percent} of a large mean is larger
+than \SI{68}{\percent} of a small one. A monitor that has to set a threshold
+cares about the relative number, and there the black edge is the worst design
+of the ten.
+
+That is not counting statistics. With \num{68.8} photoelectrons the Poisson
+term alone is \SI{12}{\percent}, so the observed \SI{68}{\percent} is
+dominated by something else: the muon energy-loss tail, which contributes a
+roughly common \SI{25}{\percent} to every design, plus a geometric term
+specific to the ballistic read-out---where the track is, and how many
+crossings it makes before a photon finds a sensor. The two terms add in
+quadrature to the observed width, which puts the geometric term at
+\SI{63}{\percent} for the C1 black-edge design. The same decomposition
+explains why the TiO$_2$-wrapped fibre designs are wider (\num{0.38},
+\num{0.40}) than the glossy ones (\num{0.26}): the paint is a poor mixer, so
+the fraction of the light that reaches a fibre depends on where the track is,
+whereas the mirror clamp averages it out.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{figures/fig_opt_de.pdf}
+\caption{Detection efficiency in the form used for the measurement of
+Sec.~\ref{sec:comparison}: the fraction of the \num{25000} events that record
+at least $N$ photoelectrons, as a function of $N$. Panel (a) shows the ten
+curves of the campaign designs; panel (b) gives, for each design and in the order of
+Table~\ref{tab:designres}, the threshold at which the efficiency reaches
+\SI{90}{\percent}, the number tabulated there as $N_{\rm thr}$; the dotted
+vertical line marks the control. Every design saturates at unity, because every
+event of the campaign records at least one photoelectron; the designs differ
+only in where the knee sits.}
+\label{fig:designde}
+\end{figure}
+
+The threshold-free form of the question asked by the paper tells the same
+story (Fig.~\ref{fig:designde}). The threshold at which the detection
+efficiency reaches \SI{90}{\percent} lies at \SI{78}{}--\SI{80}{\percent} of
+the mean yield for six of the ten designs---both \SI{6}{\milli\meter} designs,
+the control, the diffuse-edge design and the two glossy fibre designs---that
+is, for every design whose relative width is \num{0.25}--\num{0.28}. The four
+exceptions are the designs with the widest distributions
+(Fig.~\ref{fig:designspectra}): the black-edge designs reach
+\SI{90}{\percent} at \SI{48}{\percent} and \SI{53}{\percent} of their mean,
+the TiO$_2$-wrapped fibre designs at \SI{62}{\percent}. Setting a threshold is
+therefore not a free way to reject noise in those four designs, because their
+per-event light is spread too unevenly for a single cut to separate the bulk
+of the distribution from its tail.
+
+% ---------------------------------------------------------------------
+\subsection{Where the light goes}
+\label{sec:design-maps}
+% ---------------------------------------------------------------------
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.98\textwidth]{figures/fig_opt_maps.pdf}
+\caption{Collection efficiency over the plate for the campaign designs, in
+\SI{5}{\milli\meter} cells and on one shared logarithmic colour scale (the
+range is set by the 1st--99th percentile of the pooled cells so that a single
+bright cell does not flatten the rest). Open squares mark the SiPM positions
+of each design's layout. Cells with no statistics are drawn in the
+underflow colour. The shared scale is what makes the comparison readable
+across designs, but it compresses the within-panel structure of the four
+brightest designs; Fig.~\ref{fig:designmapsnorm} shows the same maps
+normalised per panel.}
+\label{fig:designmaps}
+\end{figure}
+
+The efficiency maps (Fig.~\ref{fig:designmaps}) put the two mechanisms of
+Sec.~\ref{sec:nearest} side by side. The black-edge designs (top row) are the
+purest form of the nearest-sensor rule found anywhere in this study: the map
+is essentially the distance to the nearest SiPM, and the contrast is
+\num{1.89} in layout~1 and \num{3.01} in layout~8, against \num{1.07} for the
+same layout with a specular wrapper. Moving the eight sensors from
+$u=\pm0.5$ to $u=\pm0.75$ (layout~8) makes the field \emph{less} uniform
+(\num{1.89} to \num{3.01}), the opposite of what a naive ``spread the
+sensors'' argument would predict, because the sensors move away from the
+centre of the plate and the ballistic read-out has no way to help the middle.
+
+The diffuse narrow faces (second group) leave the large faces glossy, and the
+contrast stays at the specular floor: \num{1.14} in layout~1 with both
+\SI{4}{\milli\meter} and \SI{6}{\milli\meter} sensors, \num{1.33} in
+layout~8. A Lambertian \emph{side} face does not destroy the mixing that the
+specular large faces provide, which is why this design is simultaneously the
+brightest and one of the most uniform.
+
+The fibre designs divide by wrapper in a way that the yields do not. With the
+mirror clamp they have the flattest efficiency fields in the entire study,
+\num{1.04} with four channels and \num{1.06} with eight---better than the
+specular control (\num{1.07}) and better than any design of
+Sec.~\ref{sec:uniformity}---because a fibre reads a \emph{line} rather than a
+point: every point of the plate is at a similar distance from the collector
+set, so the response no longer tracks a point-to-point distance. With the
+TiO$_2$ wrapper the same read-out gives \num{2.15} and \num{2.26}: the paint
+dominates, and no arrangement of collectors rescues a wrapper that does not
+mix.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.98\textwidth]{figures/fig_opt_maps_norm.pdf}
+\caption{The maps of Fig.~\ref{fig:designmaps} normalised to each panel's own
+plate-averaged efficiency, on a shared logarithmic scale. This view separates
+\emph{how much} light is collected from \emph{where} it is collected: the
+ballistic designs concentrate it at the sensor cells, the specular-plate
+designs are flat, and the fibre designs show the two orthogonal line
+collectors. The scale is clipped at $0.5$ and $2$, so in the two ballistic
+designs the darkest cells are flat navy and the sensor cells flat yellow; the
+structure that the clip hides there is visible on the absolute scale of
+Fig.~\ref{fig:designmaps}.}
+\label{fig:designmapsnorm}
+\end{figure}
+
+The normalised maps (Fig.~\ref{fig:designmapsnorm}) make the difference
+explicit. In the ballistic designs the bright cells are the cells that contain
+a sensor, as in the v6 maps of Sec.~\ref{sec:nearest}, and the cell between
+two sensors on the same face is the darkest. In the four-sided fibre designs
+the structure is a cross: four line collectors, two along each axis, and the
+field is flat to \SI{6}{\percent} over most of the plate. This is the
+geometric reason why a fibre read-out is the right choice when uniformity
+matters more than yield.
+
+% ---------------------------------------------------------------------
+\subsection{Timing: what the light costs on the way out}
+\label{sec:design-timing}
+% ---------------------------------------------------------------------
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{figures/fig_opt_waveform.pdf}
+\caption{Mean photoelectron arrival-time profile of the campaign designs, pooled
+over all channels and divided by the number of events, so the ordinate is the
+mean number of photoelectrons per \SI{0.1}{\nano\second} in an event. Left:
+linear scale over the first \SI{25}{\nano\second}; right: logarithmic
+ordinate over \SI{100}{\nano\second}, which is where the wavelength-shifting
+tail lives.}
+\label{fig:designwaveform}
+\end{figure}
+
+The narrow-edge finish is the timing knob
+(Fig.~\ref{fig:designwaveform}, Table~\ref{tab:designres}). Blackening the
+narrow faces makes the detector fast: \SI{65}{\percent} of the
+photoelectrons arrive within \SI{3}{\nano\second} and \SI{90}{\percent}
+within \SI{5.65}{\nano\second}, against \SI{15}{\percent} and
+\SI{20.35}{\nano\second} for the control---a factor \num{3.6} in $t_{90}$. The
+reason is the same drain that costs the light: the surviving photons are the
+ones that reach a sensor directly, without the long random walk that a
+reflective cavity imposes. The diffuse narrow faces sit in between
+(\SI{25}{\percent}, \SI{11.85}{\nano\second}), consistent with a light path
+that is lengthened but not eliminated.
+
+The fibre designs are the slowest of the ten: \num{2.3}--\SI{5.4}{\percent}
+within \SI{3}{\nano\second} and $t_{90}$ of
+\SI{24}{\nano\second}--\SI{28}{\nano\second}, with
+\num{91}--\SI{96}{\percent} of the photoelectrons created by
+\gfour's \texttt{G4OpWLS} rather than by scintillation in the plate. That
+fraction is the quantitative statement of the price noted in
+Sec.~\ref{sec:design-yield}: the fibre designs are not scintillation counters
+with a light guide, they are wavelength-shifting counters, and the
+\SI{7}{\nano\second} exponential re-emission sets the resolution of their
+timing. The glossy pair is systematically slower than the TiO$_2$ pair
+(\SI{28.15}{\nano\second} against \SI{25.05}{\nano\second} at four
+channels), because the specular clamp reflects the light back into the plate
+at the mirror angle, so it has to randomise over several bounces before it can
+enter a fibre, whereas the paint randomises the direction at the first
+encounter.
+
+% ---------------------------------------------------------------------
+\subsection{Position resolution, and the trade-off the four knobs obey}
+\label{sec:design-recon}
+% ---------------------------------------------------------------------
+
+Figure~\ref{fig:designrecon}(a) applies the estimator of
+Sec.~\ref{sec:recon} to each design's own channel pattern. The single-axis rms
+errors fall into three groups that the yields alone do not predict. The two
+\SI{6}{\milli\meter} designs are best, \SI{11.5}{\milli\meter} and
+\SI{11.8}{\milli\meter}, with the control at \SI{15.9}{\milli\meter}; the
+black-edge designs follow at \SI{18.8}{\milli\meter} and
+\SI{17.4}{\milli\meter} and the diffuse-edge design at
+\SI{19.9}{\milli\meter}. The four-sided fibre designs split by clamp: with the
+white clamp they reach \SI{13.9}{\milli\meter} and
+\SI{13.8}{\milli\meter} on a fifth of the control's light, while with the
+mirror clamp they collapse to \SI{60.7}{\milli\meter} and
+\SI{55.2}{\milli\meter}, barely better than the \SI{72}{\milli\meter} prior of
+a plate that carries no position information at all. The statistical error of a
+resolution measured on \num{5000} test events is
+$\sigma_x/\sqrt{2N_{\rm test}}\approx\SI{0.2}{\milli\meter}$, so every
+difference quoted here is significant.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{figures/fig_opt_recon.pdf}
+\caption{Left: single-axis position resolution obtained from each design's own
+channel pattern with the combined estimator of Sec.~\ref{sec:recon}, on
+\num{5000} held-out events. The dashed and dotted lines are the config-1
+glossy (\SI{15.9}{\milli\meter}) and TiO$_2$ (\SI{11.9}{\milli\meter})
+references of Table~\ref{tab:recon} (v6p5, eight SiPMs): the first is the
+resolution of the layout the control reproduces, the second is what a wrapper
+that mixes light achieves with a fifth of the control's yield. Right: the same
+resolutions against the per-event yield, with every design labelled; the grey
+line is the Pareto lower envelope. The two mirror-clamp fibre designs are the
+points whose \SI{55}{}--\SI{61}{\milli\meter} approaches the
+\SI{72}{\milli\meter} prior of a plate with no position information.}
+\label{fig:designrecon}
+\end{figure}
+
+The per-estimator decomposition separates three ways in which the light can
+carry the position. Where the light is shared, the \emph{amplitude} does the
+work: the white-clamp fibre designs reach \SI{13.9}{\milli\meter} and
+\SI{12.4}{\milli\meter} with the pulse integral alone and are poor with timing
+(\SI{30}{}--\SI{38}{\milli\meter} for the first arrival), because every
+channel receives a share of every event and the shares themselves encode the
+entry point. Where the light is ballistic the reverse holds: in the control and
+the \SI{6}{\milli\meter} designs the pulse integral is the worst estimator
+(\SI{46.2}{\milli\meter} and \SI{30.3}{\milli\meter}) and the arrival time the
+best (\SI{17.4}{\milli\meter} and \SI{13.7}{\milli\meter}), as in the v6p5
+plate of Sec.~\ref{sec:recon}. Blackening the narrow faces removes the late
+light; with only prompt photons and between \num{8} and \num{9}
+photoelectrons per channel the arrival-time spread is dominated by
+photoelectron jitter rather than by the path length, so the timing estimators
+degrade to \SI{26}{\milli\meter} and the design falls back on an amplitude that
+sees one bright channel with large relative fluctuations. The mirror clamp is
+the third case: it transports light from any entry point to the read-out
+bundle, so each channel measures a line integral over the whole plate and
+\emph{every} estimator fails (\SI{56}{}--\SI{69}{\milli\meter}). The linear
+opposite-pair observable of Sec.~\ref{sec:recon} corroborates this from the
+same data---its slope is \SI{8.7e-3}{} per millimetre with the white clamp and
+\SI{4.3e-4}{} with the mirror, a factor \num{20}---so the collapse is a
+property of the optics, not of the estimator.
+
+Light therefore buys resolution only when it is partitioned. Within the
+direct-coupled family the scaling is pure statistics: the \SI{6}{\milli\meter}
+design improves the control's \SI{15.9}{\milli\meter} to
+\SI{11.5}{\milli\meter}, against the \num{1.45} predicted by $\sqrt{N}$ for
+\num{2.1} times the light (measured \num{1.39}), and the diffuse-edge design's
+\num{340}~\pe\ predict \SI{20.6}{\milli\meter} against
+\SI{19.9}{\milli\meter} measured. The white-clamp fibre design breaks that
+scaling: \SI{13.8}{\milli\meter} with \num{115}~\pe\ is about \num{6.6} times
+more position information per photoelectron than the control. Figure
+\ref{fig:designrecon}(b) puts the two observables together; the Pareto front is
+formed by the \SI{6}{\milli\meter} pair, the white-clamp fibre pair and the
+black-edge pair, each at a different corner, and the control lies inside it.
+
+% ---------------------------------------------------------------------
+\subsection{What to build}
+\label{sec:design-what}
+% ---------------------------------------------------------------------
+
+Read together, the ten completed designs answer the builder's question in a way that
+the wrapper study could not. One knob improves almost everything; the others
+each buy a single property at a measurable price, and one buys nothing at all.
+
+The SiPM area is the only free lunch: \num{2.1} times the light,
+\num{1.4} times better position resolution---precisely the $\sqrt{N}$ gain
+that the extra photons predict---and \num{1.8} times faster response, for
+\num{2.25} times the active area, at a \SI{7}{\percent} higher exposure
+contrast. Where the budget allows it, the larger sensor is strictly better on
+everything except uniformity.
+
+Blackening the narrow faces is the opposite: it is the fastest design in the
+study, \num{3.6} times faster than the control, and it costs
+\SI{88}{\percent} of the light, nearly triples the relative width of the
+yield and gives the worst position resolution of the direct-coupled designs
+(\SI{18.8}{\milli\meter} against \SI{15.9}{\milli\meter}). With
+\num{69}~\pe/event it is still above the single-photoelectron threshold
+everywhere on the plate, so the loss is affordable if the observable is time
+rather than charge---it is the right choice for a detector that has to
+timestamp a muon, not for one that has to count or image photons.
+
+The diffuse narrow faces are dominated on every count: they cost
+\SI{40}{\percent} of the light to the specular alternative, leave the relative
+width slightly worse (\num{0.28} against \num{0.25}) and the resolution a
+quarter worse (\SI{19.9}{\milli\meter}), and buy no uniformity. If the goal is
+to avoid a black edge because the light is needed, the specular edge is better
+in every observable measured here. The only argument for the paint is
+mechanical---it is a diffuse reflector and does not need optical contact with a
+mirror---and that argument is not tested by this campaign.
+
+The fibre read-out on every face is the only design that improves yield and
+uniformity together relative to its own single-sided counterpart
+(\num{1.57} and \num{2.53} times the yield of configs~3 and~4, with the
+flattest field of the study), and it holds the record for position information
+per photoelectron (\num{6.6} times the control). It pays for that with the
+slowest response in the study and with read-out hardware on all four faces.
+The clamp finish is not a detail: the same geometry with a mirror clamp
+collects more than twice as much light and loses the position information
+entirely, so the diffuse clamp is what turns the fibre from a light guide into
+a position sensor.
+
+No design beats the control on all four observables. The \SI{6}{\milli\meter}
+design dominates it on yield, timing and resolution and loses only on the
+\SI{7}{\percent} contrast cost; the Pareto front of
+Fig.~\ref{fig:designrecon} is the honest summary of the rest. The study
+therefore does not discover a detector that is better than the one the
+measurement describes in every respect---it quantifies what each deviation from
+it would cost, which is the question a monitor designer actually asks.
 
 % =====================================================================
 \section{Caveats and open items}
@@ -3167,11 +4027,11 @@ retry.
 A \gfour\ optical simulation of a
 \SI{250}{\milli\meter}$\times$\SI{250}{\milli\meter}$\times$\SI{10}{\milli\meter}
 polished plastic scintillator read out by side-mounted SiPMs has been developed
-and applied to a full matrix of four SiPM layouts and four reflector treatments
-at three beam positions (\num{120000} events), complemented by a uniform
-whole-plate irradiation (\num{400000} events), a \num{99000}-event bare-contact
-scan and an \num{18000}-event aluminium-backing scan (\num{637000} events in
-total). The optical physics---unified surface model, finish selection,
+and applied to a full matrix of five read-out layouts and four reflector
+treatments at three beam positions (\num{150000} generated events), complemented
+by a uniform whole-plate irradiation (\num{500000} generated events), a
+\num{99000}-event bare-contact scan and an \num{18000}-event aluminium-backing
+scan (\num{767000} generated events in total). The optical physics---unified surface model, finish selection,
 photocathode PDE via the boundary process, and per-event photon
 accounting---has been verified against the \gfour\ source.
 
@@ -3198,10 +4058,13 @@ experimentally observed ordering
 \]
 glossy paper being the brightest and the most uniform wrapper, air-backed
 aluminium within \SI{92}{\percent} of it, and the contact-limited bare plate
-the weakest. The measured statement that the bare configuration is the only
-one to fail the \SI{80}{\percent} detection-efficiency criterion is reproduced
-as well, and is shown to be a statement about the *threshold window* rather
-than about a single number.
+the weakest. A fifth layout, Config~2 (mod), truncates the four corners at
+\SI{45}{\degree} and puts one sensor on each cut face; it keeps the same
+ordering and within \SI{4}{\percent} the total light of config~2, but it does
+not make the plate a better mixer. The measured statement that the bare
+configuration is the only one to fail the \SI{80}{\percent}
+detection-efficiency criterion is reproduced as well, and is shown to be a
+statement about the \emph{threshold window} rather than about a single number.
 
 Underneath the ordering there is a single mechanism, and it organises the rest
 of the results. Two axes matter: the \emph{survival} of the trapped light,
@@ -3215,7 +4078,10 @@ from the interaction point to the nearest collection site: the response tracks
 it whenever the cavity is not a perfect light mixer, which is why the full-plate
 contrast runs from \num{1.07} (glossy) to \num{10.90} (diffuse paint in the
 single-sided layout), and why the three-patch position trend of the paint
-reverses its sign between the four-sided and the single-sided layouts.
+reverses its sign between the four-sided and the single-sided layouts. The
+corner-cut layout is the direct confirmation: its instrumented corner is the
+brightest patch for every wrapper and its centre is the darkest point of the
+plate.
 
 The same mechanism makes the eight channels of config~1 a position detector.
 With a symmetry-augmented, relevance-weighted nearest-neighbour regression,

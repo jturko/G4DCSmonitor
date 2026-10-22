@@ -20,6 +20,11 @@
 //
 // Args: dir (default "slurm/data_output_whole"), cfg (default 1),
 //       cellSize_mm (default 5), halfExtent_mm (default 125).
+//       cfg may be 1, 2, 12 (corner-cut, tag c12; "Config 2 (mod)"), 3 or 4.
+//       Config 12 is the convex octagon (square corners truncated by a 12 mm
+//       leg); its four SiPMs sit on the 45-degree faces at (+-119,+-119) mm and
+//       are drawn as diamonds.  A missing/partial c12 file is skipped with a
+//       warning: no panel is fabricated for it.
 //
 // Author: G4DCSmonitor analysis tooling.
 
@@ -28,6 +33,7 @@
 #include <TFile.h>
 #include <TH2D.h>
 #include <TPad.h>
+#include <TPolyLine.h>
 #include <TStyle.h>
 #include <TSystem.h>
 #include <TSystemDirectory.h>
@@ -50,6 +56,11 @@ namespace {
 
 const char* kReflName[4] = {"none", "TiO2", "Al", "glossy"};
 
+// Config 12 (preset 12, tag c12): each square corner is truncated by a 45-deg
+// cut with a 12 mm leg, leaving a convex octagon whose diagonal face centres
+// sit at (+-119, +-119) mm.  The four SiPMs are flush on those faces.
+const double kCornerLeg = 12.0;
+
 std::vector<std::pair<double, double>> sipmTiles(int cfg, double half)
 {
     const double H = half;
@@ -63,6 +74,15 @@ std::vector<std::pair<double, double>> sipmTiles(int cfg, double half)
         case 2:
             t = {{ H, -u}, {-H,  u}, { u,  H}, {-u, -H}};
             break;
+        case 12: {
+            // Corner-cut octagon: one SiPM on each 45-degree face.  Report-frame
+            // order = sipmHits channel order:
+            //   0 BR (+119,-119)  1 TR (+119,+119)
+            //   2 TL (-119,+119)  3 BL (-119,-119)
+            const double c = H - 0.5 * kCornerLeg;   // 119 mm
+            t = {{ c, -c}, { c,  c}, {-c,  c}, {-c, -c}};
+            break;
+        }
         case 3:
             t = {{-u, H}, { u, H}};   // both on the top (+y) edge
             break;
@@ -109,13 +129,48 @@ std::vector<double> makeEdges(double span, double half, double cellSize)
     return e;
 }
 
-void drawOverlays(int cfg, double half, double side = 8.0, double gap = 2.0)
+// Physical slab outline: the plain square for configs 1-4, the convex octagon
+// (square corners cut by a 12 mm leg) for config 12.  The vertex order matches
+// the preset-12 G4ExtrudedSolid in the report frame.
+void drawSlabOutline(int cfg, double half)
 {
+    if (cfg == 12) {
+        const double a = half - kCornerLeg;      // 113 mm
+        double xs[8] = { half,  half,     a,    -a, -half, -half,    -a,     a};
+        double ys[8] = {   -a,     a,  half,  half,     a,   -a, -half, -half};
+        TPolyLine* oct = new TPolyLine(8, xs, ys);
+        oct->SetFillStyle(0);
+        oct->SetLineColor(kBlack);
+        oct->SetLineWidth(2);
+        oct->Draw("SAME");
+        return;
+    }
     TBox* slab = new TBox(-half, -half, half, half);
     slab->SetFillStyle(0);
     slab->SetLineColor(kBlack);
     slab->SetLineWidth(2);
     slab->Draw("SAME");
+}
+
+// Diamond marker: a square of side `side` rotated 45 deg, so its sides align
+// with the corner-cut faces.  Vertices at (cx+-d, cy) and (cx, cy+-d).
+void drawDiamond(double cx, double cy, double side = 8.0)
+{
+    const double d = 0.5 * side * std::sqrt(2.0);
+    double xs[5] = {cx + d, cx, cx - d, cx, cx + d};
+    double ys[5] = {cy, cy + d, cy, cy - d, cy};
+    TPolyLine* m = new TPolyLine(5, xs, ys);
+    m->SetFillColor(kBlack);
+    m->SetFillStyle(1001);
+    m->SetLineColor(kBlack);
+    m->SetLineWidth(1);
+    m->Draw("F");
+    m->Draw("L SAME");
+}
+
+void drawOverlays(int cfg, double half, double side = 8.0, double gap = 2.0)
+{
+    drawSlabOutline(cfg, half);
 
     if (cfg == 4) {
         // Config 4 is not a set of discrete SiPMs but a WLS fibre clamp: a bar
@@ -137,6 +192,14 @@ void drawOverlays(int cfg, double half, double side = 8.0, double gap = 2.0)
         sipm->SetLineColor(kBlack);
         sipm->SetLineWidth(1);
         sipm->Draw("SAME");
+        return;
+    }
+
+    if (cfg == 12) {
+        // The four sensors are flush on the diagonal faces; draw a diamond at
+        // each (+-119, +-119) mm, rotated 45 deg to match the face.
+        for (const auto& t : sipmTiles(cfg, half))
+            drawDiamond(t.first, t.second, side);
         return;
     }
 
@@ -181,6 +244,7 @@ void plot_whole_slab(const char* dir = "slurm/data_output_whole",
     const TString prefix = TString::Format("muon_whole_out_c%d_r", cfg);
     std::vector<int> refls;
     std::map<int, TH2D*> prodMap, collMap;
+    bool listed[4] = {false, false, false, false};
 
     for (auto* o : *files) {
         TString fname = o->GetName();
@@ -188,11 +252,24 @@ void plot_whole_slab(const char* dir = "slurm/data_output_whole",
 
         int refl = TString(fname(fname.Index("_r") + 2, 1)).Atoi();
         if (refl < 0 || refl > 3) continue;
+        listed[refl] = true;
 
         TFile* f = TFile::Open(TString(dir) + "/" + fname, "READ");
-        if (!f || f->IsZombie()) { delete f; continue; }
+        if (!f || f->IsZombie()) {
+            std::cerr << "warning: cfg" << cfg << " " << kReflName[refl]
+                      << ": unreadable/partial " << fname
+                      << "; skipping (no panel)\n";
+            delete f;
+            continue;
+        }
         TTree* tree = (TTree*)f->Get("sipmHits");
-        if (!tree) { delete f; continue; }
+        if (!tree || tree->GetEntries() == 0) {
+            std::cerr << "warning: cfg" << cfg << " " << kReflName[refl]
+                      << ": no sipmHits entries in " << fname
+                      << "; skipping (no panel)\n";
+            delete f;
+            continue;
+        }
 
         int evt = 0, det = 0, nDet = 0, nProd = 0;
         double mx = 0., my = 0.;
@@ -202,19 +279,6 @@ void plot_whole_slab(const char* dir = "slurm/data_output_whole",
         tree->SetBranchAddress("muonX", &mx);
         tree->SetBranchAddress("muonY", &my);
         tree->SetBranchAddress("nProduced", &nProd);
-
-        if (!prodMap.count(refl)) {
-            const TString nm = kReflName[refl];
-            prodMap[refl] = new TH2D(TString::Format("h_wprod_c%d_r%d", cfg, refl),
-                                     TString::Format("#gamma, cfg%d %s;x [mm];y [mm]", cfg, nm.Data()),
-                                     nb, edges.data(), nb, edges.data());
-            collMap[refl] = new TH2D(TString::Format("h_wcoll_c%d_r%d", cfg, refl),
-                                     TString::Format("p.e., cfg%d %s;x [mm];y [mm]", cfg, nm.Data()),
-                                     nb, edges.data(), nb, edges.data());
-            prodMap[refl]->SetDirectory(nullptr);
-            collMap[refl]->SetDirectory(nullptr);
-            refls.push_back(refl);
-        }
 
         std::map<int, int> evProd;
         std::map<int, std::pair<double, double>> evPos;
@@ -229,6 +293,28 @@ void plot_whole_slab(const char* dir = "slurm/data_output_whole",
             }
             evColl[evt] += nDet;
         }
+        if (evProd.empty()) {
+            // A tree with rows but no slab-0 (det==0) entry cannot produce a
+            // meaningful map; treat it as partial rather than fabricating a
+            // zero panel.
+            std::cerr << "warning: cfg" << cfg << " " << kReflName[refl]
+                      << ": no usable events in " << fname
+                      << "; skipping (no panel)\n";
+            delete f;
+            continue;
+        }
+        if (!prodMap.count(refl)) {
+            const TString nm = kReflName[refl];
+            prodMap[refl] = new TH2D(TString::Format("h_wprod_c%d_r%d", cfg, refl),
+                                     TString::Format("#gamma, cfg%d %s;x [mm];y [mm]", cfg, nm.Data()),
+                                     nb, edges.data(), nb, edges.data());
+            collMap[refl] = new TH2D(TString::Format("h_wcoll_c%d_r%d", cfg, refl),
+                                     TString::Format("p.e., cfg%d %s;x [mm];y [mm]", cfg, nm.Data()),
+                                     nb, edges.data(), nb, edges.data());
+            prodMap[refl]->SetDirectory(nullptr);
+            collMap[refl]->SetDirectory(nullptr);
+            refls.push_back(refl);
+        }
         TH2D* prod = prodMap[refl];
         TH2D* coll = collMap[refl];
         for (const auto& kv : evProd) {
@@ -240,7 +326,16 @@ void plot_whole_slab(const char* dir = "slurm/data_output_whole",
         delete f;
     }
 
-    if (refls.empty()) { std::cerr << "No whole-slab file for cfg " << cfg << " in " << dir << "\n"; return; }
+    for (int r = 0; r < 4; ++r)
+        if (!listed[r])
+            std::cerr << "warning: cfg" << cfg << " " << kReflName[r]
+                      << ": whole-slab file missing in " << dir
+                      << "; no panel drawn\n";
+    if (refls.empty()) {
+        std::cerr << "No usable whole-slab file for cfg " << cfg << " in "
+                  << dir << " (partial files are skipped; nothing written)\n";
+        return;
+    }
     std::sort(refls.begin(), refls.end());
 
     std::map<int, TH2D*> effMap;

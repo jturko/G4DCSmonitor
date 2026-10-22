@@ -1,0 +1,98 @@
+# =============================================================================
+# vis_design_wls11.mac -- head-less OpenGL render of the v7 "c11_wls8_glossy"
+# design: four-sided WLS fibre clamp, TWO read-out SiPMs per side (8 total,
+# dual-ended), 250 x 250 x 10 mm plate, glossy wrapper, white clamp.
+#
+#   ./build/G4DCSmonitor macros/vis_design_wls11.mac
+#   (or: bash macros/render_designs.sh)
+#
+# Writes report/figures/design_ogl_wls11.png (1200 x 1200 px, white background,
+# surface style, no edges, geometry only -- no beam-on).
+#
+# This is the dual-ended twin of macros/vis_design_wls10.mac: geometry knobs,
+# visibility hides, colours and CAMERA are identical, and the single difference
+# is /preset 11 instead of /preset 10.  In preset 11 the fibre centreline is
+# BentPathDual, i.e. it has a converging bundle at BOTH ends (instead of one
+# bundle end and one straight spread end closed by Al mirror caps).  At the
+# rendered -X/-Y corner, side 0's read-out end is the same in both designs,
+# while side 1's non-read-out end changes from a straight 2.5 mm-pitch spread
+# run + mirror caps (preset 10) into a 41 mm convergence ramp + read-out SiPM
+# (preset 11).  The two PNGs therefore differ exactly over that ramp and the
+# added sensor; measured, 98.9% of the changed pixels lie in x[781,1199]
+# y[425,712] (the rest is isolated fibre-edge antialiasing).  The remaining
+# added SiPMs sit at the other (out-of-frame) ends.
+#
+# All other notes (tessellated vis-only fibres + why setFibreAnalytic false
+# follows the preset, the three hidden LVs, GreaseLV also being the read-out pad
+# LV, expected GeomVol1002 overlap warnings, opacity-1 / no-alpha policy, mirror
+# cap display colour, camera parameters) are documented in the long header of
+# macros/vis_design_wls10.mac and apply unchanged here.
+#
+# CAMERA: viewpointThetaPhi 65 225, targetPoint -127 -110 0 mm, zoomTo 4.5,
+# upVector 0 0 1 (identical to vis_design_wls10.mac).  /setRotation is absent.
+# =============================================================================
+
+/run/numberOfThreads 1
+
+# ---- geometry: plate + four-sided WLS clamp, dual-ended read-out ------------
+/dcs-monitor/det/setPosition 0 0 0 mm
+/dcs-monitor/det/muonScint/add
+/dcs-monitor/det/muonScint/setSize 250 250 10 mm
+/dcs-monitor/det/muonScint/preset 11
+# VIS-ONLY: tessellated solids render; analytic cut-tube booleans do not.
+/dcs-monitor/det/muonScint/setFibreAnalytic false
+/dcs-monitor/det/muonScint/setReflector 3
+/dcs-monitor/det/muonScint/setWrap true
+/dcs-monitor/det/muonScint/setEdgeReflector same
+/dcs-monitor/det/muonScint/setCouplingIndex 1.55
+/dcs-monitor/det/muonScint/setClampSurface white
+/dcs-monitor/det/muonScint/setBareContactFraction 0.045
+/dcs-monitor/det/muonScint/setAlBacking air
+
+/run/initialize
+
+# ---- head-less offscreen rendering (no GUI) ---------------------------------
+/vis/open TSG_OFFSCREEN 2000x1500
+/vis/tsg/offscreen/set/format zb_png
+/vis/tsg/offscreen/set/size 1200 1200
+
+/vis/verbose errors
+/vis/viewer/set/autoRefresh false
+/vis/viewer/set/background white
+/vis/drawVolume
+/vis/viewer/set/style surface
+/vis/viewer/set/edge false
+/vis/viewer/set/auxiliaryEdge false
+/vis/viewer/set/upVector 0 0 1
+/vis/tsg/offscreen/set/transparency false
+
+# ---- opacity 1 everywhere drawn (removes alpha-dependent appearance) --------
+/vis/geometry/set/colour MuonScintLV 0 0.45 0.75 1.0 1
+/vis/geometry/set/colour WLSFibreCladLV_0 0 0.2 0.9 0.5 1
+/vis/geometry/set/colour WLSFibreCladLV_1 0 0.2 0.9 0.5 1
+/vis/geometry/set/colour WLSFibreCladLV_2 0 0.2 0.9 0.5 1
+/vis/geometry/set/colour WLSFibreCladLV_3 0 0.2 0.9 0.5 1
+/vis/geometry/set/colour WLSFibreInnerLV_0 0 0.2 0.9 0.5 1
+/vis/geometry/set/colour WLSFibreInnerLV_1 0 0.2 0.9 0.5 1
+/vis/geometry/set/colour WLSFibreInnerLV_2 0 0.2 0.9 0.5 1
+/vis/geometry/set/colour WLSFibreInnerLV_3 0 0.2 0.9 0.5 1
+/vis/geometry/set/colour WLSFibreCoreLV_0 0 0.7 1.0 0.9 1
+/vis/geometry/set/colour WLSFibreCoreLV_1 0 0.7 1.0 0.9 1
+/vis/geometry/set/colour WLSFibreCoreLV_2 0 0.7 1.0 0.9 1
+/vis/geometry/set/colour WLSFibreCoreLV_3 0 0.7 1.0 0.9 1
+/vis/geometry/set/colour WLSFibreMirrorCapLV 0 0.55 0.55 0.55 1
+/vis/geometry/set/colour WLSClampLV 0 0.15 0.15 0.15 1
+
+# ---- hide clamp + film + read-out grease pads -------------------------------
+/vis/geometry/set/visibility WLSClampLV 0 false
+/vis/geometry/set/visibility WLSCoupleFilmLV 0 false
+/vis/geometry/set/visibility GreaseLV 0 false
+
+# ---- identical camera to vis_design_wls10.mac -------------------------------
+/vis/tsg/offscreen/set/file report/figures/design_ogl_wls11.png
+/vis/viewer/set/viewpointThetaPhi 65 225
+/vis/viewer/set/targetPoint -127 -110 0 mm
+/vis/viewer/zoomTo 4.5
+/vis/viewer/flush
+
+/vis/verbose confirmations

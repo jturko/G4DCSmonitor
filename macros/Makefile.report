@@ -113,13 +113,18 @@ F_reconstruction  := $(FIGDIR)/fig_recon_waveforms.pdf \
                       $(FIGDIR)/position_observables.csv \
                       $(FIGDIR)/position_class_observables.csv
 
+# Group 10b: C1/C2/C2(mod) reconstruction comparison (reads the three CSVs)
+F_recon-layouts   := $(FIGDIR)/fig_recon_layouts.pdf \
+                      $(FIGDIR)/recon_layouts.csv
+
 ALL_FIGURES := $(F_sipm-layouts) $(F_irradiation) \
                $(F_optical-spectra) $(F_optical-timing) $(F_reflector) $(F_refractive) \
                $(F_report-figs) $(F_pe-grid) $(F_matrix-positions) \
                $(F_contact) $(F_al) $(F_efficiency-grids) \
                $(F_whole-slabs) $(F_whole-uniformity) $(F_whole-yield) \
                $(F_persistence) $(F_wavelength-time) $(F_avg-waveform) \
-               $(F_nearest-sensor) $(F_de-threshold) $(F_reconstruction)
+               $(F_nearest-sensor) $(F_de-threshold) $(F_reconstruction) \
+               $(F_recon-layouts)
 
 # ----- rules -------------------------------------------------------------
 .PHONY: all figures pdf clean clean-figs help
@@ -173,7 +178,7 @@ wavelength-time: $(F_wavelength-time)
 avg-waveform:    $(F_avg-waveform)
 nearest-sensor:  $(F_nearest-sensor)
 de-threshold:    $(F_de-threshold)
-reconstruction:  $(F_reconstruction)
+reconstruction:  $(F_reconstruction) $(F_recon-layouts)
 
 # ensure FIGDIR exists before any rule fires
 $(FIGDIR):
@@ -276,6 +281,14 @@ $(F_de-threshold) &: $(MACROS)/de_threshold.C $(STYLE_H) | $(FIGDIR)
 $(F_reconstruction) &: $(MACROS)/position_reconstruction.C $(STYLE_H) | $(FIGDIR)
 	@echo "=== position_reconstruction (ACLiC, k-NN) ==="
 	$(ROOT_RUN) "$(MACROS)/position_reconstruction.C+(\"$(WHOLE_DIR)\",\"$(@D)\",25000)"
+
+# Fast: redraws the comparison from the three reconstruction CSVs.
+$(F_recon-layouts) &: $(MACROS)/recon_layouts.C $(STYLE_H) \
+                      $(FIGDIR)/position_reconstruction.csv \
+                      $(FIGDIR)/position_reconstruction_c2.csv \
+                      $(FIGDIR)/position_reconstruction_c12.csv | $(FIGDIR)
+	@echo "=== recon_layouts (C1/C2/C2mod comparison) ==="
+	$(ROOT_RUN) "$(MACROS)/recon_layouts.C+(\"$(@D)\")"
 
 # ---- PDF rule ---------------------------------------------------------
 # pdflatex needs the .aux/.toc from the first pass to resolve refs/toc.

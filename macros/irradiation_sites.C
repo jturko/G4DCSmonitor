@@ -18,11 +18,13 @@
 #include <TLine.h>
 #include <TLatex.h>
 #include <TPad.h>
+#include <TPolyLine.h>
 #include <TStyle.h>
 #include <TSystem.h>
 #include <TString.h>
 
 #include <vector>
+#include <cmath>
 
 // Shared ROOT style (fonts, ticks, title conventions).  Located via
 // ROOT_INCLUDE_PATH (set by macros/build_report_figures.sh to ${HOME}/root-work).
@@ -31,6 +33,9 @@
 namespace {
 const double kHalf = 125.0;      // slab half-extent [mm]
 const double kPatch = 25.0;      // beam half-width [mm] (50x50 mm patch)
+const double kCutLeg = 12.0;     // Config 2 (mod) 45-deg corner-cut leg [mm]
+const double kCutVertex = kHalf - kCutLeg;          // 113 mm
+const double kCutFaceCentre = kHalf - 0.5 * kCutLeg; // 119 mm (BR face centre)
 
 struct Site { double x, y; const char* label; };
 
@@ -79,6 +84,37 @@ void irradiation_sites(const char* outdir = "report/figures")
     vy->SetLineColor(kGray + 1); vy->SetLineStyle(2); vy->SetLineWidth(1);
     hx->Draw("SAME"); vy->Draw("SAME");
 
+    // Config 2 (mod): the four square corners are truncated by a 45-deg cut of
+    // 12 mm leg, leaving an octagon |x|+|y| <= 238 mm.  Lightly shade the four
+    // removed triangles and overlay the octagon as a dashed grey outline; the
+    // ROI patches and labels below still refer to the full square footprint.
+    const int csx[4] = { 1,  1, -1, -1};
+    const int csy[4] = {-1,  1,  1, -1};
+    for (int k = 0; k < 4; ++k) {
+        const double sx = csx[k], sy = csy[k];
+        double tx[4] = {sx * kHalf, sx * kCutVertex, sx * kHalf, sx * kHalf};
+        double ty[4] = {sy * kCutVertex, sy * kHalf, sy * kHalf, sy * kCutVertex};
+        TPolyLine* fill = new TPolyLine(4, tx, ty);
+        fill->SetFillColorAlpha(kGray, 0.22);
+        fill->SetLineColor(kGray);
+        fill->Draw("F");
+        TPolyLine* cut = new TPolyLine(4, tx, ty);
+        cut->SetLineColor(kGray + 1);
+        cut->SetLineStyle(2);
+        cut->SetLineWidth(1);
+        cut->Draw("SAME");
+    }
+
+    double ox[9] = { kHalf, kHalf, kCutVertex, -kCutVertex,
+                    -kHalf, -kHalf, -kCutVertex, kCutVertex, kHalf};
+    double oy[9] = {-kCutVertex, kCutVertex, kHalf, kHalf,
+                     kCutVertex, -kHalf, -kHalf, -kHalf, -kCutVertex};
+    TPolyLine* oct = new TPolyLine(9, ox, oy);
+    oct->SetLineColor(kGray + 2);
+    oct->SetLineStyle(2);
+    oct->SetLineWidth(2);
+    oct->Draw("SAME");
+
     // Beam patches: filled squares marking the 50x50 mm illuminated regions.
     const int cols[3] = {PetroffPalette::getP6(0),
                          PetroffPalette::getP6(1),
@@ -122,6 +158,50 @@ void irradiation_sites(const char* outdir = "report/figures")
         t->SetTextColor(kBlack);
         t->Draw("SAME");
     }
+
+    // Note for the corner-cut layout, placed in the free top-left band, below
+    // the truncated TL triangle and clear of the ROI 1 labels near x = 0.
+    TLatex* cutNote = new TLatex(-120.0, 106.0, "corners cut in Config 2 (mod)");
+    cutNote->SetTextSize(0.030);
+    cutNote->SetTextAlign(11);       // left, bottom
+    cutNote->SetTextColor(kGray + 2);
+    cutNote->Draw("SAME");
+
+    // Config 2 (mod) SiPM on the BR chamfer: a small diamond flush against the
+    // 45-deg face at (119,-119), with a short leader line to its label.  The
+    // corner ROI therefore borders an instrumented chamfer in that layout.
+    const double inv = 1.0 / std::sqrt(2.0);
+    const double nx =  inv, ny = -inv;   // outward normal of the BR cut face
+    const double tgx = inv, tgy = inv;   // along the cut face
+    const double half = 3.0;             // 6 mm schematic marker side
+    const double fx = kCutFaceCentre, fy = -kCutFaceCentre;
+    double mx[4], my[4];
+    mx[0] = fx + half * tgx;
+    my[0] = fy + half * tgy;
+    mx[1] = fx - 2.0 * half * nx + half * tgx;
+    my[1] = fy - 2.0 * half * ny + half * tgy;
+    mx[2] = fx - 2.0 * half * nx - half * tgx;
+    my[2] = fy - 2.0 * half * ny - half * tgy;
+    mx[3] = fx - half * tgx;
+    my[3] = fy - half * tgy;
+    TPolyLine* marker = new TPolyLine(4, mx, my);
+    marker->SetFillColor(kBlack);
+    marker->SetLineColor(kBlack);
+    marker->SetLineWidth(1);
+    marker->Draw("F");
+    marker->Draw("SAME");
+
+    TLine* leader = new TLine(110.0, -108.0, 117.0, -117.0);
+    leader->SetLineColor(kGray + 2);
+    leader->SetLineStyle(2);
+    leader->SetLineWidth(1);
+    leader->Draw("SAME");
+
+    TLatex* markLab = new TLatex(110.0, -108.0, "C2 (mod) SiPM");
+    markLab->SetTextSize(0.026);
+    markLab->SetTextAlign(31);       // right, bottom
+    markLab->SetTextColor(kBlack);
+    markLab->Draw("SAME");
 
     c->SaveAs(TString::Format("%s/irradiation_sites.pdf", outdir));
     c->SaveAs(TString::Format("%s/irradiation_sites.png", outdir));

@@ -1,0 +1,83 @@
+# =============================================================================
+# vis_design_c1_6mm.mac -- head-less OpenGL render of the 6 mm sensor variant
+# of the v7 "c1_same_1p55" control design: Config-1 SiPM layout (8 sensors,
+# 2 per side) with a 6 x 6 mm active area, 250 x 250 x 10 mm plate, glossy
+# (reflective) wrapper.
+#
+# This is the 6 mm half of the sensor-size A/B pair.  It is identical to
+# macros/vis_design_c1_4mm.mac except for
+#     /dcs-monitor/det/muonScint/setSiPMSize 6 6 0.6 mm
+# and the output file name.  The camera, lighting, hidden volumes, scale bar
+# and rendering settings are identical, so the two PNGs compare directly.
+#
+#   ./build/G4DCSmonitor macros/vis_design_c1_6mm.mac
+#   (or: bash macros/render_designs.sh)
+#
+# Writes report/figures/design_ogl_c1_6mm.png (1200 x 1200 px, white background,
+# surface style, no edges, geometry only -- no beam-on).
+#
+# Camera rationale, lighting (top vs side face) and the 10 mm scale-bar
+# placement are documented in the long header of vis_design_c1_4mm.mac.
+# Summary: single-sensor close-up of the +X narrow face, sensor centre
+# (125.4, 62.5, 0) mm (preset 1, u = +0.5), viewpointThetaPhi 65 0,
+# zoomTo 13.5 (~26 mm frame).  The sensor is centred across the 10 mm face
+# (v = 0), so its top edge sits ~2 mm below the top/side boundary; it cannot
+# literally touch that edge.
+#
+# ORDER DEPENDENCE OF setSiPMSize: the command only stores fSiPMHalfX/Y; those
+# are read when the geometry is built (at /run/initialize).  Presets do not
+# touch them, so it works either before or after /preset -- but it MUST be
+# pre-init.
+# =============================================================================
+
+/run/numberOfThreads 1
+
+# ---- geometry: plate + Config-1 SiPM layout + glossy wrapper ----------------
+/dcs-monitor/det/setPosition 0 0 0 mm
+/dcs-monitor/det/muonScint/add
+/dcs-monitor/det/muonScint/setSize 250 250 10 mm
+/dcs-monitor/det/muonScint/preset 1
+# 6 x 6 mm active area (third component ignored: thickness is fixed at 0.6 mm)
+/dcs-monitor/det/muonScint/setSiPMSize 6 6 0.6 mm
+/dcs-monitor/det/muonScint/setReflector 3
+/dcs-monitor/det/muonScint/setWrap true
+/dcs-monitor/det/muonScint/setEdgeReflector same
+/dcs-monitor/det/muonScint/setCouplingIndex 1.55
+/dcs-monitor/det/muonScint/setClampSurface white
+/dcs-monitor/det/muonScint/setBareContactFraction 0.045
+/dcs-monitor/det/muonScint/setAlBacking air
+
+/run/initialize
+
+# ---- head-less offscreen rendering (no GUI) ---------------------------------
+/vis/open TSG_OFFSCREEN 2000x1500
+/vis/tsg/offscreen/set/format zb_png
+/vis/tsg/offscreen/set/size 1200 1200
+
+/vis/verbose errors
+/vis/viewer/set/autoRefresh false
+/vis/viewer/set/background white
+/vis/drawVolume
+/vis/viewer/set/style surface
+/vis/viewer/set/edge false
+/vis/viewer/set/auxiliaryEdge false
+/vis/viewer/set/upVector 0 0 1
+/vis/viewer/set/lightsVector 0.5 0 1
+/vis/tsg/offscreen/set/transparency false
+
+# ---- opacity 1 (no alpha-dependent appearance) + hide the coupling pads -----
+/vis/geometry/set/colour MuonScintLV 0 0.45 0.75 1.0 1
+/vis/geometry/set/visibility GreaseLV 0 false
+
+# No in-image scale bar: /vis/scene/add/scale draws a 1-px line with a 13-px
+# label, which is a hairline at the 150 pt print width.  The caption states
+# the field of view instead.
+
+# ---- identical camera to the 4 mm macro -------------------------------------
+/vis/tsg/offscreen/set/file report/figures/design_ogl_c1_6mm.png
+/vis/viewer/set/viewpointThetaPhi 65 0
+/vis/viewer/set/targetPoint 125.4 62.5 0 mm
+/vis/viewer/zoomTo 13.5
+/vis/viewer/flush
+
+/vis/verbose confirmations

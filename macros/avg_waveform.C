@@ -1,5 +1,5 @@
 // avg_waveform.C -- the average arrival-time waveform, one curve per SiPM
-// configuration (1-4), from the whole-plate irradiation.  This is the
+// configuration (1, 2, 12, 3, 4), from the whole-plate irradiation.  This is the
 // persistence map of persistence_map_grid.C averaged over events: for every
 // event the per-SiPM arrival times (sipmHits.tDetected) are summed over the
 // layout's SiPMs and histogrammed into 0.1 ns bins; averaging those per-event
@@ -9,11 +9,13 @@
 //     x = arrival time [ns]
 //     y = mean p.e. in that 0.1 ns bin (per event)
 //
-// All four configurations are drawn on the same axes (left: linear ordinate,
+// All five configurations are drawn on the same axes (left: linear ordinate,
 // right: logarithmic ordinate, which exposes the WLS-shifted late tail of
-// config 4).  Times are the Geant4 global times, so the common primary-muon
-// launch offset is shared by every curve and the features are the propagation,
-// scintillation and (for config 4) WLS re-emission delays.
+// config 4).  cfg12 (C2m) keeps P6(4) and a dashed line so it stays
+// identifiable where its tail overlaps the other curves.  Times are the
+// Geant4 global times, so the common primary-muon launch offset is shared by
+// every curve and the features are the propagation, scintillation and (for
+// config 4) WLS re-emission delays.
 //
 // Usage (batch):
 //   root -l -b -q 'macros/avg_waveform.C("slurm/data_v2.2/whole","report/figures",3)'
@@ -39,8 +41,18 @@
 #include "style.h"
 
 namespace {
-const char* kCfgName[5] = {"", "config 1 (8 SiPMs)", "config 2 (4 SiPMs)",
-                           "config 3 (2 SiPMs)", "config 4 (WLS + 1 SiPM)"};
+// Curve order: configs 1, 2, 12 (corner-cut "Config 2 (mod)"), 3, 4.
+const int kCfgOrder[5] = {1, 2, 12, 3, 4};
+const int kNPad      = 5;
+// Compact labels: the legend has to carry five entries.  cfg12 uses the
+// short form C2m; the report uses "Config 2 (mod)" in running text.
+const char* kCfgName[5] = {"config 1 (8 SiPMs)", "config 2 (4 SiPMs)",
+                           "C2m (4 diagonal SiPMs)", "config 3 (2 SiPMs)",
+                           "config 4 (WLS + 1 SiPM)"};
+
+// Config 1-4 keep P6(0..3); the corner-cut layout is P6(4).  Never call
+// getP6(cfg - 1) with cfg = 12.
+int cfgColor(int cfg) { return PetroffPalette::getP6(cfg == 12 ? 4 : cfg - 1); }
 }  // namespace
 
 void avg_waveform(const char* dir = "slurm/data_v2.2/whole",
@@ -60,18 +72,21 @@ void avg_waveform(const char* dir = "slurm/data_v2.2/whole",
     std::map<int, std::vector<double>> mean;   // cfg -> mean p.e. per time bin
     std::map<int, long> nEvt;                  // cfg -> number of events
 
-    for (int cfg = 1; cfg <= 4; ++cfg) {
+    for (int slot = 0; slot < kNPad; ++slot) {
+        const int cfg = kCfgOrder[slot];
         const TString fname = TString::Format("%s/muon_whole_out_c%d_r%d.root",
                                               dir, cfg, refl);
         TFile* f = TFile::Open(fname, "READ");
         if (!f || f->IsZombie()) {
-            std::cerr << "avg_waveform: cannot open " << fname << "\n";
+            std::cerr << "avg_waveform: cannot open " << fname
+                      << " -- omitting its curve\n";
             delete f;
             continue;
         }
         TTree* t = (TTree*)f->Get("sipmHits");
         if (!t || !t->GetBranch("tDetected")) {
-            std::cerr << "avg_waveform: no tDetected branch in " << fname << "\n";
+            std::cerr << "avg_waveform: no tDetected branch in " << fname
+                      << " -- omitting its curve\n";
             delete f;
             continue;
         }
@@ -115,8 +130,9 @@ void avg_waveform(const char* dir = "slurm/data_v2.2/whole",
     // Build one graph per config over the bin centres.
     double yMax = 0.0;
     std::map<int, TGraph*> g;
-    for (int cfg = 1; cfg <= 4; ++cfg) {
-        if (!mean.count(cfg)) continue;
+    for (int slot = 0; slot < kNPad; ++slot) {
+        const int cfg = kCfgOrder[slot];
+        if (!mean.count(cfg) || nEvt[cfg] <= 0) continue;
         const std::vector<double>& m = mean[cfg];
         auto* gr = new TGraph(ntb);
         for (int b = 0; b < ntb; ++b) {
@@ -124,8 +140,12 @@ void avg_waveform(const char* dir = "slurm/data_v2.2/whole",
             gr->SetPoint(b, tmin + (b + 0.5) * dt, y);
             if (y > yMax) yMax = y;
         }
-        gr->SetLineColor(PetroffPalette::getP6(cfg - 1));
+        gr->SetLineColor(cfgColor(cfg));
         gr->SetLineWidth(2);
+        // A distinct style keeps the fifth curve identifiable in both the
+        // linear and the logarithmic panel (colour alone is not enough once
+        // the late tails overlap).
+        if (cfg == 12) gr->SetLineStyle(2);
         g[cfg] = gr;
     }
     if (yMax <= 0.) yMax = 1.;
@@ -147,14 +167,17 @@ void avg_waveform(const char* dir = "slurm/data_v2.2/whole",
         fr->GetYaxis()->SetTitleSize(0.050); fr->GetXaxis()->SetTitleSize(0.050);
         fr->GetXaxis()->SetLabelSize(0.040);
         fr->GetYaxis()->SetLabelSize(0.040);
-        // Lift the legend bottom above the frame top (frame top sits at
-        // 1 - 0.30 = 0.70; was previously 0.695, kissing the frame).
-        auto* l = new TLegend(0.03, 0.72, 0.62, 0.995);
-        l->SetBorderSize(0); l->SetFillStyle(0); l->SetTextSize(0.040);
-        for (int cfg = 1; cfg <= 4; ++cfg) {
+        // Five entries in two columns, kept entirely above the frame top
+        // (frame top sits at 1 - 0.30 = 0.70) so no trace is covered.
+        auto* l = new TLegend(0.02, 0.735, 0.98, 0.995);
+        l->SetBorderSize(0); l->SetFillStyle(0);
+        l->SetTextSize(0.036);
+        l->SetNColumns(2);
+        for (int slot = 0; slot < kNPad; ++slot) {
+            const int cfg = kCfgOrder[slot];
             if (!g.count(cfg)) continue;
             g[cfg]->Draw("L SAME");
-            l->AddEntry(g[cfg], kCfgName[cfg], "l");
+            l->AddEntry(g[cfg], kCfgName[slot], "l");
         }
         l->Draw();
     };

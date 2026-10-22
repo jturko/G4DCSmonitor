@@ -30,6 +30,9 @@
 //          transported to the single read-out SiPM at the top-left corner.
 //          The collection aperture is therefore the line y = +125 mm, and the
 //          distance to it is 125 - y.
+//   cfg12: the corner-cut octagonal slab, with four SiPMs at the centres of
+//          the 45-degree diagonal faces, (+/-119, +/-119) mm, all aimed
+//          inward.  The distance is measured to those four sensor centres.
 //
 // Outputs
 //   fig_nearest_sensor.pdf   eps/<eps> versus d, one panel per layout, one
@@ -47,6 +50,7 @@
 #include <TGraph.h>
 #include <TGraphErrors.h>
 #include <TH1D.h>
+#include <TLatex.h>
 #include <TLegend.h>
 #include <TLine.h>
 #include <TMarker.h>
@@ -72,6 +76,7 @@ namespace {
 
 const double kHalf = 125.0;         // slab half-extent [mm]
 const double kEdge = 62.5;          // +/-50% of half-length [mm]
+const double kCorner = 119.0;       // corner-cut sensor centre, face distance [mm]
 const int    kNBin = 10;            // 25 mm bins over 0-250 mm
 const double kBinW = 25.0;
 const int    kCellN = 5;            // 5x5 = 50 mm cells for the reference maps
@@ -81,6 +86,22 @@ const char* kReflName[4] = {"bare", "TiO2", "Al", "glossy"};
 const int    kColor[4] = {PetroffPalette::getP6(0), PetroffPalette::getP6(1),
                            PetroffPalette::getP6(2), PetroffPalette::getP6(3)};
 const int    kStyle[4] = {1, 2, 3, 4};
+
+// Panel order: configs 1, 2, 12 (corner-cut "Config 2 (mod)"), 3, 4.
+const int kCfgOrder[5] = {1, 2, 12, 3, 4};
+const int kNPad      = 5;       // five panels + one empty cell in a 2x3 grid
+
+const char* cfgLabel(int cfg)
+{
+    switch (cfg) {
+        case 1:  return "Config 1";
+        case 2:  return "Config 2";
+        case 12: return "Config 2 (mod)";
+        case 3:  return "Config 3";
+        case 4:  return "Config 4";
+    }
+    return "Config ?";
+}
 
 struct Site { double x, y; };
 
@@ -93,6 +114,12 @@ std::vector<Site> sites(int cfg)
                     {-kEdge,  kHalf}, { kEdge,  kHalf}, {-kEdge, -kHalf}, { kEdge, -kHalf}};
         case 2:
             return {{ kHalf, -kEdge}, {-kHalf,  kEdge}, { kEdge,  kHalf}, {-kEdge, -kHalf}};
+        case 12:
+            // Corner-cut (octagonal) slab: one SiPM at the centre of each
+            // 45-degree diagonal face, all four aimed inward.  The distance
+            // of each centre from the origin is 119 mm.
+            return {{-kCorner, -kCorner}, {-kCorner,  kCorner},
+                    { kCorner, -kCorner}, { kCorner,  kCorner}};
         case 3:
             return {{-kEdge,  kHalf}, { kEdge,  kHalf}};
         default:
@@ -177,6 +204,7 @@ void nearest_sensor_collapse(const char* dir = "slurm/data_v6/whole",
     std::vector<std::vector<std::vector<int>>> nev(
         5, std::vector<std::vector<int>>(4, std::vector<int>(kNBin, 0)));
     std::vector<std::vector<double>> meanEff(5, std::vector<double>(4, 0.));
+    std::vector<bool> have(5, false);
 
     FILE* fmap = fopen(TString::Format("%s/nearest_sensor_maps.txt", outdir), "w");
     if (fmap) fprintf(fmap,
@@ -184,12 +212,30 @@ void nearest_sensor_collapse(const char* dir = "slurm/data_v6/whole",
         "# (top = +y, bottom = -y, left = -x, right = +x); row 1 = y = +125..+75\n"
         "# config, reflector, then five rows of five cells\n");
 
-    for (int cfg = 1; cfg <= 4; ++cfg) {
+    for (int slot = 0; slot < kNPad; ++slot) {
+        const int cfg = kCfgOrder[slot];
+
+        // Read all four reflectors first so a partial corner-cut production
+        // run (missing or still-being-written files) never yields a
+        // fabricated panel.
+        std::vector<std::map<int, Event>> evs(4);
+        for (int r = 0; r < 4; ++r)
+            evs[r] = readEvents(
+                TString::Format("%s/muon_whole_out_c%d_r%d.root", dir, cfg, r));
+
+        bool complete = true;
+        for (int r = 0; r < 4; ++r) if (evs[r].empty()) complete = false;
+        if (cfg == 12 && !complete) {
+            printf("cfg12 (Config 2 (mod)): incomplete or missing data");
+            for (int r = 0; r < 4; ++r) if (evs[r].empty()) printf(" r%d", r);
+            printf(" -- omitting its panel and CSV rows\n");
+            continue;
+        }
+        have[slot] = true;
+
         for (int r = 0; r < 4; ++r) {
-            const TString fname =
-                TString::Format("%s/muon_whole_out_c%d_r%d.root", dir, cfg, r);
-            const std::map<int, Event> ev = readEvents(fname);
-            double tot = 0., totD = 0., totP = 0.;
+            const std::map<int, Event>& ev = evs[r];
+            double totD = 0., totP = 0.;
             std::vector<double> cellNum(kCellN * kCellN, 0.);
             std::vector<double> cellDen(kCellN * kCellN, 0.);
             for (const auto& kv : ev) {
@@ -198,18 +244,17 @@ void nearest_sensor_collapse(const char* dir = "slurm/data_v6/whole",
                 totP += e.produced;
                 const double d = siteDistance(cfg, e.xr, e.yr);
                 int b = std::min(kNBin - 1, std::max(0, int(d / kBinW)));
-                det[cfg][r][b] += e.detected;
-                pro[cfg][r][b] += e.produced;
-                nev[cfg][r][b] += 1;
+                det[slot][r][b] += e.detected;
+                pro[slot][r][b] += e.produced;
+                nev[slot][r][b] += 1;
                 const int ix = std::min(kCellN - 1, std::max(0, int((e.xr + kHalf) / kCellW)));
                 const int iy = std::min(kCellN - 1, std::max(0, int((e.yr + kHalf) / kCellW)));
                 cellNum[iy * kCellN + ix] += e.detected;
                 cellDen[iy * kCellN + ix] += e.produced;
             }
-            meanEff[cfg][r] = (totP > 0.) ? totD / totP : 0.;
-            tot = meanEff[cfg][r];
+            meanEff[slot][r] = (totP > 0.) ? totD / totP : 0.;
             printf("cfg%d %-6s events=%4zu  <eps>=%.5e  pe/evt=%.2f\n", cfg,
-                   kReflName[r], ev.size(), meanEff[cfg][r],
+                   kReflName[r], ev.size(), meanEff[slot][r],
                    ev.empty() ? 0. : totD / (double)ev.size());
             if (fmap) {
                 fprintf(fmap, "%d %s\n", cfg, kReflName[r]);
@@ -231,13 +276,15 @@ void nearest_sensor_collapse(const char* dir = "slurm/data_v6/whole",
     FILE* fp = fopen(TString::Format("%s/nearest_sensor.csv", outdir), "w");
     if (fp) {
         fprintf(fp, "config,reflector,d_lo_mm,d_hi_mm,events,eps,eps_norm\n");
-        for (int cfg = 1; cfg <= 4; ++cfg) {
+        for (int slot = 0; slot < kNPad; ++slot) {
+            if (!have[slot]) continue;
+            const int cfg = kCfgOrder[slot];
             for (int r = 0; r < 4; ++r) {
                 for (int b = 0; b < kNBin; ++b) {
-                    const double e = pro[cfg][r][b] > 0. ? det[cfg][r][b] / pro[cfg][r][b] : 0.;
-                    const double en = meanEff[cfg][r] > 0. ? e / meanEff[cfg][r] : 0.;
+                    const double e = pro[slot][r][b] > 0. ? det[slot][r][b] / pro[slot][r][b] : 0.;
+                    const double en = meanEff[slot][r] > 0. ? e / meanEff[slot][r] : 0.;
                     fprintf(fp, "%d,%s,%.0f,%.0f,%d,%.6e,%.5f\n", cfg, kReflName[r],
-                            b * kBinW, (b + 1) * kBinW, nev[cfg][r][b], e, en);
+                            b * kBinW, (b + 1) * kBinW, nev[slot][r][b], e, en);
                 }
             }
         }
@@ -245,38 +292,64 @@ void nearest_sensor_collapse(const char* dir = "slurm/data_v6/whole",
     }
 
     // ---- figure ----------------------------------------------------------
-    TCanvas* c = new TCanvas("c_nearest", "", 1150, 950);
-    c->Divide(2, 2, 0.005, 0.005);
+    // 2 columns x 3 rows: five layouts (1, 2, 12, 3, 4) plus one empty cell.
+    // Keeping the old 2x2 panel size gives a 1150x1425 canvas.  Identical
+    // left margins in both columns: the rotated y-axis title of the left
+    // column sits at the canvas edge and is clipped if its pad margin is
+    // smaller than the right column's.  The legend of the top-left pad is
+    // drawn in the TOP MARGIN, above the frame, so it cannot overlap the top
+    // axis or the curves.
+    TCanvas* c = new TCanvas("c_nearest", "", 1150, 1425);
+    c->Divide(2, 3, 0.01, 0.01);
 
     double ymax = 1.0;
-    for (int cfg = 1; cfg <= 4; ++cfg)
+    for (int slot = 0; slot < kNPad; ++slot) {
+        if (!have[slot]) continue;
         for (int r = 0; r < 4; ++r)
             for (int b = 0; b < kNBin; ++b)
-                if (meanEff[cfg][r] > 0. && pro[cfg][r][b] > 0.)
-                    ymax = std::max(ymax, det[cfg][r][b] / pro[cfg][r][b] / meanEff[cfg][r]);
+                if (meanEff[slot][r] > 0. && pro[slot][r][b] > 0.)
+                    ymax = std::max(ymax, det[slot][r][b] / pro[slot][r][b]
+                                           / meanEff[slot][r]);
+    }
     ymax = std::ceil(ymax * 1.06 * 10.) / 10.;
 
-    for (int cfg = 1; cfg <= 4; ++cfg) {
-        c->cd(cfg);                       // 1 = top-left, 2 = top-right,
-        gStyle->SetOptTitle(1);           // 3 = bottom-left, 4 = bottom-right
-        gPad->SetLeftMargin((cfg % 2) ? 0.07 : 0.145);
-        gPad->SetRightMargin(0.025);
-        gPad->SetBottomMargin(0.13);
-        gPad->SetTopMargin(0.17);
+    // pad numbering of a Divide(2,3) grid runs left-to-right, top-to-bottom;
+    // slot 2 (cfg12) and slot 5 (empty) may be blank.
+    for (int slot = 0; slot < kNPad; ++slot) {
+        if (!have[slot]) continue;
+        const int cfg = kCfgOrder[slot];
+        c->cd(slot + 1);
+        gPad->SetLeftMargin(0.150);
+        gPad->SetRightMargin(0.030);
+        gPad->SetBottomMargin(0.140);
+        gPad->SetTopMargin(0.190);
 
         TH1D* frame = new TH1D(TString::Format("fr_near_%d", cfg), "",
                                (int)(kNBin * kBinW), 0., kNBin * kBinW);
-        frame->SetTitle(TString::Format("Config %d", cfg));
         frame->GetXaxis()->SetTitle("distance to nearest collection site  d [mm]");
-        frame->GetYaxis()->SetTitle("#varepsilon / #langle#varepsilon#rangle");
-        frame->GetXaxis()->SetTitleSize(0.042);
-        frame->GetYaxis()->SetTitleSize(0.042);
-        frame->GetXaxis()->SetLabelSize(0.038);
-        frame->GetYaxis()->SetLabelSize(0.038);
+        // <...> rather than #langle...#rangle: this ROOT build does not expand
+        // those two TLatex symbols and prints them literally.
+        frame->GetYaxis()->SetTitle("#varepsilon / <#varepsilon>");
+        frame->GetXaxis()->SetTitleSize(0.045);
+        frame->GetYaxis()->SetTitleSize(0.045);
+        frame->GetXaxis()->SetLabelSize(0.042);
+        frame->GetYaxis()->SetLabelSize(0.042);
         frame->GetXaxis()->SetTitleOffset(1.10);
-        frame->GetYaxis()->SetTitleOffset(1.15);
+        frame->GetYaxis()->SetTitleOffset(1.05);
+        frame->GetXaxis()->CenterTitle(kTRUE);
+        frame->GetYaxis()->CenterTitle(kTRUE);
         frame->GetYaxis()->SetRangeUser(0., ymax);
         frame->Draw("HIST");
+
+        // Panel label drawn as a TLatex: a histogram title of a divided pad is
+        // deleted before painting in batch mode (gPad->IsEditable() is false),
+        // so gStyle->SetOptTitle(1) alone never shows it.
+        TLatex* label = new TLatex(0.004, 0.900, cfgLabel(cfg));
+        label->SetNDC(true);
+        label->SetTextFont(42);
+        label->SetTextSize(0.050);
+        label->SetTextAlign(12);
+        label->Draw();
 
         TLine* one = new TLine(0., 1., kNBin * kBinW, 1.);
         one->SetLineColor(kGray + 2);
@@ -284,32 +357,94 @@ void nearest_sensor_collapse(const char* dir = "slurm/data_v6/whole",
         one->SetLineWidth(1);
         one->Draw("SAME");
 
-        TLegend* leg = new TLegend(0.22, 0.875, 0.99, 0.985);
+        TLegend* leg = new TLegend(0.28, 0.825, 0.995, 0.970);
         leg->SetBorderSize(0);
         leg->SetFillStyle(0);
         leg->SetFillColorAlpha(0., 0.);
-        leg->SetTextSize(0.036);
+        leg->SetTextSize(0.042);
         leg->SetNColumns(4);
         for (int r = 0; r < 4; ++r) {
             std::vector<double> xs, ys, es;
             for (int b = 0; b < kNBin; ++b) {
-                if (pro[cfg][r][b] <= 0.) continue;
-                const double e = det[cfg][r][b] / pro[cfg][r][b];
-                const double en = e / meanEff[cfg][r];
+                if (pro[slot][r][b] <= 0.) continue;
+                const double e = det[slot][r][b] / pro[slot][r][b];
+                const double en = e / meanEff[slot][r];
                 xs.push_back((b + 0.5) * kBinW);
                 ys.push_back(en);
-                es.push_back(en * std::sqrt(1. / det[cfg][r][b] + 1. / pro[cfg][r][b]));
+                es.push_back(en * std::sqrt(1. / det[slot][r][b] + 1. / pro[slot][r][b]));
             }
             if (xs.empty()) continue;
             TGraphErrors* g = new TGraphErrors((int)xs.size(), xs.data(), ys.data(), nullptr, es.data());
             styleGraph(g, kColor[r], kStyle[r]);
             g->Draw("PL SAME");
-            if (cfg == 1) leg->AddEntry(g, kReflName[r], "lp");
+            if (slot == 0) leg->AddEntry(g, kReflName[r], "lp");
         }
-        if (cfg == 1) leg->Draw();
+        if (slot == 0) leg->Draw();
+
+        // Geometry inset for the corner-cut layout: the octagonal slab and
+        // the four diagonal-face SiPMs.  A true-scale 4 mm sensor is sub-point
+        // at the print width, so the sensor marks are enlarged; the outline
+        // and the 119 mm sensor centres are true scale.  The distance used on
+        // the x axis is measured to these four centres, not to an edge.
+        if (cfg == 12) {
+            TPad* ins = new TPad(TString::Format("pad_oct_%d", slot), "",
+                                 0.620, 0.360, 0.960, 0.773);
+            ins->SetFillColor(kWhite);
+            ins->SetFillStyle(1001);
+            ins->SetBorderMode(1);
+            ins->SetBorderSize(1);
+            ins->SetTickx(0);
+            ins->SetTicky(0);
+            ins->Draw();
+            ins->cd();
+
+            TH1D* octFrame = new TH1D(TString::Format("fr_oct_%d", slot), "",
+                                      1, -130., 130.);
+            octFrame->SetStats(0);
+            octFrame->GetXaxis()->SetNdivisions(0);
+            octFrame->GetYaxis()->SetNdivisions(0);
+            octFrame->GetXaxis()->SetLabelSize(0.);
+            octFrame->GetYaxis()->SetLabelSize(0.);
+            octFrame->GetXaxis()->SetTickLength(0.);
+            octFrame->GetYaxis()->SetTickLength(0.);
+            // The pad border is the inset frame: hide the histogram axes
+            // entirely (their ticks would otherwise read as a scale).
+            octFrame->GetXaxis()->SetAxisColor(kWhite);
+            octFrame->GetYaxis()->SetAxisColor(kWhite);
+            octFrame->SetLineColor(kWhite);
+            octFrame->GetYaxis()->SetRangeUser(-130., 130.);
+            octFrame->Draw("AXIS");
+
+            // True octagon outline, closed.
+            const double vx[9] = { 125.,  125.,  113., -113., -125.,
+                                  -125., -113.,  113.,  125.};
+            const double vy[9] = {-113.,  113.,  125.,  125.,  113.,
+                                  -113., -125., -125., -113.};
+            TGraph* oct = new TGraph(9, vx, vy);
+            oct->SetLineColor(kBlack);
+            oct->SetLineWidth(2);
+            oct->Draw("L SAME");
+
+            // Sensors: short marks on the 45-degree faces, oriented with
+            // the face (perpendicular to the inward radial direction).
+            for (const Site& s : sites(12)) {
+                const double rr = std::sqrt(s.x * s.x + s.y * s.y);
+                const double ux = -s.y / rr, uy = s.x / rr;
+                const double h = 7.0;      // half-length of the (enlarged) mark
+                TLine* ln = new TLine(s.x - h * ux, s.y - h * uy,
+                                      s.x + h * ux, s.y + h * uy);
+                ln->SetLineColor(kRed);
+                ln->SetLineWidth(4);
+                ln->Draw("SAME");
+                TMarker* mk = new TMarker(s.x, s.y, 20);
+                mk->SetMarkerColor(kRed);
+                mk->SetMarkerSize(1.0);
+                mk->Draw("SAME");
+            }
+            c->cd(slot + 1);
+        }
     }
 
-    gStyle->SetOptTitle(0);
     c->SaveAs(TString::Format("%s/fig_nearest_sensor.pdf", outdir));
     c->SaveAs(TString::Format("%s/fig_nearest_sensor.png", outdir));
     printf("wrote %s/fig_nearest_sensor.{pdf,png} and nearest_sensor.csv\n", outdir);

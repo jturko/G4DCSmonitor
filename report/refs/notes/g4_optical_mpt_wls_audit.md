@@ -4,8 +4,8 @@ Read-only audit. Repo: `/home/turko46/geant4-sims/G4DCSmonitor`.
 Date: 2026-10-15. No file under `.refs/` or any source file was modified; the only
 file written is this note.
 
-**Reference tree:** `.refs/source` → Geant4 **11.3.2**
-(`.refs/include/G4Version.hh:46` `#define G4VERSION_NUMBER 1132`,
+**Reference tree:** `.refs/geant4/source` → Geant4 **11.3.2**
+(`.refs/geant4/include/G4Version.hh:46` `#define G4VERSION_NUMBER 1132`,
 `:71` `$Name: geant4-11-03-patch-02`). Every Geant4 claim below is quoted from this
 tree, not from memory.
 
@@ -13,7 +13,7 @@ tree, not from memory.
 `G4OpBoundaryProcess.cc`, the two `G4WLSTimeGeneratorProfile*`), the MPT plumbing
 (`G4MaterialPropertiesTable.cc`, `G4MaterialPropertiesIndex.hh`,
 `G4OpticalParameters.cc`), the official example
-`.refs/examples/extended/optical/wls/src/WLSMaterials.cc`, and cross-checked against
+`.refs/geant4/examples/extended/optical/wls/src/WLSMaterials.cc`, and cross-checked against
 our `src/GeometryMuonScint.cc`, `src/PhysicsList.cc`, `src/DetectorConstruction.cc`
 and `report/matrix_report.tex`. Grep of the full 11.3.2 source **and** install trees
 for `WSL01` / `WLS01` returns nothing (see §5).

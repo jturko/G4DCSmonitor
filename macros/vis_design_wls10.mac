@@ -1,0 +1,144 @@
+# =============================================================================
+# vis_design_wls10.mac -- head-less OpenGL renders of the v7 "c10_wls4_glossy"
+# design: four-sided WLS fibre clamp, ONE read-out SiPM per side (4 total),
+# 250 x 250 x 10 mm plate, glossy wrapper, white clamp.
+#
+#   ./build/G4DCSmonitor macros/vis_design_wls10.mac
+#   (or: bash macros/render_designs.sh)
+#
+# Writes TWO PNGs (1200 x 1200 px, white background, surface style, no edges,
+# geometry only -- no beam-on):
+#   report/figures/design_ogl_wls10.png        clamp HIDDEN -> fibres, bundle
+#                                              convergence and read-out SiPMs
+#   report/figures/design_ogl_wls10_clamp.png  identical camera, clamp VISIBLE
+#                                              -> what the clamp hides
+#
+# -----------------------------------------------------------------------------
+# TESSEL LATED (vis-only) FIBRES: setFibreAnalytic false is issued AFTER the
+# preset on purpose.  Presets 10/11 build analytic mitered G4CutTubs fibres and
+# G4CutTubs boolean cutters (the production geometry).  G4CutTubs does not
+# implement CreatePolyhedron(), so the clamp/film boolean results have no
+# polyhedron and the OpenGL/TSG driver falls back to a cloud of 10 000 points
+# per solid -- useless for a geometry figure.  The G4TessellatedSolid swept
+# variant (false) has the same centreline, radii, pitch, convergence and
+# materials, renders as a solid, and is a VISUALIZATION ONLY choice (its optics
+# are not validated).  The command must come after /preset because the preset
+# sets the flag itself.
+# This vis-only mode emits 16 expected GeomVol1002 "overlap" warnings (each of
+# the 4 tessellated clads interpenetrates the grooved grease-filled film by
+# ~0 fm, 4 sides x 4 fibres).  They are printed as warnings, do not abort, and
+# are a known property of the tessellated approximation; they are NOT a
+# polyhedron/point-cloud failure.
+#
+# -----------------------------------------------------------------------------
+# VOLUMES HIDDEN (with /vis/geometry/set/visibility, never via alpha):
+#   WLSClampLV        the white clamp body of all four sides (one shared LV)
+#   WLSCoupleFilmLV   the grooved 0.1 mm grease film (boolean solid; the one
+#                     that renders as a stipple cloud in some modes)
+#   GreaseLV          the read-out coupling pad.  NOTE: in the WLS presets this
+#                     is exactly the LV of the read-out pads, so hiding it also
+#                     hides those amber pads; the red read-out SiPMs remain and
+#                     mark the read-out sites.  It is hidden as requested.
+# Non-existent edge strips: presets 10/11 do not call BuildEdgeStrips() at all
+# and setEdgeReflector same would suppress them anyway, so there is no 5 um
+# MuonScintEdgeStrip* speckle source in this render.
+#
+# NO TRANSPARENCY DEPENDENCE: source opacities are clad 0.6 / core 0.95 / slab
+# 0.55, and TSG_OFFSCREEN would composite them.  Every drawn LV is therefore
+# forced to opacity 1 and /vis/tsg/offscreen/set/transparency is false, so the
+# PNG is bit-identical with transparency on or off.  The mirror caps are
+# recoloured 0.55 grey (source 0.9) so they stay visible on the white
+# background; this is a display colour only, not a geometry change.
+#
+# -----------------------------------------------------------------------------
+# CAMERA (same for both PNGs and the same family as the c1 macros: theta 65,
+# up = +z, white background, surface style, no edges)
+#   viewpointThetaPhi 65 225    -> oblique on the -X/-Y corner (camera at -x,-y,+z)
+#   targetPoint -127 -110 0 mm  -> on the -X clamp face, 14 mm up from the
+#                                  read-out end, so the 41 mm bundle convergence
+#                                  (y = -83 .. -124) is fully in frame
+#   zoomTo 4.5                  -> frame width ~80 mm
+# upVector 0 0 1.  The global slab rotation is NOT used (/setRotation absent).
+# At this corner side 0 (the -X clamp) presents its read-out end and side 1
+# (the -Y clamp) presents its NON-read-out end.  In preset 10 that end is the
+# straight 2.5 mm-pitch spread run, closed by four Al mirror caps.  In preset 11
+# the fibres are dual-ended (BentPathDual: a converging bundle at BOTH ends), so
+# the same end carries a 41 mm convergence ramp + a read-out SiPM instead of the
+# straight run + caps.  The 10 vs 11 pair therefore uses one camera and differs
+# exactly where a non-read-out end is in view -- here the near ~40 mm of the -Y
+# face (and the extra SiPM there); the 4 extra SiPMs at the other ends are out
+# of frame.  Measured: 98.9% of the changed pixels lie in x[781,1199]
+# y[425,712], i.e. that ramp; the remainder are isolated fibre-edge
+# antialiasing pixels, so side 0 (left of the corner) is visually unchanged.
+# =============================================================================
+
+/run/numberOfThreads 1
+
+# ---- geometry: plate + four-sided WLS clamp, single-ended read-out ----------
+/dcs-monitor/det/setPosition 0 0 0 mm
+/dcs-monitor/det/muonScint/add
+/dcs-monitor/det/muonScint/setSize 250 250 10 mm
+/dcs-monitor/det/muonScint/preset 10
+# VIS-ONLY: tessellated solids render; analytic cut-tube booleans do not.
+/dcs-monitor/det/muonScint/setFibreAnalytic false
+/dcs-monitor/det/muonScint/setReflector 3
+/dcs-monitor/det/muonScint/setWrap true
+/dcs-monitor/det/muonScint/setEdgeReflector same
+/dcs-monitor/det/muonScint/setCouplingIndex 1.55
+/dcs-monitor/det/muonScint/setClampSurface white
+/dcs-monitor/det/muonScint/setBareContactFraction 0.045
+/dcs-monitor/det/muonScint/setAlBacking air
+
+/run/initialize
+
+# ---- head-less offscreen rendering (no GUI) ---------------------------------
+/vis/open TSG_OFFSCREEN 2000x1500
+/vis/tsg/offscreen/set/format zb_png
+/vis/tsg/offscreen/set/size 1200 1200
+
+/vis/verbose errors
+/vis/viewer/set/autoRefresh false
+/vis/viewer/set/background white
+/vis/drawVolume
+/vis/viewer/set/style surface
+/vis/viewer/set/edge false
+/vis/viewer/set/auxiliaryEdge false
+/vis/viewer/set/upVector 0 0 1
+/vis/tsg/offscreen/set/transparency false
+
+# ---- opacity 1 everywhere drawn (removes alpha-dependent appearance) --------
+/vis/geometry/set/colour MuonScintLV 0 0.45 0.75 1.0 1
+/vis/geometry/set/colour WLSFibreCladLV_0 0 0.2 0.9 0.5 1
+/vis/geometry/set/colour WLSFibreCladLV_1 0 0.2 0.9 0.5 1
+/vis/geometry/set/colour WLSFibreCladLV_2 0 0.2 0.9 0.5 1
+/vis/geometry/set/colour WLSFibreCladLV_3 0 0.2 0.9 0.5 1
+/vis/geometry/set/colour WLSFibreInnerLV_0 0 0.2 0.9 0.5 1
+/vis/geometry/set/colour WLSFibreInnerLV_1 0 0.2 0.9 0.5 1
+/vis/geometry/set/colour WLSFibreInnerLV_2 0 0.2 0.9 0.5 1
+/vis/geometry/set/colour WLSFibreInnerLV_3 0 0.2 0.9 0.5 1
+/vis/geometry/set/colour WLSFibreCoreLV_0 0 0.7 1.0 0.9 1
+/vis/geometry/set/colour WLSFibreCoreLV_1 0 0.7 1.0 0.9 1
+/vis/geometry/set/colour WLSFibreCoreLV_2 0 0.7 1.0 0.9 1
+/vis/geometry/set/colour WLSFibreCoreLV_3 0 0.7 1.0 0.9 1
+/vis/geometry/set/colour WLSFibreMirrorCapLV 0 0.55 0.55 0.55 1
+/vis/geometry/set/colour WLSClampLV 0 0.15 0.15 0.15 1
+
+# ---- hide clamp + film + read-out grease pads -------------------------------
+/vis/geometry/set/visibility WLSClampLV 0 false
+/vis/geometry/set/visibility WLSCoupleFilmLV 0 false
+/vis/geometry/set/visibility GreaseLV 0 false
+
+/vis/viewer/set/viewpointThetaPhi 65 225
+/vis/viewer/set/targetPoint -127 -110 0 mm
+/vis/viewer/zoomTo 4.5
+
+# --- (1) clamp hidden: fibres, convergence ramp and read-out SiPMs -----------
+/vis/tsg/offscreen/set/file report/figures/design_ogl_wls10.png
+/vis/viewer/flush
+
+# --- (2) same camera, clamp restored: what the clamp hides -------------------
+/vis/geometry/set/visibility WLSClampLV 0 true
+/vis/tsg/offscreen/set/file report/figures/design_ogl_wls10_clamp.png
+/vis/viewer/flush
+
+/vis/verbose confirmations

@@ -1,0 +1,11 @@
+tag,cfg,refl,preset,edge,clamp,sipm_mm,nch,events,mean_pe_per_event,mean_pe_per_detected_event,p_zero,sem_pe,mean_nproduced,note
+c1_split_black,1,3,1,black,white,4.0,8,25000,68.7599,68.7599,0.000000,0.2967,19404.87,ok
+c8_split_black,8,3,8,black,white,4.0,8,25000,61.3083,61.3083,0.000000,0.2934,19322.33,ok
+c10_wls4_tio2,10,1,10,same,white,4.0,4,25000,96.5886,96.5886,0.000000,0.2317,19398.59,ok
+c11_wls8_tio2,11,1,11,same,white,4.0,8,25000,115.0101,115.0101,0.000000,0.2910,19437.18,ok
+c1_edge_diffuse,1,3,1,diffuse,white,4.0,8,25000,339.6065,339.6065,0.000000,0.5940,19523.83,ok
+c1_6mm_diffuse,1,3,1,diffuse,white,6.0,8,25000,715.2088,715.2088,0.000000,1.2100,19480.36,ok
+c8_6mm_diffuse,8,3,8,diffuse,white,6.0,8,25000,708.8554,708.8554,0.000000,1.2792,19504.97,ok
+c10_wls4_glossy,10,3,10,same,mirror,4.0,4,25000,220.3424,220.3424,0.000000,0.3661,19537.48,ok
+c11_wls8_glossy,11,3,11,same,mirror,4.0,8,25000,273.0202,273.0202,0.000000,0.4506,19578.50,ok
+c1_same_1p55,1,3,1,same,white,4.0,8,25000,568.2029,568.2029,0.000000,0.9076,19598.24,ok

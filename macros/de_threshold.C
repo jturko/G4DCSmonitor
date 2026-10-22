@@ -18,8 +18,8 @@
 // macro quantifies that.
 //
 // Outputs
-//   fig_de_threshold.pdf   DE versus N_thr, one panel per layout, one curve
-//                          per reflector
+//   fig_de_threshold.pdf   DE versus N_thr, one panel per layout
+//                          (1, 2, 12, 3, 4), one curve per reflector
 //   de_threshold.csv       config, reflector, n_thr, de
 //   de_threshold_at_glossy.csv
 //                          the threshold at which the glossy treatment of the
@@ -33,6 +33,7 @@
 #include <TFile.h>
 #include <TGraph.h>
 #include <TGraphErrors.h>
+#include <TLatex.h>
 #include <TLegend.h>
 #include <TLine.h>
 #include <TString.h>
@@ -55,6 +56,22 @@ const int    kColor[4] = {PetroffPalette::getP6(0), PetroffPalette::getP6(1),
                            PetroffPalette::getP6(2), PetroffPalette::getP6(3)};
 const int    kStyle[4] = {1, 2, 3, 4};
 const int    kNThr = 700;      // thresholds 0 .. 700 photoelectrons
+
+// Panel order: configs 1, 2, 12 (corner-cut "Config 2 (mod)"), 3, 4.
+const int kCfgOrder[5] = {1, 2, 12, 3, 4};
+const int kNPad      = 5;       // five panels + one empty cell in a 2x3 grid
+
+const char* cfgLabel(int cfg)
+{
+    switch (cfg) {
+        case 1:  return "Config 1";
+        case 2:  return "Config 2";
+        case 12: return "Config 2 (mod)";
+        case 3:  return "Config 3";
+        case 4:  return "Config 4";
+    }
+    return "Config ?";
+}
 
 // Per-event total photoelectron count of one whole-slab file.
 std::vector<int> eventTotals(const TString& fname)
@@ -90,31 +107,52 @@ void de_threshold(const char* dir = "slurm/data_v6/whole",
     gStyle->SetLegendBorderSize(0);
     gStyle->SetEndErrorSize(0);
 
-    // de[cfg][refl][thr]
+    // de[slot][refl][thr], slot = position in kCfgOrder.
     std::vector<std::vector<std::vector<double>>> de(
         5, std::vector<std::vector<double>>(4, std::vector<double>(kNThr + 1, 0.)));
     std::vector<std::vector<int>> ntot(5, std::vector<int>(4, 0));
+    std::vector<bool> have(5, false);
 
-    for (int cfg = 1; cfg <= 4; ++cfg) {
-        for (int r = 0; r < 4; ++r) {
-            const std::vector<int> tot = eventTotals(
+    for (int slot = 0; slot < kNPad; ++slot) {
+        const int cfg = kCfgOrder[slot];
+
+        // Read all four reflectors first: the corner-cut layout is only
+        // promoted to a full panel when its whole set is available.  A
+        // partial production file (e.g. while the HPC job is still writing)
+        // must never produce a fabricated curve.
+        std::vector<std::vector<int>> tot(4);
+        for (int r = 0; r < 4; ++r)
+            tot[r] = eventTotals(
                 TString::Format("%s/muon_whole_out_c%d_r%d.root", dir, cfg, r));
-            ntot[cfg][r] = (int)tot.size();
-            if (tot.empty()) continue;
+
+        bool complete = true;
+        for (int r = 0; r < 4; ++r) if (tot[r].empty()) complete = false;
+        if (cfg == 12 && !complete) {
+            printf("cfg12 (Config 2 (mod)): incomplete or missing data");
+            for (int r = 0; r < 4; ++r)
+                if (tot[r].empty()) printf(" r%d", r);
+            printf(" -- omitting its panel and CSV rows\n");
+            continue;
+        }
+        have[slot] = true;
+
+        for (int r = 0; r < 4; ++r) {
+            ntot[slot][r] = (int)tot[r].size();
+            if (tot[r].empty()) continue;
             // histogram of the per-event totals; everything at or above
             // kNThr goes into the last bin, so that DE(thr) = P(N >= thr)
             // is correct over the whole range
             std::vector<int> hist(kNThr + 1, 0);
-            for (int v : tot) hist[std::min(v, kNThr)]++;
+            for (int v : tot[r]) hist[std::min(v, kNThr)]++;
             int above = 0;
             for (int thr = kNThr; thr >= 0; --thr) {
                 above += hist[thr];
-                de[cfg][r][thr] = (double)above / (double)tot.size();
+                de[slot][r][thr] = (double)above / (double)tot[r].size();
             }
             printf("cfg%d %-6s events=%5d  mean=%.1f pe  DE(N=0)=%.4f\n", cfg,
-                   kReflName[r], (int)tot.size(),
-                   [&] { long s = 0; for (int v : tot) s += v; return (double)s / tot.size(); }(),
-                   de[cfg][r][0]);
+                   kReflName[r], (int)tot[r].size(),
+                   [&] { long s = 0; for (int v : tot[r]) s += v; return (double)s / tot[r].size(); }(),
+                   de[slot][r][0]);
         }
     }
 
@@ -122,10 +160,14 @@ void de_threshold(const char* dir = "slurm/data_v6/whole",
     FILE* fp = fopen(TString::Format("%s/de_threshold.csv", outdir), "w");
     if (fp) {
         fprintf(fp, "config,reflector,n_thr,de\n");
-        for (int cfg = 1; cfg <= 4; ++cfg)
+        for (int slot = 0; slot < kNPad; ++slot) {
+            if (!have[slot]) continue;
+            const int cfg = kCfgOrder[slot];
             for (int r = 0; r < 4; ++r)
                 for (int thr = 0; thr <= kNThr; ++thr)
-                    fprintf(fp, "%d,%s,%d,%.6f\n", cfg, kReflName[r], thr, de[cfg][r][thr]);
+                    fprintf(fp, "%d,%s,%d,%.6f\n", cfg, kReflName[r], thr,
+                            de[slot][r][thr]);
+        }
         fclose(fp);
     }
 
@@ -141,12 +183,14 @@ void de_threshold(const char* dir = "slurm/data_v6/whole",
     if (fg) {
         fprintf(fg, "config,thr_lo_pe,thr_hi_pe,de_bare_lo,de_bare_hi,"
                     "de_tio2_min,de_al_min,de_glossy_min\n");
-        for (int cfg = 1; cfg <= 4; ++cfg) {
+        for (int slot = 0; slot < kNPad; ++slot) {
+            if (!have[slot]) continue;
+            const int cfg = kCfgOrder[slot];
             int lo = -1, hi = -1;
             for (int thr = 0; thr <= kNThr; ++thr) {
-                const bool refl = de[cfg][1][thr] >= 0.8 && de[cfg][2][thr] >= 0.8
-                                  && de[cfg][3][thr] >= 0.8;
-                const bool bare = de[cfg][0][thr] < 0.8;
+                const bool refl = de[slot][1][thr] >= 0.8 && de[slot][2][thr] >= 0.8
+                                  && de[slot][3][thr] >= 0.8;
+                const bool bare = de[slot][0][thr] < 0.8;
                 if (refl && bare) { if (lo < 0) lo = thr; hi = thr; }
             }
             if (lo < 0) { lo = hi = -1; }
@@ -155,11 +199,11 @@ void de_threshold(const char* dir = "slurm/data_v6/whole",
             if (lo >= 0) {
                 dblo = 1.; dbhi = 0.; dtio = dal = dgl = 1.;
                 for (int thr = lo; thr <= hi; ++thr) {
-                    dblo = std::min(dblo, de[cfg][0][thr]);
-                    dbhi = std::max(dbhi, de[cfg][0][thr]);
-                    dtio = std::min(dtio, de[cfg][1][thr]);
-                    dal = std::min(dal, de[cfg][2][thr]);
-                    dgl = std::min(dgl, de[cfg][3][thr]);
+                    dblo = std::min(dblo, de[slot][0][thr]);
+                    dbhi = std::max(dbhi, de[slot][0][thr]);
+                    dtio = std::min(dtio, de[slot][1][thr]);
+                    dal = std::min(dal, de[slot][2][thr]);
+                    dgl = std::min(dgl, de[slot][3][thr]);
                 }
             }
             fprintf(fg, "%d,%d,%d,%.4f,%.4f,%.4f,%.4f,%.4f\n", cfg, lo, hi,
@@ -174,28 +218,47 @@ void de_threshold(const char* dir = "slurm/data_v6/whole",
     }
 
     // ---- figure ----------------------------------------------------------
-    TCanvas* c = new TCanvas("c_de", "", 1150, 950);
-    c->Divide(2, 2, 0.005, 0.005);
-    for (int cfg = 1; cfg <= 4; ++cfg) {
-        c->cd(cfg);
-        gStyle->SetOptTitle(1);
-        gPad->SetLeftMargin((cfg % 2) ? 0.075 : 0.145);
-        gPad->SetRightMargin(0.025);
-        gPad->SetBottomMargin(0.13);
-        gPad->SetTopMargin(0.13);
+    // 2 columns x 3 rows: five layouts (1, 2, 12, 3, 4) plus one empty cell.
+    // Keeping the old 2x2 panel size gives a 1150x1425 canvas.  Identical
+    // left margins in both columns: the rotated y-axis title of the left
+    // column sits at the canvas edge and is clipped if its pad margin is
+    // smaller than the right column's.  The legend of the top-left pad is
+    // drawn in the TOP MARGIN, above the frame, so it cannot overlap the top
+    // axis (or the curves, which are all at DE = 1 there).
+    TCanvas* c = new TCanvas("c_de", "", 1150, 1425);
+    c->Divide(2, 3, 0.01, 0.01);
+    for (int slot = 0; slot < kNPad; ++slot) {
+        if (!have[slot]) continue;      // e.g. cfg12 while its run is partial
+        const int cfg = kCfgOrder[slot];
+        c->cd(slot + 1);
+        gPad->SetLeftMargin(0.150);
+        gPad->SetRightMargin(0.030);
+        gPad->SetBottomMargin(0.140);
+        gPad->SetTopMargin(0.190);
 
         TH1D* frame = new TH1D(TString::Format("fr_de_%d", cfg), "", kNThr, 0., kNThr);
-        frame->SetTitle(TString::Format("Config %d", cfg));
         frame->GetXaxis()->SetTitle("threshold  N_{thr} [photoelectrons per event]");
         frame->GetYaxis()->SetTitle("detection efficiency  DE");
-        frame->GetXaxis()->SetTitleSize(0.040);
-        frame->GetYaxis()->SetTitleSize(0.040);
-        frame->GetXaxis()->SetLabelSize(0.038);
-        frame->GetYaxis()->SetLabelSize(0.038);
+        frame->GetXaxis()->SetTitleSize(0.045);
+        frame->GetYaxis()->SetTitleSize(0.045);
+        frame->GetXaxis()->SetLabelSize(0.042);
+        frame->GetYaxis()->SetLabelSize(0.042);
         frame->GetXaxis()->SetTitleOffset(1.10);
-        frame->GetYaxis()->SetTitleOffset(1.15);
+        frame->GetYaxis()->SetTitleOffset(1.05);
+        frame->GetXaxis()->CenterTitle(kTRUE);
+        frame->GetYaxis()->CenterTitle(kTRUE);
         frame->GetYaxis()->SetRangeUser(0., 1.0);
         frame->Draw("HIST");
+
+        // Panel label drawn as a TLatex: a histogram title of a divided pad is
+        // deleted before painting in batch mode (gPad->IsEditable() is false),
+        // so gStyle->SetOptTitle(1) alone never shows it.
+        TLatex* label = new TLatex(0.004, 0.900, cfgLabel(cfg));
+        label->SetNDC(true);
+        label->SetTextFont(42);
+        label->SetTextSize(0.050);
+        label->SetTextAlign(12);
+        label->Draw();
 
         TLine* e80 = new TLine(0., 0.8, kNThr, 0.8);
         e80->SetLineColor(kGray + 2);
@@ -203,15 +266,15 @@ void de_threshold(const char* dir = "slurm/data_v6/whole",
         e80->SetLineWidth(1);
         e80->Draw("SAME");
 
-        TLegend* leg = new TLegend(0.16, 0.79, 0.98, 0.97);
+        TLegend* leg = new TLegend(0.28, 0.825, 0.995, 0.970);
         leg->SetBorderSize(0);
         leg->SetFillStyle(0);
         leg->SetFillColorAlpha(0., 0.);
-        leg->SetTextSize(0.036);
+        leg->SetTextSize(0.042);
         leg->SetNColumns(4);
         for (int r = 0; r < 4; ++r) {
             std::vector<double> xs, ys;
-            for (int thr = 0; thr <= kNThr; ++thr) { xs.push_back(thr); ys.push_back(de[cfg][r][thr]); }
+            for (int thr = 0; thr <= kNThr; ++thr) { xs.push_back(thr); ys.push_back(de[slot][r][thr]); }
             TGraph* g = new TGraph((int)xs.size(), xs.data(), ys.data());
             g->SetMarkerStyle(0);
             g->SetLineColor(kColor[r]);
@@ -221,11 +284,10 @@ void de_threshold(const char* dir = "slurm/data_v6/whole",
             g->SetMarkerStyle(kStyle[r] + 20);
             g->SetMarkerSize(1.0);
             g->Draw("L SAME");
-            if (cfg == 1) leg->AddEntry(g, kReflName[r], "l");
+            if (slot == 0) leg->AddEntry(g, kReflName[r], "l");
         }
-        if (cfg == 1) leg->Draw();
+        if (slot == 0) leg->Draw();
     }
-    gStyle->SetOptTitle(0);
     c->SaveAs(TString::Format("%s/fig_de_threshold.pdf", outdir));
     c->SaveAs(TString::Format("%s/fig_de_threshold.png", outdir));
     printf("wrote %s/fig_de_threshold.{pdf,png} and de_threshold*.csv\n", outdir);

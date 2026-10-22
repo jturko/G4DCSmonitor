@@ -1,0 +1,125 @@
+# =============================================================================
+# vis_design_c1_4mm.mac -- head-less OpenGL render of the v7 "c1_same_1p55"
+# control design: Config-1 SiPM layout (8 sensors, 2 per side) with the DEFAULT
+# 4 x 4 mm active area, 250 x 250 x 10 mm plate, glossy (reflective) wrapper.
+#
+# This is one half of the sensor-size A/B pair.  macros/vis_design_c1_6mm.mac is
+# identical except for the /setSiPMSize line (and the output file name), and
+# uses the SAME camera, so the two PNGs can be compared directly.
+#
+#   ./build/G4DCSmonitor macros/vis_design_c1_4mm.mac
+#   (or: bash macros/render_designs.sh)
+#
+# Writes report/figures/design_ogl_c1_4mm.png (1200 x 1200 px, white background,
+# surface style, no edges, geometry only -- no beam-on).
+#
+# -----------------------------------------------------------------------------
+# SINGLE-SENSOR CLOSE-UP (not a corner view)
+#   Preset 1 puts a SiPM on every narrow side face at u = +-0.5.  This macro
+#   frames exactly one of them: the sensor on the +X narrow face at
+#   u = +0.5, i.e. its centre (125.4, 62.5, 0) mm.  (The extra 0.4 mm in x is
+#   the 0.1 mm grease film + half of the 0.6 mm sensor thickness; the sensor's
+#   centre is the natural target point.)
+#
+#   CAMERA (identical in vis_design_c1_6mm.mac)
+#     viewpointThetaPhi 65 0   -> 25 deg above the plate, looking straight at
+#                                the +X face (camera at +x, +z)
+#     targetPoint 125.4 62.5 0 mm
+#     zoomTo 13.5             -> frame width ~26 mm
+#     upVector 0 0 1
+#   At theta 65 / phi 0 both surfaces of interest are in frame: the narrow +X
+#   face (normal +x, seen 25 deg off-normal) and the plate top face (+z, seen
+#   65 deg off-normal).  The frame is ~26 mm wide, so a 4 mm sensor is 15 % of
+#   the width and the 6 mm sensor 23 % -- both comfortably readable at the
+#   planned 105 pt print size (>= 20 x 25 pt for the 4 mm sensor).
+#
+# -----------------------------------------------------------------------------
+# LIGHTING: the top and side faces must be distinguishable.
+#   The default light direction is (1,1,1); the top normal (0,0,1) and the +X
+#   normal (1,0,0) then make the SAME angle with the light, so both faces render
+#   with exactly the same shade (the old corner renders had a single plate
+#   colour, which is why a sensor on the 10 mm side face "read" as floating on
+#   the top).  lightsVector 0.5 0 1 gives the top face ~0.92 brightness and the
+#   +X face ~0.56, so the edge between them is visible.  This is a display
+#   setting only; it changes no geometry.
+#
+# NOTE ON THE SENSOR / TOP-EDGE GAP: the sensor is centred across the 10 mm
+#   narrow face (v = 0 in AddSiPM), not flush with the top edge.  With a 4 mm
+#   active area its top edge is 3 mm below the top/side boundary (2 mm for the
+#   6 mm sensor); at this camera that is a fixed ~124 px (4 mm) / ~84 px
+#   (6 mm) gap in the render.  The sensor therefore sits in the darker
+#   side-face band, centred on it, and cannot literally touch the boundary.
+#
+# -----------------------------------------------------------------------------
+# 10 mm SCALE BAR
+#   The field of view is about 26 mm across; the caption states it.
+#   (manual placement, black, along +y, 10 mm long); it lands in the white
+#   margin under the side face.  An explicit `y` direction keeps it horizontal
+#   in this phi = 0 view.
+#
+# -----------------------------------------------------------------------------
+# WHY THE GREASE PADS ARE HIDDEN
+#   The 0.1 mm amber coupling pad (GreaseLV) sits directly in front of the
+#   sensor.  It is hidden with /vis/geometry/set/visibility so the red active
+#   area is unobscured.  The sensor itself is untouched.
+#
+# EDGE STRIPS: setEdgeReflector same means BuildEdgeStrips() returns before
+#   creating any MuonScintEdgeStrip* solids, so the 5 um strip geometry does not
+#   exist in this render at all.
+#
+# NO TRANSPARENCY DEPENDENCE: every drawn volume is forced to opacity 1 and
+#   /vis/tsg/offscreen/set/transparency is false.
+#
+# The global slab rotation is NOT used (/setRotation is deliberately absent).
+# =============================================================================
+
+/run/numberOfThreads 1
+
+# ---- geometry: plate + Config-1 SiPM layout + glossy wrapper ----------------
+/dcs-monitor/det/setPosition 0 0 0 mm
+/dcs-monitor/det/muonScint/add
+/dcs-monitor/det/muonScint/setSize 250 250 10 mm
+/dcs-monitor/det/muonScint/preset 1
+# (no setSiPMSize -> default 4 x 4 mm active area)
+/dcs-monitor/det/muonScint/setReflector 3
+/dcs-monitor/det/muonScint/setWrap true
+/dcs-monitor/det/muonScint/setEdgeReflector same
+/dcs-monitor/det/muonScint/setCouplingIndex 1.55
+/dcs-monitor/det/muonScint/setClampSurface white
+/dcs-monitor/det/muonScint/setBareContactFraction 0.045
+/dcs-monitor/det/muonScint/setAlBacking air
+
+/run/initialize
+
+# ---- head-less offscreen rendering (no GUI) ---------------------------------
+/vis/open TSG_OFFSCREEN 2000x1500
+/vis/tsg/offscreen/set/format zb_png
+/vis/tsg/offscreen/set/size 1200 1200
+
+/vis/verbose errors
+/vis/viewer/set/autoRefresh false
+/vis/viewer/set/background white
+/vis/drawVolume
+/vis/viewer/set/style surface
+/vis/viewer/set/edge false
+/vis/viewer/set/auxiliaryEdge false
+/vis/viewer/set/upVector 0 0 1
+/vis/viewer/set/lightsVector 0.5 0 1
+/vis/tsg/offscreen/set/transparency false
+
+# ---- opacity 1 (no alpha-dependent appearance) + hide the coupling pads -----
+/vis/geometry/set/colour MuonScintLV 0 0.45 0.75 1.0 1
+/vis/geometry/set/visibility GreaseLV 0 false
+
+# No in-image scale bar: /vis/scene/add/scale draws a 1-px line with a 13-px
+# label, which is a hairline at the 150 pt print width.  The caption states
+# the field of view instead.
+
+# ---- single-sensor close-up of the +X narrow face ---------------------------
+/vis/tsg/offscreen/set/file report/figures/design_ogl_c1_4mm.png
+/vis/viewer/set/viewpointThetaPhi 65 0
+/vis/viewer/set/targetPoint 125.4 62.5 0 mm
+/vis/viewer/zoomTo 13.5
+/vis/viewer/flush
+
+/vis/verbose confirmations

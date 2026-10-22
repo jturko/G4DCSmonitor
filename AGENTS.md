@@ -18,8 +18,9 @@ runnable, and each has its **own** `build/` and its own `report/` output tree.
   own: `cmake -S . -B build -DGeant4_DIR=$HOME/programs/geant4/install/lib/cmake/Geant4
   -DROOT_DIR=$HOME/programs/root/build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON`
   (`cmake --fresh` re-configures from scratch without deleting the directory).
-- `.refs/` is gitignored and machine-specific — re-create the three symlinks
-  (`examples`, `include`, `source`) in any new worktree.
+- `.refs/` is gitignored and machine-specific — re-create the Geant4 symlinks
+  (`geant4/{examples,include,source}`) and the ROOT ones (`root/{examples,include,source}`)
+  in any new worktree.
 - **The binary is never taken from `$PATH`** and there is no global install of it.
   Every driver resolves it from its own location (`slurm/run_*.sh`/`*.sbatch` →
   `${HERE}/../build/G4DCSmonitor`; `slurm/run_local.sh`, `macros/build_movie*.sh` →
@@ -44,15 +45,22 @@ runnable, and each has its **own** `build/` and its own `report/` output tree.
   the command line and `/dcs-monitor/det/useBiasing true` in the macro (see
   *CLI / biasing*).
 
-## READ-ONLY Geant4 reference tree (`.refs/`) — hard rule
-- **Never modify anything under `.refs/` or the Geant4 install/source trees it points
-  at.** It is a read-only reference: read and search only. Use it to look up G4 APIs,
-  base classes, and official example implementations instead of guessing.
-- `.refs/examples` → `~/programs/geant4/geant4-v11.3.2/examples`,
-  `.refs/source` → `~/programs/geant4/geant4-v11.3.2/source`,
-  `.refs/include` → `~/programs/geant4/install/include/Geant4`. These paths are
-  machine-specific, so `.refs/` is gitignored — do not commit it. Symlinks cannot
-  enforce read-only (Linux has no read-only symlink); this rule is the guarantee.
+## READ-ONLY reference trees (`.refs/`) — hard rule
+- **Never modify anything under `.refs/` or the Geant4/ROOT install and source trees
+  they point at.** It is a read-only reference: read and search only. Use it to look up
+  APIs, base classes, and official example implementations instead of guessing.
+- Geant4 (v11.3.2): `.refs/geant4/examples` → `~/programs/geant4/geant4-v11.3.2/examples`,
+  `.refs/geant4/source` → `~/programs/geant4/geant4-v11.3.2/source`,
+  `.refs/geant4/include` → `~/programs/geant4/install/include/Geant4`.
+- ROOT (v6.36.02): `.refs/root/include` → `~/programs/root/build/include` (the
+  configured install headers, e.g. `TFile.h`, generated `RConfigure.h`),
+  `.refs/root/source` → `~/programs/root/root-6.36.02` (full source tree, per-module
+  `inc/` + `src/` implementations), `.refs/root/examples` →
+  `~/programs/root/root-6.36.02/tutorials`. The source tree contains the tutorials too,
+  so the `examples` link is for convenience/parity with `.refs/geant4/examples`.
+- These paths are machine-specific, so `.refs/` is gitignored — do not commit it.
+  Symlinks cannot enforce read-only (Linux has no read-only symlink); this rule is the
+  guarantee.
 
 ## Build & run
 - Build with CMake from `build/` (the checked-in `build/` is the working dir):
@@ -262,6 +270,16 @@ below TiO₂ (worst: cfg3 edge −0.97 pe, −4.3σ; cfg3 corner −1.39 pe, −
   opposite the beam edge/corner regions). **Not** +X.
 - cfg4 (preset 7 analytic; preset 5 = legacy tessellated, vis only) = WLS fibre clamp on the
   **−X** narrow face (see "Config 4 / WLS").
+- preset 12 (`c2_cornercut`, the report's "4-corner cut, glossy") = the slab is a **convex
+  octagon**: each square corner is truncated by a 45° cut with a 12 mm leg, leaving four
+  17.0 mm faces at the face centres `(±119,±119)` in the report frame. One 4 mm SiPM sits on
+  each cut face (4 sensors; `sipmHits` channel order 0..3 = report BR, TR, TL, BL). The solid
+  is a convex `G4ExtrudedSolid` (analytic, exact face normals); `setCornerCut 0` restores the
+  legacy `G4Box` bit-for-bit. `/dcs-monitor/det/muonScint/setCornerCut <length>` (pre-init)
+  sets the leg on any preset. The cut is incompatible with the WLS clamp (`BuildWLSFibres`
+  forces the cut to 0) and skips `BuildEdgeStrips`. The removed triangles are 2.88 % of a
+  50×50 mm corner beam patch (0.461 % of the plate, all four corners), so those muons never
+  enter and write no `sipmHits` row — count distinct `evtNb`, never `max(evtNb)+1`.
 
 **Beam regions vs. detector side**: beam patch centres stay `(0,0)` (centre), `(100,0)`
 (+X edge), `(100,100)` (+X/+Y corner). The single-sided configs (3, 4) sit on −X so the
@@ -319,7 +337,7 @@ offline pulse-shape and process-mix studies).
 (scint + Čerenkov). Rows are emitted only for slabs the muon entered
 (`gOpticalDiag.muonEntrySet[det]`); legacy fallback (hit-only, muonX/Y = −9999) when
 `fDetector == nullptr`. SD `EndOfEvent` runs before `EventAction::EndOfEventAction`
-(`.refs/source/event/src/G4EventManager.cc:315` (`sdManager->TerminateCurrentEvent`) vs
+(`.refs/geant4/source/event/src/G4EventManager.cc:315` (`sdManager->TerminateCurrentEvent`) vs
 `:323` (`userEventAction->EndOfEventAction`)), so it can read `gOpticalDiag`.
 For pe/evt, sum `nDetected` over all SiPMs and divide by the number of events (`evtNb`),
 **not** by row count — dividing by rows gives per-SiPM pe/evt (the two differ by the SiPM count).
@@ -393,6 +411,30 @@ re-runs the learned `kTimeCFD` and `kAll` estimators and the linear opposite-pai
 α → `position_alpha_scan.csv` + `fig_recon_alpha_scan.{pdf,png}`. The scan needs ~50 min
 (72 extra k-NN runs); re-draw the figure alone with the 5th argument:
 `root -l -b -q 'macros/position_reconstruction.C+("","report/figures",0,0,"report/figures/position_alpha_scan.csv")'`.
+
+**The 3rd (width) panel is computed without the k-NN sweep** (2026-10-22): the 6th argument
+`doAlphaScan = 2` is a *cheap* mode that builds only the linear rows, keeps `knnSig`/`knnSigAll`
+from the existing CSV (matched on wrapper + α) and rewrites it, so it returns **before** both
+the `res` (20 fits) and the α `k-NN` (72 fits) loops → ~30 s instead of ~50 min:
+`root -l -b -q 'macros/position_reconstruction.C+("<whole dir>","report/figures",25000,2,"report/figures/position_alpha_scan.csv",1)'`
+(the `1` only suppresses the Monte-Carlo mode; `2` is what makes it cheap). The CSV gained
+`linear_width_ns` / `linear_width_pointquantile_ns` (cols 9–10) = `PooledBinWidth`, the rms of
+`tcfdm` **at fixed muon x** (pooled within 25 mm bins, ≥50 entries): the position-conditioned
+width, i.e. what a CFD is actually tuned on. It is *not* the global residual `linear_rms_noise`
+(col 4, which also contains the curvature of the response and is what `linear_sigma_x_mm`
+divides by the slope). Measured, α = 3 → 50 %: bare 1.377 → 1.342 ns and TiO₂ 0.888 → 0.854 ns
+(flat), Al(air) 0.393 → 0.665 and glossy 0.391 → 0.675 (×1.7). The slope meanwhile grows from
+0.0018 to 0.0029 ns/mm up to α ≈ 20 %, so the width and the slope move in opposite directions
+and only their ratio has the interior minimum at α ≈ 15 % — neither single quantity is a good
+tuning criterion.
+**Figure layout:** `DrawAlphaScan` is a 2 × 2 canvas (1180 × 900 px, printed at `\textwidth`
+→ 8.1 cm per panel, ~6.6 pt capitals as measured on the PNG): (a) width, (b) linear, (c)
+learned, (d) key cell (wrapper key + estimator key + the dashed-line note). Do **not** go back
+to a 1 × 3 layout: at 5.4 cm per panel every text falls below 6.5 pt. Two ROOT traps hit here:
+a `TH1` axis y-title is **clipped at the pad edge** at this pad height whatever the
+`TitleOffset` (draw it yourself with `TText` + `SetTextAngle(90)` and an empty axis title), and
+long titles ("rms of T_{CFD,x} [ns]", "CFD fraction") overflow a 425-px axis — use "rms width
+[ns]" / "rms error [mm]" / "alpha"
 **Result:** the learned estimator is insensitive to α (< 6 % over α = 3–20 %, nominal within
 1 % of the best); the *linear* opposite-pair timing read-out of the specular wrappers has a
 clear minimum at α ≈ 10–15 % and grows ×1.5 at α = 50 % (glossy 182 → 279 mm) — the
@@ -404,8 +446,64 @@ optimum-value statement — 32 % in glossy paper at α = 12.5 %, 17 % at α = 5 
 at α = 50 % (279 mm vs 268 mm for the first hit). Caveats in the macro: ROOT has a
 global `::kTop` (TGLFontManager.h) that clashes with a local `kTop` → the SiPM group is
 called `kTopEdge`; `TText` needs `#include <TText.h>` (cling would auto-include it and
-trigger the clash). The v6p5 data (`data_v6p5/whole`) is the campaign quoted in the report
-tables, not `data_v6/whole`.
+trigger the clash). The **`data_v7/whole`** tree is the campaign quoted in the report tables
+(its files are byte-identical to `data_v6p5/whole` except `muon_whole_out_c4_r0.root`, which was
+re-run on 2026-10-21 — the α scan uses cfg 1 only, so the numbers are unchanged). Not
+`data_v6/whole`.
+
+**Ten-design campaign (`v7_opt`, report Sec. 10, 2026-10-21).** Ten whole-plate runs,
+25 000 muons each, all files in `data_v7_opt/whole/<tag>.root` (production tree
+`/home/turko46/bigdata/.../MuonScinti`); tags `c1_split_black`, `c8_split_black`,
+`c10_wls4_tio2`, `c11_wls8_tio2`, `c1_edge_diffuse`, `c1_6mm_diffuse`, `c8_6mm_diffuse`,
+`c10_wls4_glossy`, `c11_wls8_glossy`, `c1_same_1p55`. An eleventh design,
+`c2_cornercut` (preset 12, glossy, `setCouplingIndex 1.55`), is reserved in the same table;
+`slurm/run_cornercut.sh` submits **only** its matrix, whole-slab and v7_opt array task
+(25 000 events), leaving the ten completed files untouched. The table (order, colour, human label,
+data stem) lives in **`macros/opt_designs.h`** — the single source of names **and colours**:
+`opt::label(i)`/`d.label` is what every figure prints (never the raw tag), `opt::color(i)`
+repeats a design's colour in every figure of the section. The control is `c1_same_1p55`
+(`setCouplingIndex 1.55`, 568.2 pe/evt = +9 % over the v7 default 1.46, 520.7), because a
+denominator must be measured in the same campaign. Figures: `opt_yield.C` (yield bars +
+per-event spectra), `opt_maps.C` (absolute + normalised efficiency maps, and the kappa bar
+chart not used in the report), `opt_de.C` (detection efficiency vs threshold + the 90 %
+threshold), `opt_waveform.C` (mean arrival-time profile); all write `opt_*.csv` beside them.
+Position resolution needs the CPU-bound sweep: `macros/run_opt_recon.sh` (reuses
+`position_reconstruction.C` through per-design symlinks) then `opt_recon_fig.C+("<raw.csv>")`.
+`macros/build_report_figures.sh` runs the four fast macros when `data_v7_opt` is present
+(`OPT_DIR` override) and redraws the recon figure only if `OPT_RECON_RAW` exists; it also
+regenerates the two geometry figures of Sec. 10.1 (`opt_layouts.C` needs no data,
+`render_designs.sh` runs only when `RENDERS=1`, the default).
+**Geometry figures (Sec. 10.1).** `macros/opt_layouts.C [OUTDIR]` draws the three sensor
+patterns (preset 1 at u=+-0.5, preset 8 at u=+-0.75, the four-sided clamp) as square 250 mm
+plan views in the report frame with true-scale positions, plus the design names and the
+6 mm footprint; sensor markers are drawn 2.5x oversize (a true 4 mm sensor is <2 pt at the
+print width) and the caption says so. `macros/render_designs.sh` drives four geometry-only
+macros (`vis_design_{c1_4mm,c1_6mm,wls10,wls11}.mac`: no beam, no trajectories,
+`TSG_OFFSCREEN`, `transparency true`, forced opacity 1) into
+`report/figures/design_ogl_{c1_4mm,c1_6mm,wls10,wls11,wls10_clamp}.png`; the 4/6 mm pair and
+the 10/11 pair share one camera each. The 4/6 mm macros are single-sensor close-ups of the
++X narrow face (theta 65, phi 0, target 125.4 62.5 0 mm, zoomTo 13.5 = ~26 mm field) with
+`lightsVector 0.5 0 1`, because the default light `(1,1,1)` shades the top and +X faces
+identically; no in-image scale bar (`/vis/scene/add/scale` draws a 1-px line with a 13-px
+label, a hairline at print size). The WLS macros must set `setFibreAnalytic false` **after**
+`preset` (analytic `G4CutTubs` boolean results have no polyhedron and render as a
+10 000-marker point cloud) and hide `WLSClampLV`, `WLSCoupleFilmLV`, `GreaseLV`; the
+faceted variant is the one measured 20 % lower in yield, so the renders are geometry only.
+**VRML** (visual, not in the report): `vrml/gen_v7opt_designs.sh` writes one `.wrl` per
+design into the gitignored `vrml/v7_opt/`; the tessellated presets draw as solids, the
+analytic ones as point clouds. View them with any VRML97 viewer or
+`/vis/open VRML2FILE` from the generated macro, or convert with
+`view3dscene`/`blender --python` for a still. Nothing under `vrml/` is committed.
+Results (combined estimator, 5000 held-out events, mm): 6 mm 11.48/11.78 < TiO2-fibre
+13.89/13.75 < control 15.94 < C8 black 17.41 < C1 black 18.75 < diffuse 19.85 << glossy-mirror fibre 55.23/60.71. The direct-coupled family follows
+sqrt(N) (6 mm predicts 1.45, measured 1.39; diffuse edge predicts 20.6, measured 19.9); the white-clamp fibre design
+carries ~6.6x the position information per photoelectron; the mirror clamp destroys the
+information (55-61 mm vs the 72 mm uniform prior) because it transports a plate-wide line
+integral to the bundle. Two plotting conventions matter: the map grids are 4x3 (10 panels +
+2 blanks) with **one shared palette below the grid** on a taller canvas, and every figure is
+sized so that printed capitals are >= 6.5 pt at 0.95-0.98 textwidth (ROOT scales
+`SetTextSize` against the **pad**, not the canvas — measure the PNG, do not compute from the
+canvas height).
 
 **Movies**: `macros/build_movie.sh` (single pane, Config 1/glossy, blue optical photons) and
 `macros/build_movie_quad.sh` (2×2 Config 1 × reflectors 0–3) are the older modes; both need
@@ -560,7 +658,7 @@ detected photoelectron, so the two means differ negligibly). It backs report Tab
 (`tab:wholeyield`); the p.e./event columns are just the `tab:eff` plate-averaged ε scaled by
 the ~19700 photons/event produced.
 
-**G4OpBoundaryProcess ground truth** (`.refs/source/processes/optical`): a
+**G4OpBoundaryProcess ground truth** (`.refs/geant4/source/processes/optical`): a
 `G4LogicalBorderSurface` overrides a `G4LogicalSkinSurface` at the same boundary;
 `RINDEX` is required on **material-1 always** (`G4OpBoundaryProcess.cc:288-306`) and on
 material-2 only for a `polished`/`ground` `dielectric_dielectric` boundary (`:427-454`,
@@ -638,6 +736,29 @@ sheath (n=1.42)** over the **PMMA inner clad (n=1.49)** and core (n=1.59) — to
 clamp would kill the low-index gap and lose the guided light. The paper specifies grease only
 in the plate↔clamp gap, not around the fibres.
 
+**Tessellated vs analytic (vis-only) and the 2026-10-21 placement fix.**
+`/dcs-monitor/det/muonScint/setFibreAnalytic <bool>` (pre-init, issue it **after** `preset`)
+selects analytic mitered `G4CutTubs` fibre legs and cutters (`true`, production; presets
+7/10/11) or the `G4TessellatedSolid` swept-prism path (`false`; presets 5/6). The analytic
+clamp/film subtraction results have **no polyhedron**, so VRML/OpenGL fall back to a point
+cloud (10 000 markers per failed solid); the tessellated path draws as a solid. The switch is
+ignored for square-section fibres (always tessellated) and does not change the optical model
+of the analytic path. VRML exports: `vrml/gen_all_presets.sh` and
+`vrml/gen_v7opt_designs.sh` (gitignored output); the plain `wls_preset10/11*.wrl` files are
+tessellated, the `*_analytic.wrl` ones production geometry but clouded.
+The tessellated fibre placement was **wrong until 2026-10-21**: it passed
+`rotCopyLocal(baseFibreRot)` with `baseFibreRot = localRot`, and `localRot` is an involution,
+so the matrix was `I` — every side's fibres stayed in the construction frame (bundle at +y
+under the mirror cap, pad on the spread end) instead of being flipped and distributed. Fixed
+by placing with `G4Transform3D(fibreRot, fibrePos)` (round: `localRot`; square:
+`localRot*ExtrudedFibreRot()`), the analytic-branch convention. **All earlier preset 5/6
+results (and the groove-clearance / round-vs-box A/B) were taken on misoriented fibres and are
+invalid.** Post-fix A/B, 100 ev centre glossy 4 GeV: preset 5 = 66.1 vs preset 7 = 81.9
+pe/evt — the residual gap is the tessellated square-section grooves / 24-gon, not placement.
+The film/clamp placements still use `rotCopyLocal` and keep a latent non-identity-`slabRot`
+bug (harmless while `setRotation` is unused): do not reorient the WLS clamp with
+`setRotation` until that is fixed.
+
 **Read-out / clamp skin:** all four fibre read-out ends carry the `fCouplingSurface` border to
 the shared read-out pad (belt-and-braces: with no surface the default is Fresnel, optically
 similar). Far (**+y**, after the placement flip) ends are full-disc `G4_Al` mirror caps; the
@@ -664,7 +785,7 @@ digitized Y-11 emission, both fed unconditionally (no env switch). The absolute 
 `/dcs-monitor/det/muonScint/setWLSAbsLength <value> <unit>` (pre-init). `G4OpWLS` samples the
 secondary from `WLSCOMPONENT` and requires E_sec ≤ E_absorbed, so keep `WLSABSLENGTH`
 effectively transparent at and below the emission onset and zero `WLSCOMPONENT` at/above that
-onset (see `.refs/examples/extended/optical/wls/src/WLSMaterials.cc`). **In the v11.3.2 tree
+onset (see `.refs/geant4/examples/extended/optical/wls/src/WLSMaterials.cc`). **In the v11.3.2 tree
 there is no `WSL01` fatal at all** — a grep of the whole source/install trees finds no such
 message, and `G4OpWLS` merely drops the photon after 100 failed samples — so this is a
 data/correctness rule, not a crash expected here. Our tables satisfy it (≈69 % of the emission

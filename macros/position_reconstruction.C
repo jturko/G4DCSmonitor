@@ -64,7 +64,7 @@
 //       runs the geometry/D4 self-test, which needs no data files),
 //       doAlphaScan (default 1 = also scan the constant fraction alpha),
 //       alphaCsv (default "" = compute; otherwise redraw alpha scan from CSV),
-//       preset (default 1 = Config 1; also supported: 8, 10, 11).
+//       preset (default 1 = Config 1; also supported: 2, 8, 10, 11, 12).
 //
 // NOTE: run this through ACLiC (.C+) -- the k-NN regression is compute-bound.
 
@@ -129,6 +129,18 @@ std::vector<SipmGeom> GetSipmTable(int preset)
         s.push_back({2, -0.50, +kHalf, +kHalf, -62.5, "R1"});
         s.push_back({3, +0.50, -kHalf, -kHalf, +62.5, "L1"});
         s.push_back({3, -0.50, -kHalf, -kHalf, -62.5, "L2"});
+    } else if (preset == 2) {
+        // Config 2: 4 SiPMs, one per side, at the Config-1 offsets.  The
+        // kept slots (u=-0.5 on +X/-Y, u=+0.5 on -X/+Y) form a pinwheel with
+        // C4 symmetry only.  Report frame: (x,y) = (y_slab,-x_slab).
+        //   slot 0 +X u=-0.5 -> B1 (-62.5,-125)
+        //   slot 1 -X u=+0.5 -> T1 (+62.5,+125)
+        //   slot 2 +Y u=+0.5 -> R1 (+125,-62.5)
+        //   slot 3 -Y u=-0.5 -> L1 (-125,+62.5)
+        s.push_back({0, -0.50, -kHalf, -62.5, -kHalf, "B1"});
+        s.push_back({1, +0.50, +kHalf, +62.5, +kHalf, "T1"});
+        s.push_back({2, +0.50, +kHalf, +kHalf, -62.5, "R1"});
+        s.push_back({3, -0.50, -kHalf, -kHalf, +62.5, "L1"});
     } else if (preset == 8) {
         // Config 8: 8 SiPMs, 2/side at u = +-0.75
         s.push_back({0, -0.75, -kHalf, -93.75, -kHalf, "B1"});
@@ -139,6 +151,21 @@ std::vector<SipmGeom> GetSipmTable(int preset)
         s.push_back({2, -0.75, +kHalf, +kHalf, -93.75, "R1"});
         s.push_back({3, +0.75, -kHalf, -kHalf, +93.75, "L1"});
         s.push_back({3, -0.75, -kHalf, -kHalf, -93.75, "L2"});
+    } else if (preset == 12) {
+        // Config 12: convex octagon.  Every square corner is truncated with a
+        // 12 mm leg, so the 45-degree face is 17.0 mm wide and its centre is
+        // 6 mm inside the square corner, at (+-119, +-119) mm in the report
+        // frame.  There is one 4 mm SiPM per 45-degree face; the channel order
+        // of sipmHits is BR, TR, TL, BL:
+        //   0 BR (+119,-119)  1 TR (+119,+119)
+        //   2 TL (-119,+119)  3 BL (-119,-119)
+        // The corner faces are not square-frame edges, so `edge` is nominal;
+        // GetEdgeGroup() special-cases preset 12 from the coordinates.
+        const double c = kHalf - 6.0;
+        s.push_back({0, 0.0, 0.0,  c, -c, "BR"});
+        s.push_back({1, 0.0, 0.0,  c,  c, "TR"});
+        s.push_back({2, 0.0, 0.0, -c,  c, "TL"});
+        s.push_back({3, 0.0, 0.0, -c, -c, "BL"});
     } else if (preset == 10 || preset == 11) {
         // Four-sided WLS read-out.  Slab-local SiPM centres from
         // GeometryMuonScint::PlaceWLSFibres() (placeReadout / mapPosNoFlip):
@@ -492,7 +519,7 @@ std::vector<D4Elem> BuildD4Group(const std::vector<SipmGeom>& sipm)
 // macro knows about.  Used by the negative-maxEvents self-test mode.
 void PrintGeometrySelfTest()
 {
-    for (int preset : {1, 2, 3, 4, 8, 10, 11}) {
+    for (int preset : {1, 2, 3, 4, 8, 10, 11, 12}) {
         const std::vector<SipmGeom> sipm = GetSipmTable(preset);
         if (sipm.empty()) {
             std::cout << "[self-test] preset " << preset
@@ -515,6 +542,20 @@ void PrintGeometrySelfTest()
 std::vector<int> GetEdgeGroup(int edge)
 {
     std::vector<int> g;
+    if (gPreset == 12) {
+        // Four 45-degree corner faces, one sensor each.  Keep the report-frame
+        // side grouping used by the estimators: 0 = bottom (y < 0),
+        // 1 = top (y > 0), 2 = right (x > 0), 3 = left (x < 0).  Each group
+        // therefore holds the two sensors on adjacent corner faces.
+        for (int s = 0; s < gNSiPM; ++s) {
+            const bool ok = (edge == 0) ? (gSipm[s].y < 0) :
+                            (edge == 1) ? (gSipm[s].y > 0) :
+                            (edge == 2) ? (gSipm[s].x > 0) :
+                                          (gSipm[s].x < 0);
+            if (ok) g.push_back(s);
+        }
+        return g;
+    }
     for (int s = 0; s < gNSiPM; ++s)
         if (gSipm[s].edge == edge) g.push_back(s);
     return g;
@@ -773,6 +814,8 @@ struct AlphaRow {
     double linSigQ = 0;                             // point quantile, linear pair
     double knnSig = 0;                              // learned, optical CFD channel
     double knnSigAll = 0;                           // learned, combined channel
+    double linWidth = 0;                            // position-conditioned width of T_CFD,x [ns]
+    double linWidthQ = 0;                           // same, point-quantile CFD [ns]
 };
 
 // wrapper index of a wrapper name ("bare", "TiO2", "Al (air)", "glossy")
@@ -810,87 +853,248 @@ std::vector<AlphaRow> ReadAlphaScan(const char* fname)
         a.linSigQ  = std::atof(f[5].c_str());
         a.knnSig   = std::atof(f[6].c_str());
         a.knnSigAll= std::atof(f[7].c_str());
+        if (f.size() > 9) {                      // optional columns (2026-10-22)
+            a.linWidth  = std::atof(f[8].c_str());
+            a.linWidthQ = std::atof(f[9].c_str());
+        }
         rows.push_back(a);
     }
     return rows;
 }
 
+// write a position_alpha_scan.csv (the only writer, so the header stays unique)
+void WriteAlphaScan(const std::vector<AlphaRow>& rows, const TString& fname)
+{
+    std::ofstream csv(fname.Data());
+    csv << "wrapper,alpha,linear_slope_per_mm,linear_rms_noise,linear_sigma_x_mm,"
+           "linear_sigma_x_pointquantile_mm,learned_sigma_x_cfd_mm,"
+           "learned_sigma_x_combined_mm,linear_width_ns,linear_width_pointquantile_ns\n";
+    for (const AlphaRow& a : rows)
+        csv << kReflPlain[a.refl] << "," << a.alpha << ","
+            << a.linSlope << "," << a.linNoise << "," << a.linSig << ","
+            << a.linSigQ << "," << a.knnSig << "," << a.knnSigAll << ","
+            << a.linWidth << "," << a.linWidthQ << "\n";
+}
+
+// mean over the SiPMs of one edge, skipping channels that saw nothing
+double MeanPairTime(const double* arr, const std::vector<int>& g)
+{
+    double s = 0; int k = 0;
+    for (int i : g) if (arr[i] > 0) { s += arr[i]; ++k; }
+    return k ? s / k : 0.0;
+}
+
+// Pooled rms of v(x) inside 25 mm x-bins.  Subtracting each bin's own mean
+// removes the position response from the width, so what is left is the
+// resolution of the observable -- for v = T_CFD,x this is the width of the
+// CFD time difference at a fixed muon position, i.e. the quantity a constant
+// fraction is normally tuned on.  Taking the residual about a *global* linear
+// fit instead (AlphaRow::linNoise) would also fold in the non-linear part of
+// the position response.
+double PooledBinWidth(const std::vector<double>& v, const std::vector<double>& x,
+                      double half = 125.0, double binw = 25.0, int minN = 50)
+{
+    if (v.size() != x.size() || v.empty()) return 0.0;
+    const int nb = (int)std::lround(2.0 * half / binw);
+    if (nb < 1) return 0.0;
+    std::vector<double> s(nb, 0.0), ss(nb, 0.0);
+    std::vector<int>    n(nb, 0);
+    for (size_t i = 0; i < v.size(); ++i) {
+        int b = (int)std::floor((x[i] + half) / binw);
+        if (b < 0) b = 0;
+        if (b >= nb) b = nb - 1;
+        s[b] += v[i]; ss[b] += v[i] * v[i]; ++n[b];
+    }
+    double num = 0; long den = 0;
+    for (int b = 0; b < nb; ++b) {
+        if (n[b] < minN) continue;
+        const double m = s[b] / n[b];
+        const double var = std::max(0.0, ss[b] / n[b] - m * m);
+        num += (n[b] - 1) * var;
+        den += (n[b] - 1);
+    }
+    return den ? std::sqrt(num / den) : 0.0;
+}
+
+// The transparent (no k-NN) part of one alpha-scan row: the opposite-pair
+// wavefront-time difference, its linear response to x, and its width.
+AlphaRow ScanLinearRow(const std::vector<Event>& E, const std::vector<double>& Yx,
+                       const std::vector<int>& gRgt, const std::vector<int>& gLft,
+                       int refl, int ai)
+{
+    AlphaRow row;
+    row.refl  = refl;
+    row.alpha = kAlpha[ai];
+    const size_t n = E.size();
+    std::vector<double> Tm(n), Tq(n);
+    for (size_t e = 0; e < n; ++e) {
+        Tm[e] = MeanPairTime(E[e].tcfdmA[ai], gRgt) - MeanPairTime(E[e].tcfdmA[ai], gLft);
+        Tq[e] = MeanPairTime(E[e].tcfdA[ai],  gRgt) - MeanPairTime(E[e].tcfdA[ai],  gLft);
+    }
+    const PairStat pm = LinearFit(Tm, Yx);
+    row.linSlope  = pm.slope;
+    row.linNoise  = pm.noise;
+    row.linSig    = pm.sigmaPos;
+    row.linSigQ   = LinearFit(Tq, Yx).sigmaPos;
+    row.linWidth  = PooledBinWidth(Tm, Yx);
+    row.linWidthQ = PooledBinWidth(Tq, Yx);
+    return row;
+}
+
 // ---------------------------------------------------------------------------
-// The alpha-scan figure: the position resolution as a function of the constant
-// fraction alpha, for the transparent linear read-out (left) and for the two
-// learned estimators (right).
+// The alpha-scan figure: the constant fraction is a free parameter of the
+// optical CFD.  (a) the width of the CFD time difference at fixed muon
+// position (pooled over 25 mm x-bins) -- the observable a constant fraction is
+// normally tuned on; (b) the position resolution of the transparent linear
+// opposite-pair read-out; (c) that of the learned multi-channel estimator;
+// (d) the key.  Two panels per row: at \textwidth this prints 8.1 cm wide per
+// panel, which keeps the capitals at ~7 pt.
 // ---------------------------------------------------------------------------
 void DrawAlphaScan(const std::vector<AlphaRow>& ascan, const char* outdir)
 {
     if (ascan.empty()) return;
     const int kColorA[4] = {PetroffPalette::getP6(0), PetroffPalette::getP6(1),
                             PetroffPalette::getP6(2), PetroffPalette::getP6(3)};
-    TCanvas* c = new TCanvas("fig_recon_alpha_scan", "", 1180, 540);
-    c->Divide(2, 1);
-    for (int ip = 0; ip < 2; ++ip) {
+    const int kMarkA[4]  = {20, 21, 22, 23};      // filled: optical CFD
+    const int kMarkB[4]  = {24, 25, 26, 27};      // open:   combined
+    const bool hasWidth = std::any_of(ascan.begin(), ascan.end(),
+                                      [](const AlphaRow& a) { return a.linWidth > 0; });
+    const int npan = hasWidth ? 3 : 2;
+    TCanvas* c = new TCanvas("fig_recon_alpha_scan", "", 1180, 900);
+    if (hasWidth) c->Divide(2, 2);
+    else          c->Divide(2, 1);
+    const char* kPanelTag[3] = {"(a) timing width", "(b) linear read-out",
+                                "(c) learned estimator"};
+
+    // one wrapper key, drawn where a free block exists
+    auto wrapperKey = [&](double x1, double y1, double x2, double y2, double ts) {
+        TLegend* leg = new TLegend(x1, y1, x2, y2);
+        for (int r = 0; r < 4; ++r) {
+            TGraph* s = new TGraph(1);
+            s->SetMarkerStyle(kMarkA[r]);
+            s->SetMarkerSize(1.1);
+            s->SetMarkerColor(kColorA[r]);
+            s->SetLineColor(kColorA[r]);
+            s->SetLineWidth(2);
+            leg->AddEntry(s, kReflName[r], "pl");
+        }
+        leg->SetBorderSize(0);
+        leg->SetTextSize(ts);
+        leg->SetFillStyle(0);
+        leg->Draw();
+    };
+    auto estimatorKey = [&](double x1, double y1, double x2, double y2, double ts) {
+        TLegend* key = new TLegend(x1, y1, x2, y2);
+        TGraph* s1 = new TGraph(1);
+        s1->SetMarkerStyle(kMarkA[0]);
+        s1->SetMarkerSize(1.1);
+        s1->SetLineWidth(2);
+        key->AddEntry(s1, "optical CFD", "pl");
+        TGraph* s2 = new TGraph(1);
+        s2->SetMarkerStyle(kMarkB[0]);
+        s2->SetMarkerSize(1.1);
+        s2->SetLineStyle(7);
+        s2->SetLineWidth(2);
+        key->AddEntry(s2, "combined", "pl");
+        key->SetBorderSize(0);
+        key->SetTextSize(ts);
+        key->SetFillStyle(0);
+        key->Draw();
+    };
+
+    for (int ip = 0; ip < npan; ++ip) {
         c->cd(ip + 1);
         gPad->SetLogx();
-        gPad->SetLeftMargin(ip == 0 ? 0.25 : 0.19);
-        gPad->SetRightMargin(0.30);
+        gPad->SetLeftMargin(0.24);
+        gPad->SetRightMargin(0.04);
         gPad->SetBottomMargin(0.16);
+        gPad->SetTopMargin(0.10);
+
+        // panel 0 is the width (only present in a table that carries it);
+        // 1 and 2 are the linear and the learned resolutions
+        auto yval = [&](const AlphaRow& a, int which) {
+            if (hasWidth && which == 0) return a.linWidth;
+            const int kk = hasWidth ? which - 1 : which;
+            return kk == 0 ? a.linSig : a.knnSig;
+        };
+        const int k = hasWidth ? ip - 1 : ip;   // 0 = linear, 1 = learned
 
         double ymax = 0;
         for (const AlphaRow& a : ascan) {
-            if (ip == 0) ymax = std::max(ymax, a.linSig);
-            else         ymax = std::max(ymax, std::max(a.knnSig, a.knnSigAll));
+            ymax = std::max(ymax, yval(a, ip));
+            if (k == 1) ymax = std::max(ymax, a.knnSigAll);
         }
         ymax *= 1.25;
 
         TH1D* frame = new TH1D(TString::Format("alphaf%d", ip), "", 100, 0.02, 0.6);
         frame->SetDirectory(nullptr);
-        frame->SetTitle(ip == 0
-                        ? "Linear opposite-pair read-out"
-                        : "Learned multi-channel estimator");
-        frame->GetXaxis()->SetTitle("constant fraction alpha");
-        frame->GetYaxis()->SetTitle("rms error along one axis [mm]");
-        // the shared style pushes the Y title off the canvas (2.5 title sizes),
-        // so the offset is set explicitly here
-        frame->GetYaxis()->SetTitleOffset(1.35);
+        frame->SetTitle("");
+        frame->GetXaxis()->SetTitle("#alpha");
+        // The Y title is drawn by hand: the axis title offset is measured
+        // against the pad and clips the glyph tops at this pad height.
+        frame->GetYaxis()->SetTitle("");
         frame->GetXaxis()->SetMoreLogLabels(kTRUE);
-        frame->GetXaxis()->SetLabelSize(0.030);
+        frame->GetXaxis()->SetLabelSize(0.062);
+        frame->GetYaxis()->SetLabelSize(0.062);
+        frame->GetXaxis()->SetTitleSize(0.060);
+        frame->GetYaxis()->SetTitleSize(0.060);
         frame->Draw();
         frame->GetXaxis()->SetRangeUser(0.02, 0.6);
         frame->GetYaxis()->SetRangeUser(0, ymax);
+
+        TText* yt = new TText(0.075, 0.53, (ip == 0 && hasWidth)
+                                            ? "rms width [ns]" : "rms error [mm]");
+        yt->SetNDC();
+        yt->SetTextAngle(90);
+        yt->SetTextAlign(22);
+        yt->SetTextSize(0.060);
+        yt->SetTextFont(gStyle->GetTitleFont());
+        yt->Draw();
+
+        // in the top margin, clear of the rotated Y title
+        TText* tag = new TText(0.26, 0.915, kPanelTag[ip]);
+        tag->SetNDC();
+        tag->SetTextSize(0.060);
+        tag->SetTextFont(62);
+        tag->Draw();
 
         // the nominal constant fraction, as a dashed vertical marker
         // (a TGraph, not a TLine: a TLine drawn "SAME" corrupts the range)
         TGraph* mark = new TGraph(2);
         mark->SetPoint(0, kAlpha[kAlphaNom], 0.0);
         mark->SetPoint(1, kAlpha[kAlphaNom], ymax);
-        mark->SetLineColor(kGray + 1);
+        mark->SetLineColor(kGray + 2);
         mark->SetLineStyle(7);
-        mark->SetLineWidth(1);
+        mark->SetLineWidth(2);
         mark->Draw("SAME");
-        TText* nom = new TText(kAlpha[kAlphaNom] * 1.08, ymax * 0.93, "alpha = 12.5 %");
-        nom->SetTextSize(0.032);
-        nom->SetTextColor(kGray + 1);
-        nom->Draw();
+        if (ip == 0) {
+            // right-aligned to the marker, inside an empty part of the frame
+            TText* nom = new TText(kAlpha[kAlphaNom] * 0.92, ymax * 0.62,
+                                   "alpha = 12.5 %");
+            nom->SetTextAlign(32);
+            nom->SetTextSize(0.064);
+            nom->SetTextColor(kGray + 2);
+            nom->Draw();
+        }
 
-        TLegend* leg = new TLegend(0.72, 0.40, 0.98, 0.88);
         for (int r = 0; r < 4; ++r) {
             std::vector<double> ax, ay;
             for (const AlphaRow& a : ascan) {
                 if (a.refl != r) continue;
                 ax.push_back(a.alpha);
-                ay.push_back(ip == 0 ? a.linSig : a.knnSig);
+                ay.push_back(yval(a, ip));
             }
             if (ax.empty()) continue;
             TGraph* g = new TGraph((int)ax.size());
             for (size_t i = 0; i < ax.size(); ++i) g->SetPoint((int)i, ax[i], ay[i]);
-            g->SetMarkerStyle(20);
+            g->SetMarkerStyle(kMarkA[r]);
             g->SetMarkerSize(1.5);
             g->SetMarkerColor(kColorA[r]);
             g->SetLineColor(kColorA[r]);
             g->SetLineWidth(2);
             g->Draw("P SAME");
-            leg->AddEntry(g, kReflName[r], "p");
-            if (ip == 1) {
-                // the combined estimator, dashed
+            if (k == 1) {
+                // the combined estimator: same colour, open marker, dashed line
                 std::vector<double> bx, by;
                 for (const AlphaRow& a : ascan) {
                     if (a.refl != r) continue;
@@ -899,7 +1103,7 @@ void DrawAlphaScan(const std::vector<AlphaRow>& ascan, const char* outdir)
                 }
                 TGraph* g2 = new TGraph((int)bx.size());
                 for (size_t i = 0; i < bx.size(); ++i) g2->SetPoint((int)i, bx[i], by[i]);
-                g2->SetMarkerStyle(21);
+                g2->SetMarkerStyle(kMarkB[r]);
                 g2->SetMarkerSize(1.5);
                 g2->SetMarkerColor(kColorA[r]);
                 g2->SetLineColor(kColorA[r]);
@@ -908,25 +1112,32 @@ void DrawAlphaScan(const std::vector<AlphaRow>& ascan, const char* outdir)
                 g2->Draw("P SAME");
             }
         }
-        if (ip == 1) {
-            TGraph* s1 = new TGraph(1);
-            s1->SetLineColor(kBlack);
-            s1->SetLineWidth(2);
-            leg->AddEntry(s1, "optical CFD", "l");
-            TGraph* s2 = new TGraph(1);
-            s2->SetLineColor(kBlack);
-            s2->SetLineStyle(7);
-            s2->SetLineWidth(2);
-            leg->AddEntry(s2, "combined", "l");
-        }
-        leg->SetBorderSize(0);
-        leg->Draw();
         frame->GetYaxis()->SetRangeUser(0, ymax);
+
+        // the learned panel has ~40 % of its frame free below the curves
+        if (k == 1 && !hasWidth)
+            wrapperKey(0.26, 0.19, 0.78, 0.47, 0.056);
+    }
+
+    // key cell: only meaningful in the three-panel (2 x 2) layout
+    if (hasWidth) {
+        c->cd(4);
+        TText* tk = new TText(0.06, 0.90, "(d) key");
+        tk->SetNDC();
+        tk->SetTextSize(0.060);
+        tk->SetTextFont(62);
+        tk->Draw();
+        wrapperKey(0.08, 0.44, 0.98, 0.84, 0.062);
+        estimatorKey(0.08, 0.20, 0.98, 0.40, 0.062);
+        TText* note = new TText(0.08, 0.08, "dashed line: alpha = 12.5 %");
+        note->SetNDC();
+        note->SetTextSize(0.064);
+        note->SetTextColor(kGray + 2);
+        note->Draw();
     }
     c->SaveAs(TString::Format("%s/fig_recon_alpha_scan.pdf", outdir));
     c->SaveAs(TString::Format("%s/fig_recon_alpha_scan.png", outdir));
 }
-
 struct EstResult {
     int    feat = 0;
     int    k = 0;
@@ -963,8 +1174,10 @@ void position_reconstruction(const char* dir = "/home/turko46/bigdata/DCS-Monito
     gStyle->SetOptTitle(1);
     gSystem->mkdir(outdir, kTRUE);
 
-    // fast path: redraw the alpha-scan figure from a csv written earlier
-    if (alphaCsv && *alphaCsv) {
+    // fast path: redraw the alpha-scan figure from a csv written earlier.
+    // doAlphaScan == 2 is the cheap width-only recompute, which needs the
+    // events, so it must fall through to the reader below.
+    if (doAlphaScan != 2 && alphaCsv && *alphaCsv) {
         const std::vector<AlphaRow> rows = ReadAlphaScan(alphaCsv);
         std::cout << "[position_reconstruction] redrawing the alpha scan from "
                   << alphaCsv << " (" << rows.size() << " rows)" << std::endl;
@@ -976,8 +1189,10 @@ void position_reconstruction(const char* dir = "/home/turko46/bigdata/DCS-Monito
     const double kTestFrac = 0.2;       // 20 % of the events held out
 
     const char* cfgTag = (preset == 1) ? "c1" :
+                         (preset == 2) ? "c2" :
                          (preset == 8) ? "c8" :
-                         (preset == 10) ? "c10" : "c11";
+                         (preset == 10) ? "c10" :
+                         (preset == 11) ? "c11" : "c12";
 
     // ---------------------------------------------------------------- read
     std::vector<WrapperData> wd(4);
@@ -999,6 +1214,45 @@ void position_reconstruction(const char* dir = "/home/turko46/bigdata/DCS-Monito
     const std::vector<int> gTopEdge = GetEdgeGroup(1);
     const std::vector<int> gRgt = GetEdgeGroup(2);
     const std::vector<int> gLft = GetEdgeGroup(3);
+
+    // ------------------------------------------- cheap alpha scan (mode 2)
+    // Recompute only the transparent (no k-NN) part of the alpha table: the
+    // opposite-pair response and the position-conditioned width of the CFD
+    // time difference.  The learned columns of the existing table are kept, so
+    // the timing-width panel can be added without re-running the ~50 min k-NN
+    // scan.  Usage (batch):
+    //   root -l -b -q 'macros/position_reconstruction.C+("<dir>","<outdir>", \
+    //       25000,2,"<outdir>/position_alpha_scan.csv",1)'
+    if (doAlphaScan == 2) {
+        std::vector<AlphaRow> fresh;
+        for (int r = 0; r < 4; ++r) {
+            const std::vector<Event>& E = wd[r].evs;
+            std::vector<double> Yx(E.size());
+            for (size_t e = 0; e < E.size(); ++e) Yx[e] = E[e].x;
+            for (int ai = 0; ai < kNAlpha; ++ai) {
+                const AlphaRow a = ScanLinearRow(E, Yx, gRgt, gLft, r, ai);
+                fresh.push_back(a);
+                std::cout << "   [width scan r" << r << "] alpha = " << a.alpha
+                          << ": width(T_CFD,x) = " << a.linWidth << " ns"
+                          << ", slope = " << a.linSlope << " ns/mm"
+                          << ", sigma_x = " << a.linSig << " mm" << std::endl;
+            }
+        }
+        const TString csvName = (alphaCsv && *alphaCsv)
+                              ? TString(alphaCsv)
+                              : TString::Format("%s/position_alpha_scan.csv", outdir);
+        const std::vector<AlphaRow> old = ReadAlphaScan(csvName.Data());
+        for (AlphaRow& a : fresh)
+            for (const AlphaRow& o : old)
+                if (o.refl == a.refl && std::fabs(o.alpha - a.alpha) < 1e-9) {
+                    a.knnSig    = o.knnSig;
+                    a.knnSigAll = o.knnSigAll;
+                    break;
+                }
+        WriteAlphaScan(fresh, csvName);
+        DrawAlphaScan(fresh, outdir);
+        return;
+    }
 
     // ------------------------------------------------- opposite-pair analysis
     std::vector<ObsRow> obs;
@@ -1164,35 +1418,15 @@ void position_reconstruction(const char* dir = "/home/turko46/bigdata/DCS-Monito
             std::vector<int> tr, te;
             for (size_t i = 0; i < n; ++i) { if (i < ntest) te.push_back(idx[i]); else tr.push_back(idx[i]); }
 
-            auto meanPair = [&](const double* arr, const std::vector<int>& g) {
-                double s = 0; int k = 0;
-                for (int idx : g) if (arr[idx] > 0) { s += arr[idx]; ++k; }
-                return k ? s / k : 0.0;
-            };
             auto rms = [](const std::vector<double>& v) {
                 double s = 0; for (double q : v) s += q * q; return std::sqrt(s / v.size());
             };
 
             for (int ai = 0; ai < kNAlpha; ++ai) {
-                AlphaRow row;
-                row.refl = r;
-                row.alpha = kAlpha[ai];
-
                 // (1) the transparent linear observable: the opposite-pair
-                //     difference of the leading-alpha wavefront times
-                std::vector<double> Tm(n), Tq(n);
-                for (size_t e = 0; e < n; ++e) {
-                    const Event& ev = E[e];
-                    Tm[e] = meanPair(ev.tcfdmA[ai], gRgt)
-                           - meanPair(ev.tcfdmA[ai], gLft);
-                    Tq[e] = meanPair(ev.tcfdA[ai],  gRgt)
-                           - meanPair(ev.tcfdA[ai],  gLft);
-                }
-                const PairStat pm = LinearFit(Tm, Yx);
-                row.linSlope = pm.slope;
-                row.linNoise = pm.noise;
-                row.linSig   = pm.sigmaPos;
-                row.linSigQ  = LinearFit(Tq, Yx).sigmaPos;
+                //     difference of the leading-alpha wavefront times, its
+                //     linear response to x, and its position-conditioned width
+                AlphaRow row = ScanLinearRow(E, Yx, gRgt, gLft, r, ai);
 
                 // (2) the learned estimator, optical CFD channel
                 {
@@ -1278,15 +1512,7 @@ void position_reconstruction(const char* dir = "/home/turko46/bigdata/DCS-Monito
                 << o.st.slope << "," << o.st.intercept << ","
                 << o.st.noise << "," << o.st.sigmaPos << "\n";
     }
-    if (doAlphaScan) {
-        std::ofstream csv(TString::Format("%s/position_alpha_scan.csv", outdir).Data());
-        csv << "wrapper,alpha,linear_slope_per_mm,linear_rms_noise,linear_sigma_x_mm,"
-               "linear_sigma_x_pointquantile_mm,learned_sigma_x_cfd_mm,learned_sigma_x_combined_mm\n";
-        for (const AlphaRow& a : ascan)
-            csv << kReflPlain[a.refl] << "," << a.alpha << ","
-                << a.linSlope << "," << a.linNoise << "," << a.linSig << ","
-                << a.linSigQ << "," << a.knnSig << "," << a.knnSigAll << "\n";
-    }
+    if (doAlphaScan) WriteAlphaScan(ascan, TString::Format("%s/position_alpha_scan.csv", outdir));
 
     // ================================================================ figures
     const int kColor[kMaxSiPM] = {PetroffPalette::getP6(0), PetroffPalette::getP6(1),
