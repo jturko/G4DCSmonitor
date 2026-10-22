@@ -48,7 +48,7 @@ The report's *substantive* Geant4 physics assertions are attributed elsewhere:
   Agostinelli2003 predates v11 by ~20 years. Combining both keys as a single
   reference to "Geant4 (v11.3.2)" is common practice but the version itself
   is *not* documented by either source — the report's actual authority for
-  v11.3.2 is the source tree (`.refs/source/...`, e.g. `:385`). This is a
+  v11.3.2 is the source tree (`.refs/geant4/source/...`, e.g. `:385`). This is a
   caveat, not an error.
 
 ### Claim B — Optical photon transport / boundary process description

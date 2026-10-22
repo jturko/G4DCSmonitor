@@ -10,7 +10,7 @@ placement with `G4LogicalBorderSurface` / `G4LogicalSkinSurface`. For every
 construct the entries below give (a) our site `file:line`, (b) the Geant4 rule or
 example with source `file:line` + quote, (c) a verdict, (d) notes.
 
-Method: static reading of `.refs/source` bespoke geometry code, plus arithmetic
+Method: static reading of `.refs/geant4/source` bespoke geometry code, plus arithmetic
 re-derivation of every cutter footprint from the code + `include/GeometryMuonScint.hh`
 defaults. No runtime Geant4 log containing `GeomSolids1001` / `GeomVol1002` was
 found in the repo (`data_output/`, `*.log`, `slurm/`), so validity is argued
@@ -20,21 +20,21 @@ statically, not from a captured geometry-check run.
 
 | Source | What it fixes |
 |---|---|
-| `.refs/source/geometry/solids/specific/include/G4TessellatedSolid.hh:31-35` | Tessellated solid must be a fully enclosing facet set; only triangular/quadrangular facets. |
-| `.refs/source/geometry/solids/specific/include/G4TessellatedSolid.hh:81-83` | `SetSolidClosed(true)` completes the solid. |
-| `.refs/source/geometry/solids/specific/src/G4TessellatedSolid.cc:591-647` | `SetSolidClosed` → `CreateVertexList`/`SetExtremeFacets`/`Voxelize`/`CheckStructure`; issues `GeomSolids1001` warnings for negative volume / wrong facet orientation / holes. |
-| `.refs/source/geometry/solids/specific/src/G4TessellatedSolid.cc:670-728` | `CheckStructure`: volume sum ⇒ sign; edges must pair with opposite orientation. |
-| `.refs/source/geometry/solids/specific/src/G4TriangularFacet.cc:83-120` | Facet ctor rejects degenerate (too small / too narrow) triangles with `GeomSolids1001` warning and `fIsDefined=false`. |
-| `.refs/source/geometry/solids/Boolean/include/G4SubtractionSolid.hh:30` | `G4SubtractionSolid` = A − B. |
-| `.refs/source/geometry/solids/Boolean/src/G4SubtractionSolid.cc:130-152` | `BoundingLimits` returns **SolidA's** box untrimmed. |
-| `.refs/source/geometry/volumes/include/G4PVPlacement.hh:62` | `pSurfChk if true activates check for overlaps with existing volumes.` |
-| `.refs/source/geometry/volumes/src/G4PVPlacement.cc:61,88,115,141` | Ctor calls `CheckOverlaps()` when `pSurfChk`. |
-| `.refs/source/geometry/volumes/src/G4PVPlacement.cc:243-526` | `CheckOverlaps`: `Sample point is not on the surface !` (:269-275), `Overlap with mother volume !` (:326-341), `Overlap with volume already placed !` (:469-484, :512-526), encapsulation check (:355-451). |
-| `.refs/source/processes/optical/src/G4OpBoundaryProcess.cc:319-341` | `G4LogicalBorderSurface::GetSurface(pre,post)` is tried **first**; `G4LogicalSkinSurface` is only consulted if that returns null. |
-| `.refs/source/geometry/volumes/src/G4LogicalBorderSurface.cc:43-60,102-112` | Border surface is stored/retrieved purely by the `(vol1,vol2)` physical-volume pair — independent of mother/daughter. |
+| `.refs/geant4/source/geometry/solids/specific/include/G4TessellatedSolid.hh:31-35` | Tessellated solid must be a fully enclosing facet set; only triangular/quadrangular facets. |
+| `.refs/geant4/source/geometry/solids/specific/include/G4TessellatedSolid.hh:81-83` | `SetSolidClosed(true)` completes the solid. |
+| `.refs/geant4/source/geometry/solids/specific/src/G4TessellatedSolid.cc:591-647` | `SetSolidClosed` → `CreateVertexList`/`SetExtremeFacets`/`Voxelize`/`CheckStructure`; issues `GeomSolids1001` warnings for negative volume / wrong facet orientation / holes. |
+| `.refs/geant4/source/geometry/solids/specific/src/G4TessellatedSolid.cc:670-728` | `CheckStructure`: volume sum ⇒ sign; edges must pair with opposite orientation. |
+| `.refs/geant4/source/geometry/solids/specific/src/G4TriangularFacet.cc:83-120` | Facet ctor rejects degenerate (too small / too narrow) triangles with `GeomSolids1001` warning and `fIsDefined=false`. |
+| `.refs/geant4/source/geometry/solids/Boolean/include/G4SubtractionSolid.hh:30` | `G4SubtractionSolid` = A − B. |
+| `.refs/geant4/source/geometry/solids/Boolean/src/G4SubtractionSolid.cc:130-152` | `BoundingLimits` returns **SolidA's** box untrimmed. |
+| `.refs/geant4/source/geometry/volumes/include/G4PVPlacement.hh:62` | `pSurfChk if true activates check for overlaps with existing volumes.` |
+| `.refs/geant4/source/geometry/volumes/src/G4PVPlacement.cc:61,88,115,141` | Ctor calls `CheckOverlaps()` when `pSurfChk`. |
+| `.refs/geant4/source/geometry/volumes/src/G4PVPlacement.cc:243-526` | `CheckOverlaps`: `Sample point is not on the surface !` (:269-275), `Overlap with mother volume !` (:326-341), `Overlap with volume already placed !` (:469-484, :512-526), encapsulation check (:355-451). |
+| `.refs/geant4/source/processes/optical/src/G4OpBoundaryProcess.cc:319-341` | `G4LogicalBorderSurface::GetSurface(pre,post)` is tried **first**; `G4LogicalSkinSurface` is only consulted if that returns null. |
+| `.refs/geant4/source/geometry/volumes/src/G4LogicalBorderSurface.cc:43-60,102-112` | Border surface is stored/retrieved purely by the `(vol1,vol2)` physical-volume pair — independent of mother/daughter. |
 
 **Not machine-verifiable from `.refs`:** the "avoid coincident/tangent faces in
-booleans" rule. `grep -rin "coincident\|tangent" .refs/source` returns nothing;
+booleans" rule. `grep -rin "coincident\|tangent" .refs/geant4/source` returns nothing;
 `G4BooleanSolid`/`G4SubtractionSolid` perform no such check. It is an
 Application-Developer-Guide practical rule. For this audit it was therefore
 replaced by a direct arithmetic tangency test on each cutter (below).
@@ -255,7 +255,7 @@ this coincidence is not exercised by `CheckOverlaps`.
   A short debug run (`/run/initialize` with overlays on) would close the loop.
 - **D4 — Miter ring modelled as a circle, not an ellipse (minor).** Slight inward
   pinch at each fibre kink (`GeometryMuonScint.cc:750-759`); ~2° bend ⇒ negligible.
-- **D5 — Thin `.refs/examples` support.** No `G4TessellatedSolid` under
-  `.refs/examples`, and `extended/geometry` only has `transforms` /
+- **D5 — Thin `.refs/geant4/examples` support.** No `G4TessellatedSolid` under
+  `.refs/geant4/examples`, and `extended/geometry` only has `transforms` /
   `vecGeomNavigation`; example-practice evidence is limited to the class
   implementation and `extended/optical/{wls,LXe}`.
