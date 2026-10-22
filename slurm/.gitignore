@@ -5,7 +5,9 @@ logs/
 muon/
 muon_whole/
 muon_fast/
+muon_fast_c12/
 muon_whole_fast/
+muon_whole_c12/
 muon_local/
 muon_whole_local/
 muon_contact/

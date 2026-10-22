@@ -421,6 +421,12 @@ void DetectorConstruction::SetMuonScintCouplingRIndex(G4double n)
         fMuonScints.back()->SetCouplingRIndex(n);
 }
 
+void DetectorConstruction::SetMuonScintCornerCut(G4double c)
+{
+    if (!fMuonScints.empty())
+        fMuonScints.back()->SetCornerCut(c);
+}
+
 void DetectorConstruction::SetMuonScintLightYieldScale(G4double s)
 {
     if (!fMuonScints.empty()) fMuonScints.back()->SetLightYieldScale(s);
@@ -439,6 +445,11 @@ void DetectorConstruction::SetMuonScintClampSurface(ClampSurfaceMode m)
 void DetectorConstruction::SetMuonScintFibreMultiClad(G4bool on)
 {
     if (!fMuonScints.empty()) fMuonScints.back()->SetFibreMultiClad(on);
+}
+
+void DetectorConstruction::SetMuonScintFibreAnalytic(G4bool on)
+{
+    if (!fMuonScints.empty()) fMuonScints.back()->SetFibreAnalytic(on);
 }
 
 void DetectorConstruction::SetMuonScintWLSPadSlabContact(G4bool on)
@@ -471,6 +482,9 @@ void DetectorConstruction::ApplyMuonScintPreset(G4int presetId)
 {
     if (fMuonScints.empty()) return;
     auto* m = fMuonScints.back();
+    // Presets are cumulative; reset the geometry-shaping knobs that are not
+    // part of every preset body so a previous preset cannot leak into this one.
+    m->SetCornerCut(0.0);
     switch (presetId) {
         case 1: m->PresetConfig_8SiPM_AllSides();   break;
         case 2: m->PresetConfig_4SiPM_OnePerSide(); break;
@@ -483,9 +497,10 @@ void DetectorConstruction::ApplyMuonScintPreset(G4int presetId)
         case 9: G4cerr << "ApplyMuonScintPreset: preset 9 deferred to Phase 3" << G4endl; return;
         case 10: m->PresetConfig_WLS4Sides_SingleEnded(); break;
         case 11: m->PresetConfig_WLS4Sides_DualEnded(); break;
+        case 12: m->PresetConfig_4SiPM_CornerCut(); break;
         default:
             G4cerr << " [DetectorConstruction::ApplyMuonScintPreset] "
-                   << "Unknown preset " << presetId << " (valid: 1..11, 9 deferred)" << G4endl;
+                   << "Unknown preset " << presetId << " (valid: 1..12, 9 deferred)" << G4endl;
             break;
     }
 }

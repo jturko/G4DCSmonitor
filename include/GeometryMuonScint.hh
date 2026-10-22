@@ -68,6 +68,15 @@ class GeometryMuonScint
     void SetSlabSize  (G4ThreeVector hxyz)        { fHalfSize = hxyz/2.; }
     void SetSlabMaterialName(const G4String& n)   { fScintMatName = n; }
 
+    // 45-degree corner truncation of the slab (preset 12).  fCornerCut is the
+    // leg removed along each square edge at every corner; the resulting 45-deg
+    // face is fCornerCut*sqrt(2) wide.  0 (default) keeps the plain G4Box, so
+    // every existing result is unchanged.  Must be set before Build(); preset
+    // 12 resets it to 12 mm, so issue /dcs-monitor/det/muonScint/setCornerCut
+    // AFTER the preset command if a different length is wanted.
+    void SetCornerCut(G4double c)                 { fCornerCut = (c < 0.) ? 0. : c; }
+    G4double GetCornerCut() const                 { return fCornerCut; }
+
     void SetReflectorType(ReflectorType t)        { fReflectorType = t; }
     void SetReflectorWrap(G4bool wrap)            { fWrapWithReflector = wrap; }
 
@@ -158,6 +167,7 @@ class GeometryMuonScint
     void PresetConfig_4SiPM_OnePerSide();
     void PresetConfig_2SiPM_OneSide();
     void PresetConfig_4SiPM_Corners();
+    void PresetConfig_4SiPM_CornerCut(); // Preset 12: 4 SiPMs on 45-deg corner faces
     void PresetConfig_WLSFibreClamp();   // Config 4
     void PresetConfig_WLSFibreClampBox();// Config 4, square (box) fibre cross-section
     void PresetConfig_WLSFibreClampAnalytic(); // Config 4, analytic G4CutTubs fibres
@@ -230,6 +240,9 @@ class GeometryMuonScint
 
     // dims (half-lengths). Default 100x100x5 mm = 200x200x10 mm slab.
     G4ThreeVector fHalfSize { 100.*CLHEP::mm, 100.*CLHEP::mm, 5.*CLHEP::mm };
+
+    // Corner truncation leg [mm]; 0 = square G4Box (default, legacy geometry).
+    G4double fCornerCut = 0.;
 
     // SiPM half-sizes (4 x 4 x 0.6 mm³)
     G4double fSiPMHalfX = 2.0 * CLHEP::mm;

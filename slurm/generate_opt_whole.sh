@@ -2,12 +2,12 @@
 # =============================================================================
 # Generate the MuonScint Phase-2 optimization whole-slab macros.
 #
-# Emits the 9 candidate designs of HANDOFF.md §6.2 plus one coupling control
-# (10 macros), writing them to
+# Emits the ten designs of the report campaign (nine candidates plus the
+# coupling control) and the corner-cut variant (11 macros), writing them to
 # slurm/muon_whole_opt/ and producing a manifest for run_opt_whole.sbatch.
 #
 #   DESIGN    : human-readable tag (also the ROOT filename token)
-#   PRESET    : geometry preset (1, 8, 9, 10, 11)
+#   PRESET    : geometry preset (1, 8, 9, 10, 11, 12)
 #   REFLECTOR : 0=none, 1=TiO2, 2=Al, 3=glossy
 #   EDGEREFL  : same|black|diffuse|mirror
 #   COUPINDEX : coupling-grease refractive index
@@ -45,7 +45,9 @@ if [[ ! -f "${TEMPLATE}" ]]; then
     exit 1
 fi
 mkdir -p "${OUTDIR}"
-[[ "${DATADIR}" == /* ]] && mkdir -p "${DATADIR}"
+# Do NOT create DATADIR here: macro generation usually runs on the login node,
+# where the HPC-native /bigdata root is not writable.  The sbatch drivers
+# create the data directory on the compute node.
 
 # Manifest: one macro basename per line, deterministic 0-indexed array order.
 MANIFEST="${OUTDIR}/manifest.txt"
@@ -111,6 +113,11 @@ printf 'array %2d -> %s\n' "$((i++))" c11_wls8_glossy
 # 1.55 is applied to every design above.
 emit_macro c1_same_1p55     1  3 same    1.55 white ""
 printf 'array %2d -> %s\n' "$((i++))" c1_same_1p55
+
+# Corner-cut variant of Config 2: the four slab corners are truncated at 45 deg
+# (12 mm leg, preset 12), with one 4 x 4 mm SiPM on each chamfered face.
+emit_macro c2_cornercut     12 3 same    1.55 white "4 4 0.6 mm"
+printf 'array %2d -> %s\n' "$((i++))" c2_cornercut
 
 echo
 echo "Wrote $(wc -l < "${MANIFEST}") macros to ${OUTDIR}/"

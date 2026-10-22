@@ -125,14 +125,16 @@ class DetectorConstruction : public G4VUserDetectorConstruction
         void SetMuonScintAlBacking(AlBackingMode m);       // Al foil: grease or air
         void SetMuonScintEdgeReflector(EdgeReflectorMode m); // uninstrumented narrow edges
         void SetMuonScintCouplingRIndex(G4double n);       // SiPM coupling grease RINDEX
+        void SetMuonScintCornerCut(G4double c);            // 45-deg corner truncation leg
         void SetMuonScintSiPMSize(G4double sx, G4double sy);
         void AddMuonScintSiPM    (G4int edge, G4double u, G4double v);
         void ClearMuonScintSiPMs ();
-        void ApplyMuonScintPreset(G4int presetId);    // 1..11 (9 deferred)
+        void ApplyMuonScintPreset(G4int presetId);    // 1..12 (9 deferred)
         void SetMuonScintLightYieldScale(G4double s); // viz-only; 1.0 = physical
         void SetMuonScintWLSAbsLength(G4double l);    // Y-11 WLS abs. length at 430 nm
         void SetMuonScintClampSurface(ClampSurfaceMode m); // Config-4 clamp body surface
         void SetMuonScintFibreMultiClad(G4bool on);       // Config-4 WLS fibre multi-clad
+        void SetMuonScintFibreAnalytic(G4bool on);        // vis-only: analytic CutTubs vs tessellated fibres/cutters
         void SetMuonScintWLSPadSlabContact(G4bool on);    // Config-4 direct slab<->pad optical contact
 
     private:

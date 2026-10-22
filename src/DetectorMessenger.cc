@@ -242,9 +242,20 @@ DetectorMessenger::DetectorMessenger(DetectorConstruction* Det) : fDetector(Det)
     fApplyMuonScintPresetCmd->SetGuidance("  9 = (deferred to Phase 3)");
     fApplyMuonScintPresetCmd->SetGuidance(" 10 = 4-sided WLS clamps, 1 SiPM/side (4 SiPMs)");
     fApplyMuonScintPresetCmd->SetGuidance(" 11 = 4-sided WLS clamps, 2 SiPMs/side (8 SiPMs)");
+    fApplyMuonScintPresetCmd->SetGuidance(" 12 = Config 2 corner-cut: 4 SiPMs on the 45-deg truncated corners");
     fApplyMuonScintPresetCmd->SetParameterName("preset", false);
-    fApplyMuonScintPresetCmd->SetRange("preset >= 1 && preset <= 11");
+    fApplyMuonScintPresetCmd->SetRange("preset >= 1 && preset <= 12");
     fApplyMuonScintPresetCmd->AvailableForStates(G4State_PreInit);
+
+    fSetMuonScintCornerCutCmd = new G4UIcmdWithADoubleAndUnit("/dcs-monitor/det/muonScint/setCornerCut", this);
+    fSetMuonScintCornerCutCmd->SetGuidance("Truncate the four slab corners at 45 deg (pre-init, before /run/initialize).");
+    fSetMuonScintCornerCutCmd->SetGuidance("Value = leg removed along each square edge at every corner; the resulting");
+    fSetMuonScintCornerCutCmd->SetGuidance("45-deg face is value*sqrt(2) wide.  0 (default) = plain square slab.");
+    fSetMuonScintCornerCutCmd->SetGuidance("Preset 12 sets 12 mm; issue this AFTER the preset command to override.");
+    fSetMuonScintCornerCutCmd->SetParameterName("length", false);
+    fSetMuonScintCornerCutCmd->SetRange("length >= 0.");
+    fSetMuonScintCornerCutCmd->SetUnitCategory("Length");
+    fSetMuonScintCornerCutCmd->AvailableForStates(G4State_PreInit);
 
     fSetMuonScintLightYieldScaleCmd = new G4UIcmdWithADouble("/dcs-monitor/det/muonScint/setLightYieldScale", this);
     fSetMuonScintLightYieldScaleCmd->SetGuidance("Multiply the scintillation light yield by a scale factor.");
@@ -288,6 +299,18 @@ DetectorMessenger::DetectorMessenger(DetectorConstruction* Det) : fDetector(Det)
     fSetMuonScintFibreMultiCladCmd->SetGuidance("over the n=1.49 PMMA clad (real Y-11 is multi-clad). Default true.");
     fSetMuonScintFibreMultiCladCmd->SetParameterName("on", false);
     fSetMuonScintFibreMultiCladCmd->AvailableForStates(G4State_PreInit);
+
+    fSetMuonScintFibreAnalyticCmd = new G4UIcmdWithABool("/dcs-monitor/det/muonScint/setFibreAnalytic", this);
+    fSetMuonScintFibreAnalyticCmd->SetGuidance("VISUALIZATION ONLY. Build the WLS fibres and the film/clamp boolean");
+    fSetMuonScintFibreAnalyticCmd->SetGuidance("cutters as analytic mitered G4CutTubs (true, production default) or");
+    fSetMuonScintFibreAnalyticCmd->SetGuidance("as G4TessellatedSolid swept prisms (false). The analytic boolean");
+    fSetMuonScintFibreAnalyticCmd->SetGuidance("results have no polyhedron, so VRML/OpenGL fall back to a cloud of");
+    fSetMuonScintFibreAnalyticCmd->SetGuidance("points; the tessellated variant renders as a solid. Same centreline,");
+    fSetMuonScintFibreAnalyticCmd->SetGuidance("radii and materials, but the optics are NOT validated for physics.");
+    fSetMuonScintFibreAnalyticCmd->SetGuidance("Issue AFTER the preset command (presets 5/7/10/11 set it themselves);");
+    fSetMuonScintFibreAnalyticCmd->SetGuidance("ignored for square-section fibres.");
+    fSetMuonScintFibreAnalyticCmd->SetParameterName("on", false);
+    fSetMuonScintFibreAnalyticCmd->AvailableForStates(G4State_PreInit);
 
     fSetMuonScintWLSPadSlabContactCmd = new G4UIcmdWithABool("/dcs-monitor/det/muonScint/setWLSPadSlabContact", this);
     fSetMuonScintWLSPadSlabContactCmd->SetGuidance("Config-4 read-out grease pad: enable direct optical contact");
@@ -367,11 +390,13 @@ DetectorMessenger::~DetectorMessenger()
     delete fAddMuonScintSiPMCmd;
     delete fClearMuonScintSiPMsCmd;
     delete fApplyMuonScintPresetCmd;
+    delete fSetMuonScintCornerCutCmd;
     delete fSetMuonScintLightYieldScaleCmd;
     delete fSetMuonScintWLSAbsLengthCmd;
     delete fSetMuonScintClampSurfaceCmd;
     delete fSetMuonScintEdgeReflectorCmd;
     delete fSetMuonScintFibreMultiCladCmd;
+    delete fSetMuonScintFibreAnalyticCmd;
     delete fSetMuonScintWLSPadSlabContactCmd;
     delete fSetMuonScintCouplingIndexCmd;
 
@@ -459,6 +484,7 @@ void DetectorMessenger::SetNewValue(G4UIcommand* command, G4String value)
     }
     if (command == fClearMuonScintSiPMsCmd)      fDetector->ClearMuonScintSiPMs();
     if (command == fApplyMuonScintPresetCmd)     fDetector->ApplyMuonScintPreset(fApplyMuonScintPresetCmd->GetNewIntValue(value));
+    if (command == fSetMuonScintCornerCutCmd) fDetector->SetMuonScintCornerCut(fSetMuonScintCornerCutCmd->GetNewDoubleValue(value));
     if (command == fSetMuonScintLightYieldScaleCmd) fDetector->SetMuonScintLightYieldScale(fSetMuonScintLightYieldScaleCmd->GetNewDoubleValue(value));
     if (command == fSetMuonScintWLSAbsLengthCmd) fDetector->SetMuonScintWLSAbsLength(fSetMuonScintWLSAbsLengthCmd->GetNewDoubleValue(value));
     if (command == fSetMuonScintClampSurfaceCmd) {
@@ -477,6 +503,7 @@ void DetectorMessenger::SetNewValue(G4UIcommand* command, G4String value)
                     << "' (use same|black|diffuse|mirror)" << G4endl;
     }
     if (command == fSetMuonScintFibreMultiCladCmd) fDetector->SetMuonScintFibreMultiClad(fSetMuonScintFibreMultiCladCmd->GetNewBoolValue(value));
+    if (command == fSetMuonScintFibreAnalyticCmd) fDetector->SetMuonScintFibreAnalytic(fSetMuonScintFibreAnalyticCmd->GetNewBoolValue(value));
     if (command == fSetMuonScintWLSPadSlabContactCmd) fDetector->SetMuonScintWLSPadSlabContact(fSetMuonScintWLSPadSlabContactCmd->GetNewBoolValue(value));
 
 

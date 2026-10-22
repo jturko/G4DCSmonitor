@@ -670,8 +670,51 @@ G4int GeometryMuonScint::Build()
     }
 
     // ---------- Slab solid + LV ----------
-    auto* slabSolid = new G4Box("MuonScintSolid",
-                                fHalfSize.x(), fHalfSize.y(), fHalfSize.z());
+    // Preset 12 truncates the four corners at 45 deg: a convex octagon (square
+    // with the corners cut off, NOT a regular octagon).  A convex G4ExtrudedSolid
+    // is fully analytic (G4ExtrudedSolid.cc: fSolidType == 1 uses the precomputed
+    // half-space planes for Inside/SurfaceNormal/DistanceToIn/Out and never falls
+    // back to the tessellated base), so it carries no stuck-track risk and gives
+    // exact plane normals to G4OpBoundaryProcess.  fCornerCut == 0 keeps the
+    // legacy G4Box bit-for-bit.
+    if (fUseWLSFibres && fCornerCut > 0.) {
+        G4cerr << " [MuonScint] WARNING: the WLS clamp spans the full -X face and "
+               << "cannot coexist with the corner cut; forcing fCornerCut = 0."
+               << G4endl;
+        fCornerCut = 0.;
+    }
+
+    G4VSolid* slabSolid = nullptr;
+    if (fCornerCut > 0.) {
+        const G4double Hx = fHalfSize.x();
+        const G4double Hy = fHalfSize.y();
+        const G4double c  = fCornerCut;
+        if (c >= std::min(Hx, Hy)) {
+            G4cerr << " [MuonScint] ERROR: corner cut " << c/mm
+                   << " mm exceeds the slab half-size; using a square slab."
+                   << G4endl;
+            fCornerCut = 0.;
+        } else {
+            // Convex polygon, CCW in (x,y).  Cut line at the (+x,+y) corner:
+            // x + y = 2*H - c, through (Hx-c, Hy) and (Hx, Hy-c); its outward
+            // normal is (1,1)/sqrt(2) and its apothem is (2H-c)/sqrt(2).
+            std::vector<G4TwoVector> poly;
+            poly.push_back({ Hx,     c - Hy});
+            poly.push_back({ Hx,     Hy - c});
+            poly.push_back({ Hx - c, Hy    });
+            poly.push_back({ c - Hx, Hy    });
+            poly.push_back({-Hx,     Hy - c});
+            poly.push_back({-Hx,     c - Hy});
+            poly.push_back({ c - Hx,-Hy    });
+            poly.push_back({ Hx - c,-Hy    });
+            slabSolid = new G4ExtrudedSolid("MuonScintSolid", poly,
+                                            fHalfSize.z());
+        }
+    }
+    if (!slabSolid) {
+        slabSolid = new G4Box("MuonScintSolid",
+                              fHalfSize.x(), fHalfSize.y(), fHalfSize.z());
+    }
     fScintLV = new G4LogicalVolume(slabSolid, scintMat, "MuonScintLV");
     fScintLV->SetVisAttributes(new G4VisAttributes(true, G4Colour(0.45, 0.75, 1.0, 0.55)));
 
@@ -1651,16 +1694,15 @@ void GeometryMuonScint::PlaceWLSFibres(G4LogicalVolume* worldLV,
         // Square fibres are built as G4ExtrudedSolid in their own local frame
         // (see MakeExtrudedFibre), which needs an extra local->slab rotation
         // and an x offset; the round tessellated fibres are already in
-        // slab-local coordinates.
-        G4RotationMatrix baseFibreRot = localRot;
-        G4ThreeVector    cladPos(0., 0., 0.);
+        // slab-local coordinates and only need the assembly transform.
+        G4RotationMatrix fibreRot = localRot;
+        G4ThreeVector    fibrePos(0., 0., 0.);
         if (fFibreSquareCross && fFibreUseExtruded) {
-            // Desired object (local->slab) rotation is localRot*M; G4 stores the
-            // inverse of the matrix passed to G4PVPlacement, so pass its inverse.
-            G4RotationMatrix objRot = localRot * ExtrudedFibreRot();
-            baseFibreRot = objRot.inverse();
-            cladPos      = localRot * G4ThreeVector(fFibreAxisX, 0., 0.);
+            fibreRot = localRot * ExtrudedFibreRot();
+            fibrePos = localRot * G4ThreeVector(fFibreAxisX, 0., 0.);
         }
+        if (slabRot) { fibreRot = (*slabRot) * fibreRot; fibrePos = (*slabRot) * fibrePos; }
+        fibrePos += slabPos;
         if (!fFibreSegs.empty()) {
             // Analytic legs: object transform = slab o localRot o leg (all active).
             for (G4int k = 0; k < fNFibres; ++k) {
@@ -1682,8 +1724,7 @@ void GeometryMuonScint::PlaceWLSFibres(G4LogicalVolume* worldLV,
             }
         }
         for (G4int k = 0; fFibreSegs.empty() && k < fNFibres; ++k) {
-            cladPVs[k] = new G4PVPlacement(rotCopyLocal(baseFibreRot),
-                                           mapPosLocal(cladPos),
+            cladPVs[k] = new G4PVPlacement(G4Transform3D(fibreRot, fibrePos),
                                            fFibreOuterLVs[k],
                                            "WLSFibreCladPhys_s" + std::to_string(side)
                                                + "_" + std::to_string(k),
@@ -1945,9 +1986,22 @@ void GeometryMuonScint::PlaceSiPMs(G4LogicalVolume* worldLV,
         // We clamp s.uAlong/s.vAlong (in [-1, +1]) so the footprint can't
         // overhang the slab face.
         // -----------------------------------------------------------------
-        const G4double uMax = (s.edge < 2)
-                            ? std::max(0.0, (Ly - fSiPMHalfX) / Ly)
-                            : std::max(0.0, (Lx - fSiPMHalfX) / Lx);
+        // For the 45-deg corner faces (edges 4-7) the tangent half-extent is the
+        // chamfer half-width c/sqrt(2); for the straight sides it is the exposed
+        // half-length, which shrinks from L to L-c when the corners are cut.
+        G4double uMax = 0.;
+        if (s.edge >= 4) {
+            const G4double halfChamfer = fCornerCut / std::sqrt(2.0);
+            uMax = (halfChamfer > 0.)
+                 ? std::max(0.0, (halfChamfer - fSiPMHalfY) / halfChamfer)
+                 : 0.0;
+        } else {
+            const G4double halfAlong = (s.edge < 2) ? Ly : Lx;
+            const G4double halfSpan  = halfAlong - fCornerCut;
+            uMax = (halfSpan > 0.)
+                 ? std::max(0.0, (halfSpan - fSiPMHalfY) / halfAlong)
+                 : 0.0;
+        }
         const G4double vMax = std::max(0.0, (Lz - fSiPMHalfY) / Lz);
         const G4double uC   = std::max(-uMax, std::min(+uMax, s.uAlong));
         const G4double vC   = std::max(-vMax, std::min(+vMax, s.vAlong));
@@ -2006,6 +2060,43 @@ void GeometryMuonScint::PlaceSiPMs(G4LogicalVolume* worldLV,
                                               vC * Lz);
             localRot.rotateX(90.*deg);
             break;
+
+          case 4: // +X+Y 45-deg corner face, outward normal (1,1)/sqrt(2)
+          case 5: // -X+Y 45-deg corner face, outward normal (-1,1)/sqrt(2)
+          case 6: // -X-Y 45-deg corner face, outward normal (-1,-1)/sqrt(2)
+          case 7: // +X-Y 45-deg corner face, outward normal (1,-1)/sqrt(2)
+          {
+            if (fCornerCut <= 0.) {
+                G4cerr << " [MuonScint] SiPM edge " << s.edge
+                       << " needs a corner cut (setCornerCut / preset 12); skipping."
+                       << G4endl;
+                continue;
+            }
+            const G4double invSqrt2 = 1.0 / std::sqrt(2.0);
+            const G4double sx = (s.edge == 4 || s.edge == 7) ? +1.0 : -1.0;
+            const G4double sy = (s.edge == 4 || s.edge == 5) ? +1.0 : -1.0;
+            const G4ThreeVector n(sx * invSqrt2, sy * invSqrt2, 0.0);
+            const G4ThreeVector t(-sy * invSqrt2, sx * invSqrt2, 0.0);
+            const G4ThreeVector inPlane =
+                (uC * fCornerCut * invSqrt2) * t +
+                (vC * Lz) * G4ThreeVector(0., 0., 1.);
+            // Face midpoint: apothem (2H-c)/sqrt(2) along n.
+            const G4ThreeVector faceMid(sx * (Lx - 0.5 * fCornerCut),
+                                        sy * (Ly - 0.5 * fCornerCut), 0.);
+            localGreaseCentre = faceMid + dGreaseHalf * n + inPlane;
+            localSiPMCentre   = faceMid
+                              + (2. * fCouplingHalfZ + dSiPMHalf) * n
+                              + inPlane;
+            // Passive mother->daughter rotation (G4PVPlacement convention).
+            // The active solid rotation maps local y -> tangential unit t and
+            // local z -> +-n; the sign of the normal is immaterial because the
+            // grease/SiPM boxes are symmetric about their mid-plane.  rotateA
+            // PRE-multiplies, hence the -theta here.
+            const G4double theta = std::atan2(sy, sx);
+            localRot.rotateZ(-theta);
+            localRot.rotateY(90.*deg);
+            break;
+          }
 
           default:
             G4cerr << " [MuonScint] Invalid SiPM edge " << s.edge
@@ -2101,6 +2192,17 @@ void GeometryMuonScint::BuildEdgeStrips(G4LogicalVolume* worldLV,
     // No edge treatment for WLS presets, or when the user explicitly requests
     // the main wrapping skin to govern the narrow edges (v6 default).
     if (fUseWLSFibres || fEdgeReflectorMode == kEdgeSame || !fEdgeReflSurface) return;
+
+    // The strips are full-length boxes on the four straight faces; with the
+    // corners truncated they would overhang into the cut-away triangles and
+    // collide with the 45-deg SiPMs.  The corner-cut design is characterised
+    // with the main wrapping skin (kEdgeSame), so refuse rather than guess.
+    if (fCornerCut > 0.) {
+        G4cerr << " [MuonScint] WARNING: edge-strip reflector modes are not "
+               << "supported with a corner cut; ignoring the edge strips."
+               << G4endl;
+        return;
+    }
 
     const G4double Lx = fHalfSize.x();
     const G4double Ly = fHalfSize.y();
@@ -2226,6 +2328,28 @@ void GeometryMuonScint::PresetConfig_4SiPM_Corners() {
     AddSiPM({0, +1.0, 0.0});
     AddSiPM({1, -1.0, 0.0});
     AddSiPM({1, +1.0, 0.0});
+}
+
+void GeometryMuonScint::PresetConfig_4SiPM_CornerCut() {
+    // Preset 12: Config-2 variant with the four corners truncated at 45 deg and
+    // one 4x4 mm SiPM centred on each of the resulting faces.  The cut leg is
+    // 12 mm (three SiPM widths) along each square edge, so the 45-deg face is
+    // 12*sqrt(2) = 17.0 mm wide; the sensor leaves 6.5 mm margins either side.
+    // Edge codes 4..7 are the (+x+y, -x+y, -x-y, +x-y) corner faces, in the same
+    // C4 order as the straight sides.  Reflector/surface knobs are left to the
+    // macro (the design is run with the standard wrapper), and the WLS clamp is
+    // explicitly off (it spans the full -X face).
+    ClearSiPMs();
+    SetUseWLSFibres(false);
+    fWLSFourSides = false;
+    fWLSDualEnded = false;
+    fEdgeReflectorMode = kEdgeSame;
+    fCornerCut = 12.0 * mm;
+    SetSiPMSize(4.0 * mm, 4.0 * mm);
+    AddSiPM({4, 0.0, 0.0});   // +X+Y corner face
+    AddSiPM({5, 0.0, 0.0});   // -X+Y corner face
+    AddSiPM({6, 0.0, 0.0});   // -X-Y corner face
+    AddSiPM({7, 0.0, 0.0});   // +X-Y corner face
 }
 
 void GeometryMuonScint::PresetConfig_WLSFibreClamp() {

@@ -40,7 +40,7 @@ module load geant4/11.4.0
 
 HERE="${SLURM_SUBMIT_DIR:-$(pwd)}"
 cd "${HERE}"
-MACDIR="${HERE}/muon_whole_opt"
+MACDIR="${MACDIR:-${HERE}/muon_whole_opt}"
 DATAROOT="${DATAROOT:-/bigdata/DCS-Monitor-II/turko46/MuonScinti}"
 VERSION="${VERSION:-v7_opt}"
 DATADIR="${DATAROOT}/data_${VERSION}/whole"

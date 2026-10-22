@@ -48,7 +48,7 @@ module load geant4/11.4.0
 
 HERE="${SLURM_SUBMIT_DIR:-$(pwd)}"
 cd "${HERE}"
-MACDIR="${HERE}/muon_whole_fast"
+MACDIR="${MACDIR:-${HERE}/muon_whole_fast}"
 DATAROOT="${DATAROOT:-${HERE}}"
 VERSION="${VERSION:-v2.2}"
 DATADIR="${DATAROOT}/data_${VERSION}/whole"

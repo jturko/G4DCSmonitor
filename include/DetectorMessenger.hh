@@ -121,11 +121,13 @@ class DetectorMessenger : public G4UImessenger
     G4UIcmdWith3Vector*        fSetMuonScintSiPMSizeCmd       = nullptr;     // (sx, sy, _) in mm; z is fixed in geometry
     G4UIcmdWith3Vector*        fAddMuonScintSiPMCmd           = nullptr;     // (edge, u, v) ; edge=0..3, u/v in [-1,1]
     G4UIcmdWithoutParameter*   fClearMuonScintSiPMsCmd        = nullptr;
-    G4UIcmdWithAnInteger*      fApplyMuonScintPresetCmd       = nullptr;     // 1..7
+    G4UIcmdWithAnInteger*      fApplyMuonScintPresetCmd       = nullptr;     // 1..12
+    G4UIcmdWithADoubleAndUnit* fSetMuonScintCornerCutCmd       = nullptr;    // 45-deg corner truncation leg
     G4UIcmdWithADouble*        fSetMuonScintLightYieldScaleCmd = nullptr;    // viz-only scale
     G4UIcmdWithADoubleAndUnit* fSetMuonScintWLSAbsLengthCmd    = nullptr;    // Y-11 WLS L(430 nm)
     G4UIcmdWithAString*        fSetMuonScintClampSurfaceCmd    = nullptr;    // white|black|mirror
     G4UIcmdWithABool*          fSetMuonScintFibreMultiCladCmd = nullptr;    // outer n=1.42 sheath
+    G4UIcmdWithABool*          fSetMuonScintFibreAnalyticCmd  = nullptr;    // vis-only: analytic vs tessellated fibres
     G4UIcmdWithABool*          fSetMuonScintWLSPadSlabContactCmd = nullptr; // direct slab<->pad contact
     G4UIcmdWithAString*        fSetMuonScintEdgeReflectorCmd   = nullptr;    // same|black|diffuse|mirror
     G4UIcmdWithADouble*        fSetMuonScintCouplingIndexCmd   = nullptr;    // SiPM coupling grease RINDEX

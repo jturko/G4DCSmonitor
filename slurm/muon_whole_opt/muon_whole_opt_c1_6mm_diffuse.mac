@@ -49,6 +49,6 @@
 /gps/ang/type planar
 
 # ---- output -----------------------------------------------------------------
-/analysis/setFileName /tmp/opencode/optgen/whole/muon_whole_out_c1_r3_c1_6mm_diffuse.root
+/analysis/setFileName /bigdata/DCS-Monitor-II/turko46/MuonScinti/data_v7_opt/whole/muon_whole_out_c1_r3_c1_6mm_diffuse.root
 
-/run/beamOn 10000
+/run/beamOn 25000
