@@ -111,11 +111,9 @@ void panel(int cfg, const char* title)
         double ox[9] = { kHalf, kHalf, kCutVertex, -kCutVertex,
                         -kHalf, -kHalf, -kCutVertex, kCutVertex, kHalf};
         double oy[9] = {-kCutVertex, kCutVertex, kHalf, kHalf,
-                         kCutVertex, -kHalf, -kHalf, -kHalf, -kCutVertex};
+                         kCutVertex, -kCutVertex, -kHalf, -kHalf, -kCutVertex};
         TPolyLine* fill = new TPolyLine(9, ox, oy);
         fill->SetFillColorAlpha(kAzure - 9, 0.16);
-        fill->SetLineColor(kGray + 2);
-        fill->SetLineWidth(2);
         fill->Draw("F");
         TPolyLine* edge = new TPolyLine(9, ox, oy);
         edge->SetLineColor(kGray + 2);
@@ -124,9 +122,15 @@ void panel(int cfg, const char* title)
     } else {
         TBox* slab = new TBox(-kHalf, -kHalf, kHalf, kHalf);
         slab->SetFillColorAlpha(kAzure - 9, 0.16);
-        slab->SetLineColor(kGray + 2);
-        slab->SetLineWidth(2);
-        slab->Draw("SAME");
+        slab->Draw("F");
+        // Match the cut-corner panel: every layout gets the same visible
+        // outline around the scintillator footprint.
+        double sx[5] = {-kHalf, kHalf, kHalf, -kHalf, -kHalf};
+        double sy[5] = {-kHalf, -kHalf, kHalf, kHalf, -kHalf};
+        TPolyLine* edge = new TPolyLine(5, sx, sy);
+        edge->SetLineColor(kGray + 2);
+        edge->SetLineWidth(2);
+        edge->Draw("SAME");
     }
 
     TLine* hx = new TLine(-kHalf, 0., kHalf, 0.);
@@ -169,13 +173,13 @@ void panel(int cfg, const char* title)
             const double h  = 0.5 * kTile;              // half side
 
             double vx[4], vy[4];
-            vx[0] = s.x + h * tx;                 // outer side, + tangent end
+            vx[0] = s.x + h * tx;                 // on-face side, + tangent end
             vy[0] = s.y + h * ty;
-            vx[1] = s.x - kTile * nx + h * tx;    // inner side, + tangent end
-            vy[1] = s.y - kTile * ny + h * ty;
-            vx[2] = s.x - kTile * nx - h * tx;    // inner side, - tangent end
-            vy[2] = s.y - kTile * ny - h * ty;
-            vx[3] = s.x - h * tx;                 // outer side, - tangent end
+            vx[1] = s.x + kTile * nx + h * tx;    // outboard side, + tangent end
+            vy[1] = s.y + kTile * ny + h * ty;
+            vx[2] = s.x + kTile * nx - h * tx;    // outboard side, - tangent end
+            vy[2] = s.y + kTile * ny - h * ty;
+            vx[3] = s.x - h * tx;                 // on-face side, - tangent end
             vy[3] = s.y - h * ty;
 
             TPolyLine* d = new TPolyLine(4, vx, vy);
@@ -185,9 +189,9 @@ void panel(int cfg, const char* title)
             d->Draw("F");
             d->Draw("SAME");
 
-            // Label nudged inwards along -n so it clears the diamond and the
-            // octagon outline (24 mm is ~2.3 text heights at this pad size).
-            const double off = 24.0;
+            // Label inside the plate, just in from the cut face, so it names
+            // the outboard diamond without covering the plate footprint.
+            const double off = 17.0;
             TLatex* lab = new TLatex(s.x - off * nx, s.y - off * ny, names[idx]);
             lab->SetTextAlign(22);       // centred
             lab->SetTextSize(0.034);
@@ -199,14 +203,24 @@ void panel(int cfg, const char* title)
     }
 
     for (const auto& t : tiles(cfg)) {
-        TBox* b = new TBox(t.x - 0.5 * kTile, t.y - 0.5 * kTile,
-                           t.x + 0.5 * kTile, t.y + 0.5 * kTile);
+        // Draw the sensor outboard of the slab, as mounted on the narrow face:
+        // the square sits outside the plate boundary with its inner side on the
+        // slab edge.  tiles() keeps the nominal on-face centre, which is what
+        // the edge test and the sensor labels use.
+        double x0 = t.x - 0.5 * kTile, x1 = t.x + 0.5 * kTile;
+        double y0 = t.y - 0.5 * kTile, y1 = t.y + 0.5 * kTile;
+        if (std::fabs(t.x - kHalf) < 1e-6)       { x0 =  kHalf; x1 =  kHalf + kTile; }
+        else if (std::fabs(t.x + kHalf) < 1e-6)  { x1 = -kHalf; x0 = -kHalf - kTile; }
+        if (std::fabs(t.y - kHalf) < 1e-6)       { y0 =  kHalf; y1 =  kHalf + kTile; }
+        else if (std::fabs(t.y + kHalf) < 1e-6)  { y1 = -kHalf; y0 = -kHalf - kTile; }
+
+        TBox* b = new TBox(x0, y0, x1, y1);
         b->SetFillColor(kBlack);
         b->SetLineColor(kBlack);
         b->Draw("SAME");
 
-        // Sensor name, nudged inwards off the edge so it sits clear of the
-        // 8 mm SiPM box on the slab (text half-height is ~9 mm at this size).
+        // Sensor name, inside the slab just off the edge, so it names the
+        // outboard square without covering the plate footprint.
         const char* lab = sensorLabel(t.x, t.y);
         if (lab[0]) {
             const double off = 15.0;                 // mm inwards from the edge

@@ -108,7 +108,7 @@ void irradiation_sites(const char* outdir = "report/figures")
     double ox[9] = { kHalf, kHalf, kCutVertex, -kCutVertex,
                     -kHalf, -kHalf, -kCutVertex, kCutVertex, kHalf};
     double oy[9] = {-kCutVertex, kCutVertex, kHalf, kHalf,
-                     kCutVertex, -kHalf, -kHalf, -kHalf, -kCutVertex};
+                     kCutVertex, -kCutVertex, -kHalf, -kHalf, -kCutVertex};
     TPolyLine* oct = new TPolyLine(9, ox, oy);
     oct->SetLineColor(kGray + 2);
     oct->SetLineStyle(2);

@@ -15,11 +15,21 @@ handoff.tmp
 /g4_*.wrl
 /g4tsg_offscreen*.png
 
-# LaTeX build byproducts
+# LaTeX build byproducts (report/Makefile builds with latexmk)
 report/*.aux
 report/*.log
 report/*.out
 report/*.toc
+report/*.lof
+report/*.lot
+report/*.fls
+report/*.fdb_latexmk
+report/*.synctex.gz
+report/*.bbl
+report/*.blg
+report/*.nav
+report/*.snm
+report/*.vrb
 presentation/*.aux
 presentation/*.log
 presentation/*.nav

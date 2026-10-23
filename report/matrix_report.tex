@@ -449,7 +449,8 @@ SiPM footprints are clamped so they cannot overhang the slab face.
 \caption{Schematic plan view of the five detector layouts on the
 \SI{250}{\milli\meter}$\times$\SI{250}{\milli\meter} plate footprint, in a
 $2\times3$ grid whose last cell is empty. Black
-squares mark the SiPMs (drawn oversized for visibility; the active area is
+squares mark the SiPMs (drawn oversized for visibility and just outside the
+plate outline, as they are mounted on the narrow faces; the active area is
 \SI{4}{\milli\meter}$\times$\SI{4}{\milli\meter}; side-mounted except for the
 diagonal faces of Config~2 (mod)), and the dashed grey
 lines are the $x=0$, $y=0$ axes. Config~1 places two SiPMs on each of the four
@@ -471,6 +472,30 @@ markers are overlaid on
 the collection-efficiency maps of
 Figs.~\ref{fig:wholeslab}--\ref{fig:wholeslab4}.}
 \label{fig:layouts}
+\end{figure}
+
+Figure~\ref{fig:layoutsogl} complements the schematic with OpenGL renders of
+the same five layouts taken directly from the \gfour\ geometry.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.80\textwidth]{figures/layout_ogl_all.png}
+\caption{OpenGL (\texttt{TSG\_OFFSCREEN}) renders of the five layouts of
+Fig.~\ref{fig:layouts}, drawn from the \gfour\ geometry with no beam on. The
+four plan panels share one camera and scale (report frame, top $+y$, right
+$+x$) and are tilted by \SI{50}{\degree} and yawed by \SI{25}{\degree} to the
+left, so the \SI{10}{\milli\meter} plate
+thickness is visible; the plate is drawn at \SI{35}{\percent} opacity so the
+sensors on the far edge show through. The rings mark the
+\SI{4}{\milli\meter}$\times$\SI{4}{\milli\meter} SiPMs and are enlarged for
+visibility; the edge-mounted layouts use the T/B/R/L labels of
+Fig.~\ref{fig:layouts}, the chamfered one its BR/TR/TL/BL corner names. The
+lower-left panel is a close-up of the config-4 read-out on the $-x$ face:
+the fibre clamp, the four Y-11 fibres and the single SiPM. The Boolean
+clamp and grease film use the tessellated visualisation preset described in
+the caption of Fig.~\ref{fig:wlsogl}; the lower-right cell carries the scale
+note.}
+\label{fig:layoutsogl}
 \end{figure}
 
 \subsection{Reflector treatments}

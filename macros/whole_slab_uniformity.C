@@ -183,9 +183,11 @@ void drawOverlays(int cfg, double half, double side = 8.0, double gap = 2.0)
         // Convex octagon (square corners cut by the 12 mm leg) in the report
         // frame; (x,y) -> (y,-x) leaves |x|+|y| = 2*half - kCornerLeg invariant.
         const double a = half - kCornerLeg;      // 113 mm
-        double xs[8] = { half,  half,     a,    -a, -half, -half,    -a,     a};
-        double ys[8] = {   -a,     a,  half,  half,     a,   -a, -half, -half};
-        TPolyLine* oct = new TPolyLine(8, xs, ys);
+        // Nine points: TPolyLine does not close the contour itself, so repeat
+        // the first vertex -- else the bottom-right chamfer is left open.
+        double xs[9] = { half,  half,     a,    -a, -half, -half,    -a,     a,  half};
+        double ys[9] = {   -a,     a,  half,  half,     a,   -a, -half, -half,    -a};
+        TPolyLine* oct = new TPolyLine(9, xs, ys);
         oct->SetFillStyle(0);
         oct->SetLineColor(kBlack);
         oct->SetLineWidth(2);

@@ -10,10 +10,10 @@
 #        AL_DIR=/path/to/al
 #
 # Targets:
-#   all        - report/matrix_report.pdf (default)
+#   all        - figures, then report/matrix_report.pdf (default)
 #   figures    - every figure in report/figures/, no LaTeX pass
 #   <group>    - one figure group (sipm-layouts, optical-spectra, ...)
-#   pdf        - just the LaTeX pass (assumes figures exist)
+#   pdf        - just the LaTeX pass; never rebuilds figures
 #   clean      - remove generated figures, aux files, and the PDF
 #   clean-figs - figures only
 #
@@ -81,6 +81,11 @@ F_efficiency-grids := $(FIGDIR)/efficiency_grid_cfg1_all.pdf \
 # Group 6: whole-slab maps and uniformity
 F_whole-slabs      := $(FIGDIR)/whole_slab_cfg1.pdf $(FIGDIR)/whole_slab_cfg2.pdf \
                       $(FIGDIR)/whole_slab_cfg3.pdf $(FIGDIR)/whole_slab_cfg4.pdf
+# Config 2 (mod) only exists in runs that include preset 12; add its figure to
+# the group when the data are there (a single stat, not a directory walk).
+# It gets its own rule, so it must not be part of the grouped target above.
+HAS_C12            := $(if $(wildcard $(WHOLE_DIR)/muon_whole_out_c12_r0.root),1)
+F_whole-slabs-extra := $(if $(HAS_C12),$(FIGDIR)/whole_slab_cfg12.pdf)
 F_whole-uniformity := $(FIGDIR)/fig_whole_polar.pdf \
                       $(FIGDIR)/fig_whole_uniformity_map_cfg1.pdf \
                       $(FIGDIR)/fig_whole_uniformity_map_cfg2.pdf \
@@ -121,7 +126,8 @@ ALL_FIGURES := $(F_sipm-layouts) $(F_irradiation) \
                $(F_optical-spectra) $(F_optical-timing) $(F_reflector) $(F_refractive) \
                $(F_report-figs) $(F_pe-grid) $(F_matrix-positions) \
                $(F_contact) $(F_al) $(F_efficiency-grids) \
-               $(F_whole-slabs) $(F_whole-uniformity) $(F_whole-yield) \
+               $(F_whole-slabs) $(F_whole-slabs-extra) \
+               $(F_whole-uniformity) $(F_whole-yield) \
                $(F_persistence) $(F_wavelength-time) $(F_avg-waveform) \
                $(F_nearest-sensor) $(F_de-threshold) $(F_reconstruction) \
                $(F_recon-layouts)
@@ -130,13 +136,19 @@ ALL_FIGURES := $(F_sipm-layouts) $(F_irradiation) \
 .PHONY: all figures pdf clean clean-figs help
 .DEFAULT_GOAL := all
 
-all: $(REPORT_PDF)
+# 'all' sequences both halves; 'pdf' is deliberately *only* the LaTeX pass
+# (delegated to report/Makefile) so that typesetting a report never triggers a
+# data-driven figure rebuild -- some groups read whole-slab trees over sshfs
+# and take many minutes.
+all: figures
+	$(MAKE) -C $(REPORT_DIR)
 
 help:
 	@echo "Targets:"
-	@echo "  all (default)        report/matrix_report.pdf"
+	@echo "  all (default)        figures, then report/matrix_report.pdf"
 	@echo "  figures              every figure in $(FIGDIR)/, no LaTeX"
-	@echo "  pdf                  just the LaTeX pass (figures must exist)"
+	@echo "  pdf                  just the LaTeX pass (figures must exist;"
+	@echo "                       never rebuilds figures -- use report/Makefile)"
 	@echo "  sipm-layouts, irradiation, optical-spectra, optical-timing,"
 	@echo "  reflector, refractive, report-figs, pe-grid, matrix-positions,"
 	@echo "  contact, al, efficiency-grids, whole-slabs, whole-uniformity,"
@@ -170,7 +182,7 @@ matrix-positions: $(F_matrix-positions)
 contact:         $(F_contact)
 al:              $(F_al)
 efficiency-grids: $(F_efficiency-grids)
-whole-slabs:     $(F_whole-slabs)
+whole-slabs:     $(F_whole-slabs) $(F_whole-slabs-extra)
 whole-uniformity: $(F_whole-uniformity)
 whole-yield:     $(F_whole-yield)
 persistence:     $(F_persistence)
@@ -249,6 +261,14 @@ $(F_whole-slabs) &: $(MACROS)/plot_whole_slab.C $(STYLE_H) | $(FIGDIR)
 	    cp -f "$(WHOLE_DIR)/plots/whole_slab_cfg$${cfg}.png" "$(@D)/" ; \
 	done
 
+# Config 2 (mod): same macro, preset 12.  Separate rule because the grouped
+# target above cannot skip an output that a given data tree does not provide.
+$(FIGDIR)/whole_slab_cfg12.pdf: $(MACROS)/plot_whole_slab.C $(STYLE_H) | $(FIGDIR)
+	@echo "=== plot_whole_slab (cfg 12) ==="
+	$(ROOT_RUN) "$(MACROS)/plot_whole_slab.C+(\"$(WHOLE_DIR)\", 12, 5.0, 125.0, true)"
+	cp -f "$(WHOLE_DIR)/plots/whole_slab_cfg12.pdf" "$(@D)/"
+	cp -f "$(WHOLE_DIR)/plots/whole_slab_cfg12.png" "$(@D)/"
+
 $(F_whole-uniformity) &: $(MACROS)/whole_slab_uniformity.C $(STYLE_H) | $(FIGDIR)
 	@echo "=== whole_slab_uniformity ==="
 	$(ROOT_RUN) "$(MACROS)/whole_slab_uniformity.C(\"$(WHOLE_DIR)\",\"$(@D)\")"
@@ -291,16 +311,15 @@ $(F_recon-layouts) &: $(MACROS)/recon_layouts.C $(STYLE_H) \
 	$(ROOT_RUN) "$(MACROS)/recon_layouts.C+(\"$(@D)\")"
 
 # ---- PDF rule ---------------------------------------------------------
-# pdflatex needs the .aux/.toc from the first pass to resolve refs/toc.
+# Typesetting is owned by report/Makefile (latexmk when available, otherwise
+# repeated pdflatex passes, plus the \includegraphics dependencies).  Here we
+# only sequence it after the figures, so this file stays a one-shot entry
+# point: figures first, then `make -C report`.
 REPORT_AUX = $(REPORT_DIR)/matrix_report.aux $(REPORT_DIR)/matrix_report.toc \
              $(REPORT_DIR)/matrix_report.out $(REPORT_DIR)/matrix_report.log
 
-$(REPORT_PDF): $(ALL_FIGURES) $(REPORT_TEX) | $(REPORT_DIR)
-	@echo "=== pdflatex (pass 1) ==="
-	cd $(REPORT_DIR) && pdflatex -interaction=nonstopmode matrix_report.tex >/dev/null
-	@echo "=== pdflatex (pass 2) ==="
-	cd $(REPORT_DIR) && pdflatex -interaction=nonstopmode matrix_report.tex >/dev/null
-	@echo "=== done: $(REPORT_PDF) ==="
+$(REPORT_PDF): $(REPORT_TEX) | $(REPORT_DIR)
+	$(MAKE) -C $(REPORT_DIR)
 
 $(REPORT_DIR):
 	@mkdir -p $@

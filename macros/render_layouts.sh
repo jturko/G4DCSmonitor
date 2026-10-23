@@ -3,16 +3,26 @@
 # render_layouts.sh -- OpenGL overview renders of the five SiPM layouts.
 #
 # Writes report/figures/layout_ogl_c<C>.png for C = 1, 2, 3, 12 and, for the
-# WLS layout, layout_ogl_c4.png as a read-out close-up (the analytic clamp
-# booleans of the production preset render as a point cloud, so the close-up
-# uses the tessellated vis variant, preset 5, exactly as the report's WLS
-# figures do).  Also writes the five-panel montage layout_ogl_all.png.
+# WLS layout, layout_ogl_c4.png as a read-out close-up.  The close-up uses the
+# tessellated vis variant (preset 5), not the analytic production preset: with
+# preset 7 the clamp and grease are G4SubtractionSolids cut by a union of
+# G4CutTubs legs, and their visual polyhedron cannot be built, so the scene
+# handler drops them to a point cloud (or, for the last cut, to nothing) --
+# measured on G4 11.3.2: the clamp and ~86 % of the grease disappear.
+# Also writes the five-panel montage layout_ogl_all.png.
 #
-# The four plan renders use the report plan view (top +y, right +x): camera
-# theta 20 / phi 0 with upVector -1 0 0, plate at 35 % opacity so the sensors
-# on the far edge show through.  Sensor labels follow the report convention
-# (T1/T2 top, R1/R2 right, B1/B2 bottom, L1/L2 left); the clipped-corner design
-# uses its report-frame channel names BR/TR/TL/BL.
+# The four plan renders use the report plan view (top +y, right +x) seen from
+# an oblique three-quarter view: camera theta 50 / phi -25 with upVector
+# -1 0 0, plate at 35 % opacity so
+# the sensors on the far edge show through.  `/vis/viewer/set/edge true` switches
+# the TSG viewer to hlhsr, which draws the plate's silhouette and its sharp
+# edges (surface style alone draws no lines at all in TSG).  Sensor
+# labels follow the report convention (T1/T2 top, R1/R2 right, B1/B2 bottom,
+# L1/L2 left); they sit outside the plate so the thickness band does not run
+# through the letters, the bottom pair a little further out to clear the
+# enlarged sensor rings.  Text is centre-justified on its coordinate and the
+# scene extent is fixed, so all four plan panels share one camera and scale.
+# The clipped-corner design uses its report-frame channel names BR/TR/TL/BL.
 #
 # Usage:
 #   macros/render_layouts.sh
@@ -51,17 +61,17 @@ PREAMBLE='# --------------------------------------------------------------------
 /vis/viewer/set/background white
 /vis/drawVolume
 /vis/viewer/set/style surface
-/vis/viewer/set/edge false
+/vis/viewer/set/edge true
 /vis/viewer/set/auxiliaryEdge false
 /vis/viewer/set/upVector -1 0 0
 /vis/viewer/set/lightsVector 0.5 0 1
 /vis/tsg/offscreen/set/transparency true
 /vis/geometry/set/colour MuonScintLV 0 0.45 0.75 1.0 0.35
 /vis/geometry/set/visibility GreaseLV 0 false
-/vis/viewer/set/viewpointThetaPhi 20 0
+/vis/viewer/set/viewpointThetaPhi 50 -25
 /vis/viewer/set/targetPoint 0 0 0 mm
-/vis/viewer/zoomTo 0.92
 /vis/set/textColour black
+/vis/set/textLayout centre
 /vis/scene/add/text 0 0 6 mm 34 0 0 @TITLE@'
 
 # ---- plan views: config 1, 2, 3, 12 ------------------------------------------
@@ -71,6 +81,11 @@ run_plan() {
     {
         echo "${PREAMBLE}" | sed "s/@PRESET@/${preset}/; s/@TITLE@/${title}/"
         for l in "$@"; do echo "$l"; done
+        # A fixed scene extent makes the auto-framing independent of the label
+        # set, so every plan panel has exactly the same scale (auto-framing on
+        # Config 3's two labels magnified it by ~13 %).
+        echo "/vis/scene/add/extent -160 160 -160 160 -12 12 mm"
+        echo "/vis/viewer/zoomTo 1.18"
         echo "/vis/tsg/offscreen/set/file ${png}"
         echo "/vis/viewer/flush"
         echo "/vis/verbose confirmations"
@@ -82,32 +97,35 @@ run_plan() {
 }
 
 # Label coordinates are in simulation coordinates: report (X,Y) = sim (y,-x),
-# so report top (+y) is sim -X and report right (+x) is sim +Y.
+# so report top (+y) is sim -X and report right (+x) is sim +Y.  The 10 mm
+# offset beyond the plate edge (152, or 160 for the bottom pair to clear
+# the enlarged sensor rings) keeps the labels off the 3D thickness band and
+# the tilted silhouette.
 run_plan 1 1 "Config 1" \
-    "/vis/scene/add/text -142  62.5 6 mm 26 0 0 T1" \
-    "/vis/scene/add/text -142 -62.5 6 mm 26 0 0 T2" \
-    "/vis/scene/add/text   62.5 142 6 mm 26 0 0 R1" \
-    "/vis/scene/add/text  -62.5 142 6 mm 26 0 0 R2" \
-    "/vis/scene/add/text  142  62.5 6 mm 26 0 0 B2" \
-    "/vis/scene/add/text  142 -62.5 6 mm 26 0 0 B1" \
-    "/vis/scene/add/text  -62.5 -142 6 mm 26 0 0 L1" \
-    "/vis/scene/add/text   62.5 -142 6 mm 26 0 0 L2"
+    "/vis/scene/add/text -152  62.5 6 mm 26 0 0 T1" \
+    "/vis/scene/add/text -152 -62.5 6 mm 26 0 0 T2" \
+    "/vis/scene/add/text   62.5 152 6 mm 26 0 0 R1" \
+    "/vis/scene/add/text  -62.5 152 6 mm 26 0 0 R2" \
+    "/vis/scene/add/text  166  62.5 6 mm 26 0 0 B2" \
+    "/vis/scene/add/text  166 -62.5 6 mm 26 0 0 B1" \
+    "/vis/scene/add/text  -62.5 -152 6 mm 26 0 0 L1" \
+    "/vis/scene/add/text   62.5 -152 6 mm 26 0 0 L2"
 
 run_plan 2 2 "Config 2" \
-    "/vis/scene/add/text -142  62.5 6 mm 26 0 0 T1" \
-    "/vis/scene/add/text   62.5 142 6 mm 26 0 0 R1" \
-    "/vis/scene/add/text  142 -62.5 6 mm 26 0 0 B1" \
-    "/vis/scene/add/text  -62.5 -142 6 mm 26 0 0 L1"
+    "/vis/scene/add/text -152  62.5 6 mm 26 0 0 T1" \
+    "/vis/scene/add/text   62.5 152 6 mm 26 0 0 R1" \
+    "/vis/scene/add/text  166 -62.5 6 mm 26 0 0 B1" \
+    "/vis/scene/add/text  -62.5 -152 6 mm 26 0 0 L1"
 
 run_plan 3 3 "Config 3" \
-    "/vis/scene/add/text -142  62.5 6 mm 26 0 0 T1" \
-    "/vis/scene/add/text -142 -62.5 6 mm 26 0 0 T2"
+    "/vis/scene/add/text -152  62.5 6 mm 26 0 0 T1" \
+    "/vis/scene/add/text -152 -62.5 6 mm 26 0 0 T2"
 
 run_plan 12 12 "Config 2 (mod)" \
-    "/vis/scene/add/text  140  140 6 mm 26 0 0 BR" \
-    "/vis/scene/add/text -140  140 6 mm 26 0 0 TR" \
-    "/vis/scene/add/text -140 -140 6 mm 26 0 0 TL" \
-    "/vis/scene/add/text  140 -140 6 mm 26 0 0 BL"
+    "/vis/scene/add/text  150  150 6 mm 26 0 0 BR" \
+    "/vis/scene/add/text -150  150 6 mm 26 0 0 TR" \
+    "/vis/scene/add/text -150 -150 6 mm 26 0 0 TL" \
+    "/vis/scene/add/text  150 -150 6 mm 26 0 0 BL"
 
 # ---- WLS read-out close-up (tessellated vis variant, preset 5) --------------
 C4="${OUTDIR}/layout_ogl_c4.png"
@@ -184,48 +202,77 @@ PY
 
 # ---- montage: 2 x 3, five panels, last cell white ---------------------------
 # Each render has a wide white margin (the camera frame is square while the
-# plate is not); trim it and paste the five panels into fixed cells so the
-# labels line up from panel to panel.
+# plate is not).  The four plan views share one camera, so crop them to ONE
+# common content box and scale them by ONE factor: fitting each panel to its
+# own bounding box magnifies Config 3 (fewer labels) by ~13 % relative to the
+# rest.  Config 4 is a genuine close-up at a different magnification and keeps
+# its own fit.
 python3 - "${OUTDIR}" <<'PY2'
 import sys
-from PIL import Image, ImageChops
+from PIL import Image, ImageChops, ImageDraw, ImageFont
 
 out = sys.argv[1]
 CELL, GAP = 520, 22
-tiles = []
-for c in (1, 2, 3, 12, 4):
+WHITE = (255, 255, 255)
+
+def content_box(im):
+    bg = Image.new("RGB", im.size, WHITE)
+    return ImageChops.difference(im, bg).getbbox() or (0, 0, im.width, im.height)
+
+plans, boxes = [], []
+for c in (1, 2, 3, 12):
     im = Image.open(f"{out}/layout_ogl_c{c}.png").convert("RGB")
-    bg = Image.new("RGB", im.size, (255, 255, 255))
-    im = im.crop(ImageChops.difference(im, bg).getbbox() or (0, 0) + im.size)
-    k = min(CELL / im.width, CELL / im.height)
-    tiles.append(im.resize((max(1, int(im.width * k)), max(1, int(im.height * k))),
-                           Image.LANCZOS))
+    plans.append(im)
+    boxes.append(content_box(im))
+PAD = 12
+x0 = max(0, min(b[0] for b in boxes) - PAD)
+y0 = max(0, min(b[1] for b in boxes) - PAD)
+x1 = min(plans[0].width, max(b[2] for b in boxes) + PAD)
+y1 = min(plans[0].height, max(b[3] for b in boxes) + PAD)
+cw, ch = x1 - x0, y1 - y0
+k = min(CELL / cw, CELL / ch)
+tiles = [im.crop((x0, y0, x1, y1)).resize(
+             (max(1, int(cw * k)), max(1, int(ch * k))), Image.LANCZOS)
+         for im in plans]
+
+im4 = Image.open(f"{out}/layout_ogl_c4.png").convert("RGB")
+im4 = im4.crop(content_box(im4))
+k4 = min(CELL / im4.width, CELL / im4.height)
+tiles.append(im4.resize((max(1, int(im4.width * k4)),
+                         max(1, int(im4.height * k4))), Image.LANCZOS))
 tiles.append(None)                      # empty sixth cell
 
+# Lay the rows out by their actual tile heights.  Pasting the letterboxed plan
+# tiles into fixed 520-px cells leaves ~70 px of white above and below each,
+# which doubles the gutters and pushes the whole block against the bottom.
+rows = [tiles[0:2], tiles[2:4], tiles[4:6]]
+row_h = [max(t.height for t in row if t is not None) for row in rows]
 W = 2 * CELL + 3 * GAP
-H = 3 * CELL + 4 * GAP
-sheet = Image.new("RGB", (W, H), (255, 255, 255))
-for i, t in enumerate(tiles):
-    if t is None:
-        continue
-    cx = GAP + (i % 2) * (CELL + GAP)
-    cy = GAP + (i // 2) * (CELL + GAP)
-    sheet.paste(t, (cx + (CELL - t.width) // 2, cy + (CELL - t.height) // 2))
+H = sum(row_h) + (len(rows) + 1) * GAP
+sheet = Image.new("RGB", (W, H), WHITE)
+y = GAP
+for row, h in zip(rows, row_h):
+    for i, t in enumerate(row):
+        if t is None:
+            continue
+        cx = GAP + i * (CELL + GAP)
+        sheet.paste(t, (cx + (CELL - t.width) // 2, y + (h - t.height) // 2))
+    y += h + GAP
 # note in the otherwise empty cell
-from PIL import ImageFont, ImageDraw
 d = ImageDraw.Draw(sheet)
 f = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 20)
 tx = GAP + CELL + GAP + 10
-ty = 2 * (CELL + GAP) + 40
+ty = GAP + row_h[0] + GAP + row_h[1] + GAP + 20
 for line in ("SiPMs are 4 x 4 mm; the rings",
              "are drawn enlarged so they",
              "stay visible at print size.",
              "",
-             "Panels are plan views",
+             "Plan panels share one scale",
              "(report frame, top +y,",
-             "right +x) except Config 4,",
-             "a close-up of the WLS",
-             "read-out on the -x face."):
+             "right +x, tilted 50 and yawed",
+             "25 deg to the left).",
+             "Config 4 is a close-up of",
+             "the WLS read-out on -x."):
     d.text((tx, ty), line, fill=(60, 60, 60), font=f)
     ty += 26
 

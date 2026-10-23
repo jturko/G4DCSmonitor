@@ -136,9 +136,12 @@ void drawSlabOutline(int cfg, double half)
 {
     if (cfg == 12) {
         const double a = half - kCornerLeg;      // 113 mm
-        double xs[8] = { half,  half,     a,    -a, -half, -half,    -a,     a};
-        double ys[8] = {   -a,     a,  half,  half,     a,   -a, -half, -half};
-        TPolyLine* oct = new TPolyLine(8, xs, ys);
+        // Nine points: TPolyLine does not close the contour by itself, so the
+        // first vertex is repeated -- otherwise the closing segment (the
+        // bottom-right chamfer) is never drawn.
+        double xs[9] = { half,  half,     a,    -a, -half, -half,    -a,     a,  half};
+        double ys[9] = {   -a,     a,  half,  half,     a,   -a, -half, -half,    -a};
+        TPolyLine* oct = new TPolyLine(9, xs, ys);
         oct->SetFillStyle(0);
         oct->SetLineColor(kBlack);
         oct->SetLineWidth(2);
@@ -153,7 +156,9 @@ void drawSlabOutline(int cfg, double half)
 }
 
 // Diamond marker: a square of side `side` rotated 45 deg, so its sides align
-// with the corner-cut faces.  Vertices at (cx+-d, cy) and (cx, cy+-d).
+// with the corner-cut faces.  Vertices at (cx+-d, cy) and (cx, cy+-d).  The
+// caller passes a centre already shifted outboard along the face normal, so
+// the near side (at distance 0.5*side from the centre) lies on the outline.
 void drawDiamond(double cx, double cy, double side = 8.0)
 {
     const double d = 0.5 * side * std::sqrt(2.0);
@@ -196,10 +201,16 @@ void drawOverlays(int cfg, double half, double side = 8.0, double gap = 2.0)
     }
 
     if (cfg == 12) {
-        // The four sensors are flush on the diagonal faces; draw a diamond at
-        // each (+-119, +-119) mm, rotated 45 deg to match the face.
+        // The four sensors are flush on the diagonal faces.  Draw each marker
+        // entirely outboard of the cut, its near side on the outline, so it
+        // does not cover the map.  The outward normal of the face centred at
+        // (+-c,+-c) is (sign x, sign y)/sqrt(2), so shifting half a diagonal
+        // (0.5*side) along it moves the centre by 0.5*side/sqrt(2) in each
+        // coordinate and puts the near side exactly on the chamfer.
+        const double s = 0.5 * side / std::sqrt(2.0);
         for (const auto& t : sipmTiles(cfg, half))
-            drawDiamond(t.first, t.second, side);
+            drawDiamond(t.first  + (t.first  > 0 ? s : -s),
+                        t.second + (t.second > 0 ? s : -s), side);
         return;
     }
 

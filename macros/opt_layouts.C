@@ -226,16 +226,18 @@ void drawPanel(TPad* p, const std::vector<opt::Design>& ds, const PanelCfg& P,
     if (P.preset == 12) {
         // Convex octagon: square corners cut by the line |x|+|y| = 2*kHalf-12.
         const double a = kHalf - kCornerLeg;
-        double xs[8] = { kHalf,  kHalf,     a,    -a, -kHalf, -kHalf,    -a,     a};
-        double ys[8] = {    -a,      a, kHalf, kHalf,      a,     -a, -kHalf, -kHalf};
-        TPolyLine* fill = new TPolyLine(8, xs, ys);
+        // Nine points: TPolyLine does not close the contour itself, so repeat
+        // the first vertex -- else the bottom-right chamfer is left open.
+        double xs[9] = { kHalf,  kHalf,     a,    -a, -kHalf, -kHalf,    -a,     a,  kHalf};
+        double ys[9] = {    -a,      a, kHalf, kHalf,      a,     -a, -kHalf, -kHalf,    -a};
+        TPolyLine* fill = new TPolyLine(9, xs, ys);
         fill->SetFillColor(plateFill);
         fill->SetFillStyle(1001);
         fill->SetLineColor(plateFill);
         fill->SetLineWidth(1);
         fill->Draw("F");
         // Separate transparent outline: a filled TPolyLine hides its own line.
-        TPolyLine* edge = new TPolyLine(8, xs, ys);
+        TPolyLine* edge = new TPolyLine(9, xs, ys);
         edge->SetFillStyle(0);
         edge->SetLineColor(kBlack);
         edge->SetLineWidth(2);
