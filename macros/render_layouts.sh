@@ -12,11 +12,11 @@
 # Also writes the five-panel montage layout_ogl_all.png.
 #
 # The four plan renders use the report plan view (top +y, right +x) seen from
-# an oblique three-quarter view: camera theta 50 / phi -25 with upVector
-# -1 0 0, plate at 35 % opacity so
-# the sensors on the far edge show through.  `/vis/viewer/set/edge true` switches
-# the TSG viewer to hlhsr, which draws the plate's silhouette and its sharp
-# edges (surface style alone draws no lines at all in TSG).  Sensor
+# an oblique three-quarter view: camera theta 50 / phi -25, upVector -1 0 0,
+# plate at 35 % opacity so the sensors on the far edge show through.
+# `/vis/viewer/set/edge true` switches the TSG viewer to hlhsr, which draws
+# the plate's silhouette and its sharp edges (surface style alone draws no
+# lines at all in TSG).  Sensor
 # labels follow the report convention (T1/T2 top, R1/R2 right, B1/B2 bottom,
 # L1/L2 left); they sit outside the plate so the thickness band does not run
 # through the letters, the bottom pair a little further out to clear the
@@ -188,14 +188,15 @@ for cfg in (1, 2, 3, 12):
 p = f"{out}/layout_ogl_c4.png"
 im = Image.open(p).convert("RGB")
 d = ImageDraw.Draw(im)
-f = ImageFont.truetype(FONT, 28)
+f = ImageFont.truetype(FONT, 34)      # callouts, readable at montage scale
+ft = ImageFont.truetype(FONT, 28)     # title, kept clear of the slab edge
 for xy, text in (((20, 842), "SiPM"), ((20, 527), "4 Y-11 fibres"),
                  ((20, 217), "white clamp")):
     d.text(xy, text, fill=(0, 0, 0), font=f)
 d.line([140, 862, 236, 872], fill=(0, 0, 0), width=1)
 d.line([300, 540, 505, 470], fill=(0, 0, 0), width=1)
 d.line([300, 250, 505, 225], fill=(0, 0, 0), width=1)
-d.text((20, 52), "Config 4 - WLS read-out (close-up)", fill=(0, 0, 0), font=f)
+d.text((20, 52), "Config 4 - WLS read-out (close-up)", fill=(0, 0, 0), font=ft)
 im.save(p)
 print(f"annotated {p}")
 PY
@@ -220,7 +221,7 @@ def content_box(im):
     return ImageChops.difference(im, bg).getbbox() or (0, 0, im.width, im.height)
 
 plans, boxes = [], []
-for c in (1, 2, 3, 12):
+for c in (1, 2, 12, 3):
     im = Image.open(f"{out}/layout_ogl_c{c}.png").convert("RGB")
     plans.append(im)
     boxes.append(content_box(im))
