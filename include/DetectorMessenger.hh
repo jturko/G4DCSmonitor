@@ -113,6 +113,10 @@ class DetectorMessenger : public G4UImessenger
     G4UIcmdWithAString* fSetCLYCPEColMaterialNameCmd = nullptr;
     G4UIcmdWithAString* fSetCLYCPEPlugMaterialNameCmd = nullptr;
 
+    // calibration-source puck
+    G4UIcmdWithoutParameter*   fAddSourcePuckCmd     = nullptr;
+    G4UIcmdWith3VectorAndUnit* fSetSourcePuckPosCmd  = nullptr;
+
     // Plastic (shadowed) commands: command -> action(value-string)
     std::map<G4UIcommand*, std::function<void(const G4String&)>> fPlasticActions;
     void BuildPlasticCommands();

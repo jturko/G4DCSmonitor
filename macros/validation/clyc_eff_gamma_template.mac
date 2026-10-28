@@ -1,0 +1,47 @@
+# CLYC full-energy peak efficiency, monoenergetic gamma point source.
+# Template placeholders: @DIST_MM@, @ENERGY_KEV@, @OUTPUT@, @NEVENTS@
+#
+# The source vertex is the centre of the epoxy source puck. The puck position
+# is the single source-position definition; PrimaryGeneratorAction copies it
+# into the GPS point source before the first event, so no /gps/pos/centre
+# command is used here.
+
+/control/verbose 0
+/run/verbose 0
+/tracking/verbose 0
+/event/verbose 0
+
+/run/numberOfThreads 8
+/dcs-monitor/det/useBiasing false
+
+# CLYC detector at z = 0 (metal front face), no PE plug or collimators.
+/dcs-monitor/det/setPosition 0 0 0 mm
+/dcs-monitor/det/setRotation 0 0 0
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/clyc/setPbColLength 0.0 mm
+/dcs-monitor/det/clyc/setPEColLength 0.0 mm
+/dcs-monitor/det/clyc/setPEPlugLipLength 0.0 mm
+/dcs-monitor/det/clyc/setPEPlugInnerLength 0.0 mm
+
+# Epoxy calibration-source puck: r = 10 mm, length = 2 mm, source at centre.
+/dcs-monitor/det/sourcePuck/setPosition 0 0 @DIST_MM@ mm
+/dcs-monitor/det/sourcePuck/add
+
+/run/initialize
+
+# Monoenergetic isotropic gamma point source. The position is taken from the
+# puck centre by PrimaryGeneratorAction.
+/dcs-monitor/gun/sourceMode GPS
+/gps/particle gamma
+/gps/ene/type Mono
+/gps/ene/mono @ENERGY_KEV@ keV
+/gps/pos/type Point
+/gps/ang/type iso
+
+# Output: hits tree only.
+/dcs-monitor/run/writePrimary false
+/dcs-monitor/run/writeSurfaceFlux false
+/dcs-monitor/run/writeFluxMap false
+/analysis/setFileName @OUTPUT@
+
+/run/beamOn @NEVENTS@

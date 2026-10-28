@@ -15,10 +15,16 @@
 #include "G4SystemOfUnits.hh"
 #include "Randomize.hh"
 
+#include "G4GeneralParticleSource.hh"
+#include "G4SingleParticleSource.hh"
+#include "G4SPSPosDistribution.hh"
+
 #include "G4PhysicalVolumeStore.hh"
 
 #include "G4RunManager.hh"
 #include "G4UImanager.hh"
+
+#include <mutex>
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
@@ -47,6 +53,22 @@ PrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 {
     switch (fSourceMode) {
         case kGPS:
+            // When the source puck is enabled, its centre is the single
+            // source-position definition. GPSData is shared by all MT workers,
+            // so set the centre exactly once, before any worker generates a
+            // vertex.
+            if (fDetector && fDetector->HasSourcePuck()) {
+                static std::once_flag sourcePuckOnce;
+                std::call_once(sourcePuckOnce, [this]() {
+                    auto* posDist = fGPS->GetCurrentSource()->GetPosDist();
+                    posDist->SetPosDisType("Point");
+                    posDist->SetCentreCoords(fDetector->GetSourcePuckPosition());
+                    G4cout << " -> [PrimaryGeneratorAction] GPS point source at "
+                           << "source-puck centre "
+                           << fDetector->GetSourcePuckPosition() / CLHEP::mm
+                           << " mm" << G4endl;
+                });
+            }
             fGPS->GeneratePrimaryVertex(anEvent);
             break;
 

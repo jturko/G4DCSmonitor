@@ -53,6 +53,12 @@ class DetectorConstruction : public G4VUserDetectorConstruction
         void SetPosition(G4ThreeVector pos) { fPosition = pos; }
         void SetRotation(G4ThreeVector rot) { fRotation = rot; }
 
+        // Calibration-source puck (solid epoxy disk, source at its centre)
+        void          AddSourcePuck()                         { fSourcePuckEnabled = true; }
+        void          SetSourcePuckPosition(G4ThreeVector p)  { fSourcePuckPos = p; }
+        G4bool        HasSourcePuck() const                   { return fSourcePuckEnabled; }
+        G4ThreeVector GetSourcePuckPosition() const           { return fSourcePuckPos; }
+
         // CLYC
         void  AddCLYC();
         void  AddCLYCByCrystalCenter();
@@ -276,6 +282,10 @@ class DetectorConstruction : public G4VUserDetectorConstruction
 
         G4ThreeVector fPosition;
         G4ThreeVector fRotation;
+
+        // Calibration-source puck: the source vertex is the puck centre.
+        G4bool        fSourcePuckEnabled = false;
+        G4ThreeVector fSourcePuckPos     = G4ThreeVector(0., 0., 200. * CLHEP::mm);
 
         G4VPhysicalVolume* fPWorld = nullptr;
         G4LogicalVolume*   fLWorld = nullptr;

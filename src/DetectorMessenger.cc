@@ -151,6 +151,16 @@ DetectorMessenger::DetectorMessenger(DetectorConstruction* Det) : fDetector(Det)
     fSetCLYCPEPlugMaterialNameCmd = new G4UIcmdWithAString("/dcs-monitor/det/clyc/setPEPlugMaterial", this);
     fSetCLYCPEPlugMaterialNameCmd->AvailableForStates(G4State_PreInit);
 
+    // calibration-source puck
+    fAddSourcePuckCmd = new G4UIcmdWithoutParameter("/dcs-monitor/det/sourcePuck/add", this);
+    fAddSourcePuckCmd->SetGuidance("Add the epoxy calibration-source puck at the source position.");
+    fAddSourcePuckCmd->AvailableForStates(G4State_PreInit);
+
+    fSetSourcePuckPosCmd = new G4UIcmdWith3VectorAndUnit("/dcs-monitor/det/sourcePuck/setPosition", this);
+    fSetSourcePuckPosCmd->SetGuidance("Set the source-puck centre (source vertex) in the global frame.");
+    fSetSourcePuckPosCmd->SetDefaultUnit("mm");
+    fSetSourcePuckPosCmd->AvailableForStates(G4State_PreInit);
+
     // plastic
     BuildPlasticCommands();
 
@@ -248,7 +258,11 @@ DetectorMessenger::~DetectorMessenger()
     delete fSetCLYCPbColMaterialNameCmd;
     delete fSetCLYCPEColMaterialNameCmd;
     delete fSetCLYCPEPlugMaterialNameCmd;
-    
+
+    // calibration-source puck
+    delete fAddSourcePuckCmd;
+    delete fSetSourcePuckPosCmd;
+
     for (auto& kv : fPlasticActions) delete kv.first;
 
         
@@ -335,7 +349,11 @@ void DetectorMessenger::SetNewValue(G4UIcommand* command, G4String value)
     if(command == fSetCLYCPbColMaterialNameCmd)     fDetector->SetCLYCPbColMaterialName(value);
     if(command == fSetCLYCPEColMaterialNameCmd)     fDetector->SetCLYCPEColMaterialName(value);
     if(command == fSetCLYCPEPlugMaterialNameCmd)     fDetector->SetCLYCPEPlugMaterialName(value);
-    
+
+    // calibration-source puck
+    if(command == fAddSourcePuckCmd)                 fDetector->AddSourcePuck();
+    if(command == fSetSourcePuckPosCmd)              fDetector->SetSourcePuckPosition(fSetSourcePuckPosCmd->GetNew3VectorValue(value));
+
     // CASTOR 440
     if(command == fAddCASTOR440Cmd)                 fDetector->AddCASTOR440();
 

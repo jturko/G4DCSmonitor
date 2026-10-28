@@ -1,0 +1,40 @@
+# CLYC full-energy peak efficiency, monoenergetic gamma point source.
+# No-puck control run: the gamma vertex is the labelled source position, with
+# no epoxy between the vertex and the detector.
+# Template placeholders: @DIST_MM@, @ENERGY_KEV@, @OUTPUT@, @NEVENTS@
+
+/control/verbose 0
+/run/verbose 0
+/tracking/verbose 0
+/event/verbose 0
+
+/run/numberOfThreads 8
+/dcs-monitor/det/useBiasing false
+
+# CLYC detector at z = 0 (metal front face), no PE plug or collimators.
+/dcs-monitor/det/setPosition 0 0 0 mm
+/dcs-monitor/det/setRotation 0 0 0
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/clyc/setPbColLength 0.0 mm
+/dcs-monitor/det/clyc/setPEColLength 0.0 mm
+/dcs-monitor/det/clyc/setPEPlugLipLength 0.0 mm
+/dcs-monitor/det/clyc/setPEPlugInnerLength 0.0 mm
+
+/run/initialize
+
+# Monoenergetic isotropic gamma point source at the labelled source position.
+/dcs-monitor/gun/sourceMode GPS
+/gps/particle gamma
+/gps/ene/type Mono
+/gps/ene/mono @ENERGY_KEV@ keV
+/gps/pos/type Point
+/gps/pos/centre 0 0 @DIST_MM@ mm
+/gps/ang/type iso
+
+# Output: hits tree only.
+/dcs-monitor/run/writePrimary false
+/dcs-monitor/run/writeSurfaceFlux false
+/dcs-monitor/run/writeFluxMap false
+/analysis/setFileName @OUTPUT@
+
+/run/beamOn @NEVENTS@

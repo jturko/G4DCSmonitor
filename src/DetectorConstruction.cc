@@ -163,6 +163,17 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 
 void DetectorConstruction::DefineMaterials()
 {
+    // Epoxy of the calibration source puck, matching G4DetectorLab's
+    // GeometrySourcePuck: 1.16 g/cm3, H32 C15 N2 O4. Keep a distinct name:
+    // GeometryCLYC defines "Epoxy" at 1.2 g/cm3 with a different composition.
+    G4NistManager* nist = G4NistManager::Instance();
+    if (nist->FindOrBuildMaterial("SourcePuckEpoxy", false) != nullptr) return;
+
+    auto* puckEpoxy = new G4Material("SourcePuckEpoxy", 1.16 * g / cm3, 4);
+    puckEpoxy->AddElement(nist->FindOrBuildElement("H"), 32);
+    puckEpoxy->AddElement(nist->FindOrBuildElement("C"), 15);
+    puckEpoxy->AddElement(nist->FindOrBuildElement("N"), 2);
+    puckEpoxy->AddElement(nist->FindOrBuildElement("O"), 4);
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -235,6 +246,30 @@ G4VPhysicalVolume* DetectorConstruction::ConstructVolumes()
     
         // fCLYCPositions[i] is now guaranteed to be the front-face position.
         fCLYCDetectors[i]->PlaceDetector(fLWorld, fCLYCPositions[i], fCLYCRotations[i], i);
+    }
+
+    // Optional calibration-source puck. The source vertex is the puck centre;
+    // PrimaryGeneratorAction reads the same position through
+    // GetSourcePuckPosition(), so the puck and the GPS point source cannot
+    // diverge.
+    if (fSourcePuckEnabled) {
+        G4Material* puckMat = man->FindOrBuildMaterial("SourcePuckEpoxy");
+        if (!puckMat) {
+            G4Exception("DetectorConstruction::ConstructVolumes",
+                        "NoSourcePuckMaterial", FatalException,
+                        "SourcePuckEpoxy material is not defined.");
+        }
+
+        auto* sPuck = new G4Tubs("SourcePuck_solid", 0., 10. * mm, 1. * mm,
+                                 0. * deg, 360. * deg);
+        auto* lPuck = new G4LogicalVolume(sPuck, puckMat, "SourcePuckLog");
+        lPuck->SetVisAttributes(new G4VisAttributes(true, G4Colour(0.9, 0.4, 0.1, 0.7)));
+        new G4PVPlacement(nullptr, fSourcePuckPos, lPuck, "SourcePuckPhys",
+                          fLWorld, false, 0, true);
+
+        G4cout << " -> SourcePuck: r=10 mm, length=2 mm, SourcePuckEpoxy "
+               << "1.16 g/cm3, centre " << fSourcePuckPos / mm << " mm"
+               << G4endl;
     }
 
     // Plastic detector(s)
@@ -407,7 +442,9 @@ G4VPhysicalVolume* DetectorConstruction::ConstructVolumes()
     }
 
     // always return the root volume
-    ComputeSectorBounds();
+    // Sector scoring is only built in background-sector mode; a standalone
+    // CLYC run has no CASTOR cask for ComputeSectorBounds() to target.
+    if (fBackgroundSectorMode) ComputeSectorBounds();
     return fPWorld;
 }
 

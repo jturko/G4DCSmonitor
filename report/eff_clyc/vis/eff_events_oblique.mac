@@ -1,0 +1,58 @@
+# Event display: oblique view of the CLYC detector and 200 mm source puck.
+# The source is focused on the crystal centre for visibility; the production
+# efficiency runs use an isotropic point source.
+/control/verbose 0
+/run/verbose 0
+/tracking/verbose 0
+/event/verbose 0
+/vis/verbose warnings
+/run/numberOfThreads 1
+/dcs-monitor/det/useBiasing false
+
+/dcs-monitor/det/setPosition 0 0 0 mm
+/dcs-monitor/det/setRotation 0 0 0
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/clyc/setPbColLength 0.0 mm
+/dcs-monitor/det/clyc/setPEColLength 0.0 mm
+/dcs-monitor/det/clyc/setPEPlugLipLength 0.0 mm
+/dcs-monitor/det/clyc/setPEPlugInnerLength 0.0 mm
+
+/dcs-monitor/det/sourcePuck/setPosition 0 0 200 mm
+/dcs-monitor/det/sourcePuck/add
+
+/run/initialize
+
+/dcs-monitor/gun/sourceMode GPS
+/gps/particle gamma
+/gps/ene/type Mono
+/gps/ene/mono 661.64 keV
+/gps/pos/type Point
+/gps/ang/type focused
+/gps/ang/focuspoint 0 0 -14.5 mm
+
+/dcs-monitor/run/writePrimary false
+/dcs-monitor/run/writeSurfaceFlux false
+/dcs-monitor/run/writeFluxMap false
+/analysis/setFileName /tmp/eff_vis_oblique.root
+
+/vis/open OGL 1400x1000-0+0
+/vis/viewer/set/autoRefresh false
+/vis/drawVolume
+/vis/viewer/set/style surface
+/vis/viewer/set/background 1 1 1 1
+/vis/viewer/set/viewpointThetaPhi 60 25
+/vis/viewer/zoom 1.0
+/vis/geometry/set/colour CasingLog 0.72 0.72 0.72 0.35
+/vis/geometry/set/colour MagShieldLog 0.45 0.45 0.45 0.25
+/vis/scene/add/axes 0 0 0 50 mm
+/vis/scene/add/trajectories smooth
+/vis/modeling/trajectories/create/drawByParticleID
+/vis/modeling/trajectories/drawByParticleID-0/set gamma green
+/vis/modeling/trajectories/drawByParticleID-0/set e- blue
+/vis/modeling/trajectories/drawByParticleID-0/set e+ red
+/vis/scene/endOfEventAction accumulate
+/vis/viewer/set/autoRefresh true
+/run/beamOn 10
+/vis/viewer/flush
+/vis/ogl/export /tmp/eff_vis_oblique.pdf
+/vis/disable
