@@ -120,6 +120,9 @@ class DetectorMessenger : public G4UImessenger
     // castor 440
     G4UIcmdWithoutParameter* fAddCASTOR440Cmd = nullptr;
 
+    // sector scoring z layering
+    G4UIcmdWithAnInteger* fSetSectorZLayersCmd = nullptr;
+
     // hemi-shield
     std::map<G4UIcommand*, std::function<void(const G4String&)>> fHemiShieldActions;
     void BuildHemiShieldCommands();

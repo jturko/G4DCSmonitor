@@ -648,6 +648,7 @@ void SurfaceFluxSampler::StartRun(G4double measurement_time)
         return;
     }
 
+    fLastMeasurementTime = measurement_time;
     const G4double ratio = fKeptWeightTotal / static_cast<G4double>(fNumPrimaries);
     const G4double numDecays    = (measurement_time / CLHEP::s) * fDecayRate;
     const G4double numPrimaries = numDecays * ratio;

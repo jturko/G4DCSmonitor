@@ -19,6 +19,11 @@ class GeometryCLYC
     void PlaceDetector(G4LogicalVolume* expHallLog, G4ThreeVector move, G4RotationMatrix* rotate, G4int copyNo);
     G4ThreeVector GetCrystalCenterLocal() const;
 
+    // Full assembly envelope (front face at local z = 0, body extending to -z).
+    G4double GetTotalLength() const;
+    G4double GetEnvelopeBackLength() const;
+    G4double GetEnvelopeOuterRadius() const;
+
     G4LogicalVolume* GetCLYCLog() { return fCrystalLog; }
 
     // crystal / casing (unchanged API)

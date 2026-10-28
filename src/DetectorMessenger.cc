@@ -158,6 +158,13 @@ DetectorMessenger::DetectorMessenger(DetectorConstruction* Det) : fDetector(Det)
     fAddCASTOR440Cmd = new G4UIcmdWithoutParameter("/dcs-monitor/det/castor440/add", this);
     fAddCASTOR440Cmd->AvailableForStates(G4State_PreInit);
 
+    // sector scoring z layering
+    fSetSectorZLayersCmd = new G4UIcmdWithAnInteger("/dcs-monitor/det/setSectorZLayers", this);
+    fSetSectorZLayersCmd->SetGuidance("Number of z layers in the sector scoring shell (1..32).");
+    fSetSectorZLayersCmd->SetParameterName("n", false);
+    fSetSectorZLayersCmd->SetRange("n >= 1 && n <= 32");
+    fSetSectorZLayersCmd->AvailableForStates(G4State_PreInit);
+
     // HemiShield
     BuildHemiShieldCommands();
  
@@ -248,6 +255,9 @@ DetectorMessenger::~DetectorMessenger()
     // CASTOR 440
     delete fAddCASTOR440Cmd;
 
+    // sector scoring z layering
+    delete fSetSectorZLayersCmd;
+
     // HemiShield
     for (auto& kv : fHemiShieldActions) delete kv.first;
 
@@ -328,6 +338,10 @@ void DetectorMessenger::SetNewValue(G4UIcommand* command, G4String value)
     
     // CASTOR 440
     if(command == fAddCASTOR440Cmd)                 fDetector->AddCASTOR440();
+
+    // sector scoring z layering
+    if(command == fSetSectorZLayersCmd)
+        fDetector->SetSectorZLayers(fSetSectorZLayersCmd->GetNewIntValue(value));
 
     // HemiShield
     {

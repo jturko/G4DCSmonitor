@@ -39,6 +39,7 @@
 #include "RunMessenger.hh"
 #include "GeometryCASTOR440.hh"
 #include "SurfaceFluxSampler.hh"
+#include "GeometrySectorScoring.hh"
 #include "ProgressBar.hh"
 
 #include "G4Run.hh"
@@ -63,6 +64,8 @@
 
 #include "TTree.h"
 #include <cstring>
+#include <cmath>
+#include <string>
 
 #include <filesystem>   // C++17
 namespace fs = std::filesystem;
@@ -81,7 +84,8 @@ std::once_flag RunAction::fSurfaceSamplerOnce;
 RunAction::RunAction(DetectorConstruction* det, PrimaryGeneratorAction* prim)
     : fDetector(det), fPrimary(prim), fProgBar(NULL)
 {
-    fHistoManager = new HistoManager(fDetector->GetWorldSize());
+    fHistoManager = new HistoManager(fDetector->GetWorldSize(), 25.,
+                                      fDetector->IsBackgroundSectorMode());
     fRunMessenger = new RunMessenger(this);
 
 }
@@ -262,6 +266,82 @@ void RunAction::EndOfRunAction(const G4Run* run)
         fmeta.Close();
     }
 
+    // ------------------------------------------------------------------
+    // Sector-source metadata for p1.5 outputs. Written once per file, after
+    // the merged sectorFlux tree has been closed.
+    // ------------------------------------------------------------------
+    if (isMaster && fDetector->IsBackgroundSectorMode()) {
+        G4String path = analysisManager->GetFileName();
+        if (path.size() < 5 || path.substr(path.size() - 5) != ".root")
+            path += ".root";
+
+        TFile fmeta(path.c_str(), "UPDATE");
+        if (!fmeta.IsZombie() && fmeta.Get("sectorMeta") == nullptr) {
+            auto* sf = dynamic_cast<TTree*>(fmeta.Get("sectorFlux"));
+            Long64_t M = sf ? sf->GetEntries() : 0;
+
+            auto& src = SurfaceFluxSampler::Instance();
+            const G4double Tgen_s = src.GetLastMeasurementTime() / s;
+            const long int nps = src.GetNumPrimaries();
+            const G4double ratio = (nps > 0)
+                ? src.GetKeptWeightTotal() / (G4double)nps : 0.;
+
+            G4int hexant = (G4int)std::lround(src.GetSourceRotZ() / (60. * deg));
+            hexant = ((hexant % 6) + 6) % 6;
+
+            Double_t T_gen = Tgen_s;
+            Long64_t nEntries = M;
+            Long64_t nPrimaries = nps;
+            Double_t weightRatio = ratio;
+            Int_t sourceCask = src.GetPlacementCask();
+            Int_t sourceType = src.GetSourceType();
+            Int_t iHexant = hexant;
+            Int_t globalFuel = src.GetGlobalFuel();
+            Int_t batchId = src.GetBatchId();
+            Int_t targetCask = 0;
+            Double_t rIn = GeometrySectorScoring::kInnerRadiusMm;
+            Double_t rOut = GeometrySectorScoring::kOuterRadiusMm;
+            const G4int    nZLayers = fDetector->GetSectorZLayers();
+            const G4double zMin     = fDetector->GetSectorZMin();
+            const G4double zMax     = fDetector->GetSectorZMax();
+            const G4double dz       = fDetector->GetSectorDz();
+            Double_t halfZ = 0.5 * (zMax - zMin) / mm;
+            Int_t nSectors = GeometrySectorScoring::kNumSectors;
+            Int_t iNZLayers = nZLayers;
+            Int_t nCells = nZLayers * GeometrySectorScoring::kNumSectors;
+            Double_t zMin_mm = zMin / mm;
+            Double_t zMax_mm = zMax / mm;
+            Double_t dz_mm = dz / mm;
+            std::string sourceFile = src.GetSourceFile();
+
+            TTree meta("sectorMeta", "p1.5 sector-source provenance");
+            meta.Branch("T_gen",       &T_gen,       "T_gen/D");
+            meta.Branch("M",           &nEntries,    "M/L");
+            meta.Branch("nps",         &nPrimaries,  "nps/L");
+            meta.Branch("ratio",       &weightRatio, "ratio/D");
+            meta.Branch("sourceCask",  &sourceCask,  "sourceCask/I");
+            meta.Branch("sourceType",  &sourceType,  "sourceType/I");
+            meta.Branch("hexant",      &iHexant,     "hexant/I");
+            meta.Branch("globalFuel",  &globalFuel,  "globalFuel/I");
+            meta.Branch("batchId",     &batchId,     "batchId/I");
+            meta.Branch("targetCask",  &targetCask,  "targetCask/I");
+            meta.Branch("R_in_mm",     &rIn,         "R_in_mm/D");
+            meta.Branch("R_out_mm",    &rOut,        "R_out_mm/D");
+            meta.Branch("halfZ_mm",    &halfZ,       "halfZ_mm/D");
+            meta.Branch("nSectors",    &nSectors,    "nSectors/I");
+            meta.Branch("nZLayers",    &iNZLayers,   "nZLayers/I");
+            meta.Branch("nCells",      &nCells,      "nCells/I");
+            meta.Branch("zMin_mm",     &zMin_mm,     "zMin_mm/D");
+            meta.Branch("zMax_mm",     &zMax_mm,     "zMax_mm/D");
+            meta.Branch("dz_mm",       &dz_mm,       "dz_mm/D");
+            meta.Branch("sourceFile",  &sourceFile);
+            meta.Fill();
+
+            fmeta.cd();
+            meta.Write("", TObject::kOverwrite);
+        }
+        fmeta.Close();
+    }
 
 }
 

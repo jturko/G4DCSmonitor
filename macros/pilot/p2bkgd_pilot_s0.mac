@@ -1,0 +1,31 @@
+# Pilot p2_bkgd: replay sector 3 from p1p5_pilot_cask0_s0.root.
+/control/verbose 0
+/run/verbose 0
+/tracking/verbose 0
+/event/verbose 0
+
+/run/numberOfThreads 1
+/dcs-monitor/det/useBiasing false
+
+/dcs-monitor/det/setPosition 332.76 2096.62 150 mm
+/dcs-monitor/det/setRotation 0 -90 157.5
+/dcs-monitor/det/clyc/add
+
+/dcs-monitor/det/setRotation 0 0 0
+/dcs-monitor/det/setPosition 1580 1580 0 mm
+/dcs-monitor/det/castor440/add
+
+/run/initialize
+
+/dcs-monitor/gun/sourceMode BACKGROUND_SECTOR_from_TTree
+/dcs-monitor/bkg/sourceFile /home/turko46/geant4-sims/G4DCSmonitor/build/pilot/p1p5_cask0_s0.root
+/dcs-monitor/bkg/sectorId 3
+/dcs-monitor/bkg/maxEntries 20000
+/dcs-monitor/bkg/tgen 180 s
+/dcs-monitor/bkg/numPrimaries 100000
+
+/dcs-monitor/run/writePrimary true
+/dcs-monitor/run/writeSurfaceFlux false
+
+/analysis/setFileName /home/turko46/geant4-sims/G4DCSmonitor/build/pilot/p2bkgd_s3_det
+/dcs-monitor/bkg/startRun 180 s

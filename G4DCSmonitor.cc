@@ -45,6 +45,7 @@
 #include "Randomize.hh"
 
 #include "SurfaceFluxSamplerMessenger.hh"
+#include "SectorFluxSamplerMessenger.hh"
 
 #include <csignal>
 #include <random>
@@ -72,6 +73,7 @@ int main(int argc, char** argv)
     // --biasing accepts: gamma | neutron | none | off
     // -----------------------------------------------------------------
     G4String biasParticle = "";                  // "" -> no importance biasing
+    G4String runMode = "";                       // "" -> normal; "background-sector" -> p1.5
     std::vector<G4String> positional;
     positional.reserve(argc);
     for (int i = 1; i < argc; ++i) {
@@ -91,6 +93,17 @@ int main(int argc, char** argv)
             }
             biasParticle = val;
         }
+        else if (arg == "--mode") {
+            if (i + 1 >= argc) {
+                G4cerr << "[CLI] '--mode' requires an argument (background-sector)."
+                       << G4endl;
+                return 1;
+            }
+            runMode = argv[++i];
+        }
+        else if (arg.length() > 7 && arg.substr(0, 7) == "--mode=") {
+            runMode = arg.substr(7);
+        }
         else if (arg.length() > 10 && arg.substr(0, 10) == "--biasing=") {
             G4String val = arg.substr(10);
             if (val == "none" || val == "off" || val == "false") val = "";
@@ -103,7 +116,8 @@ int main(int argc, char** argv)
         }
         else if (arg == "--help" || arg == "-h") {
             G4cout << "Usage: " << argv[0]
-                   << " [--biasing gamma|neutron|none] [macro] [fileNum]" << G4endl;
+                   << " [--biasing gamma|neutron|none] [--mode background-sector]"
+                   << " [macro] [fileNum]" << G4endl;
             return 0;
         }
         else {
@@ -111,6 +125,18 @@ int main(int argc, char** argv)
         }
     }
     
+    if (!runMode.empty() && runMode != "background-sector") {
+        G4cerr << "[CLI] --mode must be 'background-sector'. Got '"
+               << runMode << "'." << G4endl;
+        return 1;
+    }
+    const G4bool backgroundSectorMode = (runMode == "background-sector");
+    if (backgroundSectorMode && !biasParticle.empty()) {
+        G4cerr << "[CLI] background-sector mode is analog; do not combine it with "
+               << "--biasing." << G4endl;
+        return 1;
+    }
+
     G4UIExecutive* ui = nullptr;
     if (positional.empty()) ui = new G4UIExecutive(argc, argv);
     //// detect interactive mode (if no arguments) and define UI session
@@ -123,15 +149,17 @@ int main(int argc, char** argv)
     auto runManager = G4RunManagerFactory::CreateRunManager();
 
     // set mandatory initialization classes
-    DetectorConstruction* det = new DetectorConstruction(biasParticle);
+    DetectorConstruction* det =
+        new DetectorConstruction(biasParticle, backgroundSectorMode);
     runManager->SetUserInitialization(det);
     
-    PhysicsList* phys = new PhysicsList(biasParticle);
+    PhysicsList* phys = new PhysicsList(biasParticle, backgroundSectorMode);
     runManager->SetUserInitialization(phys);
     runManager->SetUserInitialization(new ActionInitialization(det));
 
-    // set surface generator messenger
-    auto* surfMsg = new SurfaceFluxSamplerMessenger();   // master-only
+    // set source/sampler messengers
+    auto* surfMsg = new SurfaceFluxSamplerMessenger();   // p1 / p1.5
+    auto* bkgMsg  = new SectorFluxSamplerMessenger();    // p2_bkgd
 
     // Replaced HP environmental variables with C++ calls
     // TODO - can we put this into the physics list class?
@@ -166,6 +194,7 @@ int main(int argc, char** argv)
 
     // job termination
     delete visManager;
+    delete bkgMsg;
     delete surfMsg;
     delete runManager;
 

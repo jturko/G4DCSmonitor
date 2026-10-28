@@ -94,6 +94,17 @@ class SurfaceFluxSampler
     void     SetPlacementCask(G4int c)   { fPlacementCask = c; }
     G4int    GetPlacementCask() const    { return fPlacementCask; }
 
+    void     SetGlobalFuel(G4int v)      { fGlobalFuel = v; }
+    G4int    GetGlobalFuel() const       { return fGlobalFuel; }
+    void     SetBatchId(G4int v)         { fBatchId = v; }
+    G4int    GetBatchId() const          { return fBatchId; }
+    void     SetSourceType(G4int v)      { fSourceType = v; }
+    G4int    GetSourceType() const       { return fSourceType; }
+
+    G4double GetKeptWeightTotal() const  { return fKeptWeightTotal; }
+    long int GetNumPrimaries() const      { return fNumPrimaries; }
+    G4double GetLastMeasurementTime() const { return fLastMeasurementTime; }
+
   private:
     SurfaceFluxSampler() = default;
     SurfaceFluxSampler(const SurfaceFluxSampler&) = delete;
@@ -142,8 +153,12 @@ class SurfaceFluxSampler
                                        
     long int fLoadThreads = 32;   // 0 => ROOT::EnableImplicitMT(0) uses all cores
 
-    G4double fSourceRotZ    = 0.;   // in rad  
-    G4int    fPlacementCask = 0;    // 
+    G4double fSourceRotZ    = 0.;   // in rad
+    G4int    fPlacementCask = 0;    //
+    G4int    fGlobalFuel    = -1;
+    G4int    fBatchId       = 0;
+    G4int    fSourceType    = 0;
+    G4double fLastMeasurementTime = 0.;
 
 };
 

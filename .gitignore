@@ -1,2 +1,10 @@
 build/
 .refs/
+.cache/
+main.aux
+main.fdb_latexmk
+main.fls
+main.log
+main.out
+main.toc
+*.synctex.gz

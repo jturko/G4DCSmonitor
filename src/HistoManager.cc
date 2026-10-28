@@ -36,9 +36,11 @@
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-HistoManager::HistoManager(G4double worldXY, G4double cellSize)
+HistoManager::HistoManager(G4double worldXY, G4double cellSize,
+                           G4bool bookSectorFlux)
     : fWorldXY(worldXY),
-      fNBinsXY(std::max(1, (G4int)std::lround(worldXY / cellSize)))
+      fNBinsXY(std::max(1, (G4int)std::lround(worldXY / cellSize))),
+      fBookSectorFlux(bookSectorFlux)
 {
     Book();
 }
@@ -114,6 +116,35 @@ void HistoManager::Book()
     analysisManager->CreateNtupleDColumn("weight"); // 9
     analysisManager->CreateNtupleDColumn("evtNb");  // 10
     analysisManager->FinishNtuple();
+
+    if (fBookSectorFlux) {
+        idx = analysisManager->CreateNtuple(
+            "sectorFlux",
+            "unit-weight gamma/neutron phase space at the sector scoring shell");
+        analysisManager->SetNtupleActivation(idx, true);
+        analysisManager->CreateNtupleDColumn("pid");         // 0
+        analysisManager->CreateNtupleDColumn("ekin");        // 1
+        analysisManager->CreateNtupleDColumn("t");           // 2
+        analysisManager->CreateNtupleDColumn("x");           // 3
+        analysisManager->CreateNtupleDColumn("y");           // 4
+        analysisManager->CreateNtupleDColumn("z");           // 5
+        analysisManager->CreateNtupleDColumn("px");          // 6
+        analysisManager->CreateNtupleDColumn("py");          // 7
+        analysisManager->CreateNtupleDColumn("pz");          // 8
+        analysisManager->CreateNtupleDColumn("weight");      // 9
+        analysisManager->CreateNtupleDColumn("sectorId");    // 10
+        analysisManager->CreateNtupleDColumn("face");        // 11
+        analysisManager->CreateNtupleDColumn("sourceCask");  // 12
+        analysisManager->CreateNtupleDColumn("sourceType");  // 13
+        analysisManager->CreateNtupleDColumn("hexant");      // 14
+        analysisManager->CreateNtupleDColumn("globalFuel");  // 15
+        analysisManager->CreateNtupleDColumn("batchId");     // 16
+        analysisManager->CreateNtupleDColumn("evtNb");       // 17
+        analysisManager->CreateNtupleDColumn("trackID");     // 18
+        analysisManager->CreateNtupleDColumn("zLayer");      // 19
+        analysisManager->CreateNtupleDColumn("cellId");      // 20
+        analysisManager->FinishNtuple();
+    }
     
 }
 

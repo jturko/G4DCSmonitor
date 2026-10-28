@@ -1,0 +1,51 @@
+/control/verbose 0
+/run/verbose 0
+/vis/verbose warnings
+/run/numberOfThreads 1
+/dcs-monitor/det/useBiasing false
+
+/dcs-monitor/det/setPosition 2930.00 1580.00 150 mm
+/dcs-monitor/det/setRotation 0 -90 0
+/dcs-monitor/det/clyc/add
+
+/dcs-monitor/det/setRotation 0 0 0
+/dcs-monitor/det/setPosition 1580 1580 0 mm
+/dcs-monitor/det/castor440/add
+/dcs-monitor/det/setPosition 1580 -1580 0 mm
+/dcs-monitor/det/castor440/add
+/dcs-monitor/det/setPosition -1580 1580 0 mm
+/dcs-monitor/det/castor440/add
+/dcs-monitor/det/setPosition -1580 -1580 0 mm
+/dcs-monitor/det/castor440/add
+/dcs-monitor/det/setPosition 6240 1580 0 mm
+/dcs-monitor/det/castor440/add
+/dcs-monitor/det/setPosition 6240 -1580 0 mm
+/dcs-monitor/det/castor440/add
+/dcs-monitor/det/setPosition 9400 1580 0 mm
+/dcs-monitor/det/castor440/add
+/dcs-monitor/det/setPosition 9400 -1580 0 mm
+/dcs-monitor/det/castor440/add
+/dcs-monitor/det/setPosition -6240 1580 0 mm
+/dcs-monitor/det/castor440/add
+/dcs-monitor/det/setPosition -6240 -1580 0 mm
+/dcs-monitor/det/castor440/add
+/dcs-monitor/det/setPosition -9400 1580 0 mm
+/dcs-monitor/det/castor440/add
+/dcs-monitor/det/setPosition -9400 -1580 0 mm
+/dcs-monitor/det/castor440/add
+
+/run/initialize
+
+/vis/open OGL 1000x750-0+0
+/vis/viewer/set/autoRefresh false
+/vis/geometry/set/visibility CavityLog 0 false
+/vis/geometry/set/visibility ModRodLog 0 false
+/vis/drawVolume
+/vis/viewer/set/style surface
+/vis/viewer/set/background 1 1 1 1
+/vis/viewer/set/viewpointThetaPhi 55 25
+/vis/viewer/zoom 1.0
+/vis/viewer/set/autoRefresh true
+/vis/viewer/flush
+/vis/ogl/export /tmp/dcs_report_ogl_oblique.pdf
+/vis/disable

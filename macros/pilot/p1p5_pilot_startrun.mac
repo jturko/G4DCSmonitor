@@ -1,0 +1,39 @@
+# Pilot p1.5: one cask, one sector, capped source. NOT a production macro.
+/control/verbose 0
+/run/verbose 0
+/tracking/verbose 0
+/event/verbose 0
+
+/run/numberOfThreads 1
+/dcs-monitor/det/useBiasing false
+
+# Target/reference cask 0 at (1580, 1580) mm. For this pilot it is also the
+# source so that the sector shell is populated quickly.
+/dcs-monitor/det/setRotation 0 0 0
+/dcs-monitor/det/setPosition 1580 1580 0 mm
+/dcs-monitor/det/castor440/add
+
+/run/initialize
+
+/dcs-monitor/gun/sourceMode CASTOR440_surface_from_TTree
+/dcs-monitor/surf/sourcePid 0
+/dcs-monitor/surf/smearPhi 0.005
+/dcs-monitor/surf/smearZ 10.0 mm
+/dcs-monitor/surf/smearAngle 0.02
+/dcs-monitor/surf/smearEfrac 0.0
+/dcs-monitor/surf/sourceFile /home/turko46/bigdata/DCS-Monitor-II/turko46/SurfaceFlux_v3/gamma_1173keV/using/surface_gamma-1173keV_fuel0_nShells22_nEvts100000000.root
+/dcs-monitor/surf/maxEntriesLoadedFromTree 100000
+
+/dcs-monitor/run/writePrimary false
+/dcs-monitor/run/writeSurfaceFlux false
+
+/dcs-monitor/surf/caskNum 0
+/dcs-monitor/surf/sourceRotZ 0 deg
+/dcs-monitor/surf/globalFuel 0
+/dcs-monitor/surf/batchId 0
+/dcs-monitor/surf/sourceType 0
+/dcs-monitor/surf/decayRate 1e8
+/dcs-monitor/surf/numPrimaries 100000
+
+/analysis/setFileName /home/turko46/geant4-sims/G4DCSmonitor/build/pilot/p1p5_startrun
+/dcs-monitor/surf/startRun 180 s

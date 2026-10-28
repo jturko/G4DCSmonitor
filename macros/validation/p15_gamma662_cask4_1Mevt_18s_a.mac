@@ -1,0 +1,71 @@
+# p1.5 64-cell sector-flux source: 662 keV gamma, cask 4, global fuel 0.
+# Loads 10^6 surface entries over T_gen = 18 s (chunk a of two).
+/control/verbose 0
+/run/verbose 0
+/tracking/verbose 0
+/event/verbose 0
+/process/verbose 0
+
+/run/numberOfThreads 8
+/dcs-monitor/det/useBiasing false
+/dcs-monitor/det/setBiasingShells 1
+/dcs-monitor/det/setSectorZLayers 8
+
+/dcs-monitor/det/setRotation 0 0 0
+/dcs-monitor/det/setPosition 1580 1580 0 mm
+/dcs-monitor/det/castor440/add
+/dcs-monitor/det/setPosition 1580 -1580 0 mm
+/dcs-monitor/det/castor440/add
+/dcs-monitor/det/setPosition -1580 1580 0 mm
+/dcs-monitor/det/castor440/add
+/dcs-monitor/det/setPosition -1580 -1580 0 mm
+/dcs-monitor/det/castor440/add
+/dcs-monitor/det/setPosition 6240 1580 0 mm
+/dcs-monitor/det/castor440/add
+/dcs-monitor/det/setPosition 6240 -1580 0 mm
+/dcs-monitor/det/castor440/add
+/dcs-monitor/det/setPosition 9400 1580 0 mm
+/dcs-monitor/det/castor440/add
+/dcs-monitor/det/setPosition 9400 -1580 0 mm
+/dcs-monitor/det/castor440/add
+/dcs-monitor/det/setPosition -6240 1580 0 mm
+/dcs-monitor/det/castor440/add
+/dcs-monitor/det/setPosition -6240 -1580 0 mm
+/dcs-monitor/det/castor440/add
+/dcs-monitor/det/setPosition -9400 1580 0 mm
+/dcs-monitor/det/castor440/add
+/dcs-monitor/det/setPosition -9400 -1580 0 mm
+/dcs-monitor/det/castor440/add
+
+/dcs-monitor/det/setPosition 0 0 0 mm
+/dcs-monitor/det/setRotation 0 0 0
+/dcs-monitor/det/hall/add
+/dcs-monitor/det/hall/setLength 22000 mm
+/dcs-monitor/det/hall/setWallInnerY 5410 mm
+/dcs-monitor/det/hall/setFloorTopZ -2040 mm
+/dcs-monitor/det/hall/setUseCeiling false
+
+/run/initialize
+
+/dcs-monitor/gun/sourceMode CASTOR440_surface_from_TTree
+/dcs-monitor/surf/sourcePid 22
+/dcs-monitor/surf/smearPhi 0.005
+/dcs-monitor/surf/smearZ 10.0 mm
+/dcs-monitor/surf/smearAngle 0.02
+/dcs-monitor/surf/smearEfrac 0.0
+/dcs-monitor/surf/sourceFile /home/turko46/geant4-sims/G4DCSmonitor/build/validation/surface_gamma662_cask4_1Mevt.root
+/dcs-monitor/surf/maxEntriesLoadedFromTree 0
+
+/dcs-monitor/run/writePrimary false
+/dcs-monitor/run/writeSurfaceFlux false
+
+/dcs-monitor/surf/caskNum 4
+/dcs-monitor/surf/sourceRotZ 0 deg
+/dcs-monitor/surf/globalFuel 0
+/dcs-monitor/surf/batchId 0
+/dcs-monitor/surf/sourceType 0
+/dcs-monitor/surf/decayRate 1.4e14
+/dcs-monitor/surf/numPrimaries 1000000
+
+/analysis/setFileName /home/turko46/geant4-sims/G4DCSmonitor/build/validation/p15_gamma662_cask4_1Mevt_18s_z8_a
+/dcs-monitor/surf/startRun 18 s

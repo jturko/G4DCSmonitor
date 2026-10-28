@@ -21,6 +21,7 @@
 
 #include <vector>
 #include <string>
+#include <algorithm>
 
 GeometryCLYC::GeometryCLYC() :
     fCLYCAssembly(nullptr),
@@ -355,5 +356,46 @@ G4ThreeVector GeometryCLYC::GetCrystalCenterLocal() const
                         - fCasingThickness - fReflectorThickness
                         - (fCrystalLength / 2.0);
     return G4ThreeVector(0., 0., zc);
+}
+
+G4double GeometryCLYC::GetTotalLength() const
+{
+    return fTotalLength;
+}
+
+G4double GeometryCLYC::GetEnvelopeBackLength() const
+{
+    // The fixed body starts at depth (lip + inner) and extends fTotalLength
+    // backwards. Front collimators occupy depth (lip ... lip + length), so the
+    // envelope must also cover the longest positive collimator.
+    G4double maxCollimatorLength = 0.;
+    for (G4double l : {fLiFCollimatorLength,
+                       fPbCollimatorLength,
+                       fPECollimatorLength}) {
+        if (l > 0.) maxCollimatorLength = std::max(maxCollimatorLength, l);
+    }
+
+    const G4double bodyBack = fPEPlugLipLength + fPEPlugInnerLength + fTotalLength;
+    const G4double collimatorBack = fPEPlugLipLength + maxCollimatorLength;
+    return std::max(bodyBack, collimatorBack);
+}
+
+G4double GeometryCLYC::GetEnvelopeOuterRadius() const
+{
+    G4double radius = 0.;
+    auto consider = [&radius](G4double r) {
+        if (r > 0.) radius = std::max(radius, r);
+    };
+
+    consider(fCrystalRadius + fReflectorThickness);
+    consider(fSnoutOuterRadius);
+    consider(fMagShieldOuterRadius);
+    consider(fPMTRadius);
+    consider(fPEPlugLipRadius);
+    consider(fLiFCollimatorOuterRadius);
+    consider(fPbCollimatorOuterRadius);
+    consider(fPECollimatorOuterRadius);
+
+    return radius;
 }
 

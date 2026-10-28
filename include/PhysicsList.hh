@@ -41,7 +41,8 @@ class G4GeometrySampler;
 class PhysicsList : public G4VModularPhysicsList
 {
   public:
-    PhysicsList(const G4String& biasParticle="");
+    PhysicsList(const G4String& biasParticle="",
+               G4bool backgroundSectorMode=false);
     ~PhysicsList();// = default;
 
   public:
@@ -51,6 +52,7 @@ class PhysicsList : public G4VModularPhysicsList
   private:
     G4GeometrySampler* fGeomSampler = nullptr;
     G4String           fBiasingParticle = "";
+    G4bool             fBackgroundSectorMode = false;
 };
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

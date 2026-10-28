@@ -27,6 +27,7 @@ class GeometryHall
     // geometry
     void SetHallLength(G4double v)        { fHallLength = v; }
     void SetFloorTopZ(G4double v)         { fFloorTopZ = v; }
+    G4double GetFloorTopZ() const         { return fFloorTopZ; }
     void SetFloorThickness(G4double v)    { fFloorThickness = v; }
     void SetWallInnerY(G4double v)        { fWallInnerY = v; }
     void SetWallThickness(G4double v)     { fWallThickness = v; }

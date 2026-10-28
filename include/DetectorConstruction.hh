@@ -21,7 +21,8 @@ class GeometryCAD;
 class DetectorConstruction : public G4VUserDetectorConstruction
 {
     public:
-        DetectorConstruction(G4String biasParticle);
+        DetectorConstruction(G4String biasParticle,
+                             G4bool backgroundSectorMode = false);
         ~DetectorConstruction() override;
 
     public:
@@ -36,6 +37,7 @@ class DetectorConstruction : public G4VUserDetectorConstruction
         void  SetUseBiasing(G4bool val) { fUseBiasing = val; }
         G4bool GetUseBiasing() const    { return fUseBiasing; }
         G4bool GetUseBiasingFromCLI() const    { return fUseBiasingFromCLI; }
+        G4bool IsBackgroundSectorMode() const  { return fBackgroundSectorMode; }
 
         void     SetNShells(G4int n)               { fNShells = n; }
         G4int    GetNShells() const                { return fNShells; }
@@ -54,9 +56,10 @@ class DetectorConstruction : public G4VUserDetectorConstruction
         // CLYC
         void  AddCLYC();
         void  AddCLYCByCrystalCenter();
-        G4int GetNumCLYC() const                          { return fCLYCDetectors.size(); }
+        G4int GetNumCLYC() const                          { return (G4int)fCLYCDetectors.size(); }
         G4ThreeVector GetCLYCPosition(G4int index) const  { return fCLYCPositions[index]; } // global position of CLYC assembly (front face of PE plug)
         G4ThreeVector GetCLYCCrystalPosition(G4int index) const; // global position of CLYC crystal center
+        G4RotationMatrix* GetCLYCRotation(G4int index) const;
 
         void SetCLYCCrystalRadius(G4double val);
         void SetCLYCCrystalLength(G4double val);
@@ -219,6 +222,24 @@ class DetectorConstruction : public G4VUserDetectorConstruction
 
         G4double GetWorldSize() const { return fWorldXYZ; }
 
+        // Sector scoring: z layering of the scoring shell around cask 0.
+        void     SetSectorZLayers(G4int n) { fSectorZLayers = n; }
+        G4int    GetSectorZLayers() const  { return fSectorZLayers; }
+        G4double GetSectorZMin() const     { return fSectorZMin; }
+        G4double GetSectorZMax() const     { return fSectorZMax; }
+        G4double GetSectorDz() const       { return fSectorDz; }
+        G4double GetHallFloorTopZ() const;
+
+        // Axis-aligned envelope of a detector assembly in the global frame.
+        struct DetEnvelope {
+            G4String          type;
+            G4int             index;
+            G4ThreeVector     center;
+            G4RotationMatrix  rotation;
+            G4ThreeVector     halfLength;
+        };
+        std::vector<DetEnvelope> BuildDetectorEnvelopes() const;
+
         // meta scan-labels, applied to SUBSEQUENTLY added detectors
         void SetMetaScanPhi(G4double v) { fMetaScanPhiDeg = v; }   // deg
         void SetMetaScanZ  (G4double v) { fMetaScanZmm    = v; }   // internal (mm)
@@ -245,7 +266,8 @@ class DetectorConstruction : public G4VUserDetectorConstruction
         DetectorMessenger* fDetectorMessenger = nullptr;
 
         G4bool   fUseBiasingFromCLI = false;
-        
+        G4bool   fBackgroundSectorMode = false;
+
         G4bool   fUseBiasing = false;
         G4int    fNShells    = 10;
         G4double fBiasRMin   =  900. * CLHEP::mm;
@@ -286,6 +308,14 @@ class DetectorConstruction : public G4VUserDetectorConstruction
     private:
         void DefineMaterials();
         G4VPhysicalVolume* ConstructVolumes();
+        void ComputeSectorBounds();
+
+        // sector scoring z bounds (cask-local frame, set in ConstructVolumes)
+        G4int    fSectorZLayers       = 8;
+        G4double fSectorZMin          = -2040.;
+        G4double fSectorZMax          =  2040.;
+        G4double fSectorDz            =  510.;
+        G4bool   fSectorBoundsComputed = false;
 
         // meta bookkeeping (captured at add time, never mutated)
         G4double fMetaScanPhiDeg = -9999.;

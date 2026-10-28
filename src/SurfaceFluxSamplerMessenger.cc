@@ -68,6 +68,18 @@ SurfaceFluxSamplerMessenger::SurfaceFluxSamplerMessenger()
     fSourceRotZCmd->SetDefaultUnit("deg");
     fSourceRotZCmd->AvailableForStates(G4State_Idle);
 
+    fGlobalFuelCmd = new G4UIcmdWithAnInteger("/dcs-monitor/surf/globalFuel", this);
+    fGlobalFuelCmd->SetGuidance("Tag written to sectorFlux/sectorMeta: global fuel index.");
+    fGlobalFuelCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+
+    fBatchIdCmd = new G4UIcmdWithAnInteger("/dcs-monitor/surf/batchId", this);
+    fBatchIdCmd->SetGuidance("Tag written to sectorFlux/sectorMeta: batch id.");
+    fBatchIdCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+
+    fSourceTypeCmd = new G4UIcmdWithAnInteger("/dcs-monitor/surf/sourceType", this);
+    fSourceTypeCmd->SetGuidance("Tag written to sectorFlux/sectorMeta: source type id.");
+    fSourceTypeCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+
     fNumPrimariesCmd = new G4UIcmdWithAnInteger("/dcs-monitor/surf/numPrimaries", this);
     fNumPrimariesCmd->SetGuidance("Number of primaries that produced the input ROOT tree.");
     fNumPrimariesCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
@@ -90,6 +102,9 @@ SurfaceFluxSamplerMessenger::~SurfaceFluxSamplerMessenger()
     delete fNumPrimariesCmd;
     delete fCaskNumCmd;
     delete fSourceRotZCmd;
+    delete fGlobalFuelCmd;
+    delete fBatchIdCmd;
+    delete fSourceTypeCmd;
     delete fSmearEfracCmd;
     delete fSmearAngleCmd;
     delete fSmearZCmd;
@@ -135,7 +150,19 @@ void SurfaceFluxSamplerMessenger::SetNewValue(G4UIcommand* cmd, G4String val)
         return; 
     }
     if (cmd == fSourceRotZCmd) {
-        s.SetSourceRotZ(fSourceRotZCmd->GetNewDoubleValue(val));  
+        s.SetSourceRotZ(fSourceRotZCmd->GetNewDoubleValue(val));
+        return;
+    }
+    if (cmd == fGlobalFuelCmd) {
+        s.SetGlobalFuel(fGlobalFuelCmd->GetNewIntValue(val));
+        return;
+    }
+    if (cmd == fBatchIdCmd) {
+        s.SetBatchId(fBatchIdCmd->GetNewIntValue(val));
+        return;
+    }
+    if (cmd == fSourceTypeCmd) {
+        s.SetSourceType(fSourceTypeCmd->GetNewIntValue(val));
         return;
     }
 

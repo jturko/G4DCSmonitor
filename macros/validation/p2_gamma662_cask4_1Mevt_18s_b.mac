@@ -1,0 +1,66 @@
+# Validation p2_bkgd: replay cask-4 / global-fuel-0 662 keV gamma sector flux
+# into the nominal single CLYC assembly. autoCells selects the scoring cells
+# overlapped by the CLYC envelope; for this placement they are cellId 32 and 39.
+/control/verbose 0
+/run/verbose 0
+/tracking/verbose 0
+/event/verbose 0
+/process/verbose 0
+
+/run/numberOfThreads 4
+/dcs-monitor/det/useBiasing false
+/dcs-monitor/det/setBiasingShells 1
+/dcs-monitor/det/setSectorZLayers 8
+
+/dcs-monitor/det/setPosition 2930 1580 150 mm
+/dcs-monitor/det/setRotation 0 -90 0
+/dcs-monitor/det/clyc/add
+
+/dcs-monitor/det/setRotation 0 0 0
+/dcs-monitor/det/setPosition 1580 1580 0 mm
+/dcs-monitor/det/castor440/add
+/dcs-monitor/det/setPosition 1580 -1580 0 mm
+/dcs-monitor/det/castor440/add
+/dcs-monitor/det/setPosition -1580 1580 0 mm
+/dcs-monitor/det/castor440/add
+/dcs-monitor/det/setPosition -1580 -1580 0 mm
+/dcs-monitor/det/castor440/add
+/dcs-monitor/det/setPosition 6240 1580 0 mm
+/dcs-monitor/det/castor440/add
+/dcs-monitor/det/setPosition 6240 -1580 0 mm
+/dcs-monitor/det/castor440/add
+/dcs-monitor/det/setPosition 9400 1580 0 mm
+/dcs-monitor/det/castor440/add
+/dcs-monitor/det/setPosition 9400 -1580 0 mm
+/dcs-monitor/det/castor440/add
+/dcs-monitor/det/setPosition -6240 1580 0 mm
+/dcs-monitor/det/castor440/add
+/dcs-monitor/det/setPosition -6240 -1580 0 mm
+/dcs-monitor/det/castor440/add
+/dcs-monitor/det/setPosition -9400 1580 0 mm
+/dcs-monitor/det/castor440/add
+/dcs-monitor/det/setPosition -9400 -1580 0 mm
+/dcs-monitor/det/castor440/add
+
+/dcs-monitor/det/setPosition 0 0 0 mm
+/dcs-monitor/det/setRotation 0 0 0
+/dcs-monitor/det/hall/add
+/dcs-monitor/det/hall/setLength 22000 mm
+/dcs-monitor/det/hall/setWallInnerY 5410 mm
+/dcs-monitor/det/hall/setFloorTopZ -2040 mm
+/dcs-monitor/det/hall/setUseCeiling false
+
+/run/initialize
+
+/dcs-monitor/gun/sourceMode BACKGROUND_SECTOR_from_TTree
+/dcs-monitor/bkg/sourceFile /home/turko46/geant4-sims/G4DCSmonitor/build/validation/p15_gamma662_cask4_1Mevt_18s_z8_b.root
+/dcs-monitor/bkg/sectorId -1
+/dcs-monitor/bkg/autoCells true
+/dcs-monitor/bkg/maxEntries 0
+/dcs-monitor/bkg/tgen 18 s
+
+/dcs-monitor/run/writePrimary false
+/dcs-monitor/run/writeSurfaceFlux false
+
+/analysis/setFileName /home/turko46/geant4-sims/G4DCSmonitor/build/validation/p2_gamma662_cask4_1Mevt_18s_z8_b
+/dcs-monitor/bkg/startRun 18 s

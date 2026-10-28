@@ -65,12 +65,18 @@
 #include "G4SDManager.hh"
 
 #include "GeometryParallelBiasing.hh"
+#include "GeometrySectorScoring.hh"
 
 #include "G4GDMLParser.hh"
 
+#include <cmath>
+#include <vector>
+
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-DetectorConstruction::DetectorConstruction(G4String biasParticle)
+DetectorConstruction::DetectorConstruction(G4String biasParticle,
+                                           G4bool backgroundSectorMode)
+    : fBackgroundSectorMode(backgroundSectorMode)
 {
     fPosition = G4ThreeVector(0., 0., 0.);
     fRotation = G4ThreeVector(0., 0., 0.);
@@ -95,6 +101,17 @@ DetectorConstruction::DetectorConstruction(G4String biasParticle)
         ed << "Unknown biasing particle \"" << biasParticle << "\"";
         G4Exception("DetectorConstruction::DetectorConstruction",
                     "InvalidBiasingParticle", FatalException, ed);
+    }
+
+    if (fBackgroundSectorMode) {
+        if (!biasParticle.empty()) {
+            G4Exception("DetectorConstruction::DetectorConstruction",
+                        "SectorBiasingConflict", FatalException,
+                        "Background-sector generation is analog; do not pass --biasing.");
+        }
+        G4cout << "[DetectorConstruction] Registering SectorScoringWorld parallel world."
+               << G4endl;
+        RegisterParallelWorld(new GeometrySectorScoring("SectorScoringWorld", this));
     }
 }
 
@@ -390,7 +407,147 @@ G4VPhysicalVolume* DetectorConstruction::ConstructVolumes()
     }
 
     // always return the root volume
+    ComputeSectorBounds();
     return fPWorld;
+}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+void DetectorConstruction::ComputeSectorBounds()
+{
+    if (fSectorZLayers < 1 || fSectorZLayers > 32) {
+        G4ExceptionDescription ed;
+        ed << "Sector z-layer count must satisfy 1 <= n <= 32, got "
+           << fSectorZLayers << ".";
+        G4Exception("DetectorConstruction::ComputeSectorBounds",
+                    "InvalidSectorZLayers", FatalException, ed);
+    }
+
+    if (fCASTOR440Detectors.empty()) {
+        G4Exception("DetectorConstruction::ComputeSectorBounds",
+                    "NoSectorTargetCask", FatalException,
+                    "Sector scoring requires at least one CASTOR440 cask.");
+    }
+
+    auto zAxisAligned = [](G4RotationMatrix* rot) {
+        G4ThreeVector axis(0., 0., 1.);
+        if (rot) axis.transform(*rot);
+        return std::fabs(axis.x()) < 1e-9 && std::fabs(axis.y()) < 1e-9;
+    };
+
+    GeometryCASTOR440* cask = fCASTOR440Detectors[0];
+    const G4ThreeVector caskPos = fCASTOR440Positions[0];
+
+    if (!zAxisAligned(fCASTOR440Rotations[0])) {
+        G4ThreeVector localZ(0., 0., 1.);
+        localZ.transform(*fCASTOR440Rotations[0]);
+        G4ExceptionDescription ed;
+        ed << "Sector scoring requires cask 0 local z axis aligned with global z; "
+           << "cask rotation maps local z to " << localZ;
+        G4Exception("DetectorConstruction::ComputeSectorBounds",
+                    "TiltedSectorCask", FatalException, ed);
+    }
+
+    const G4double halfH = 0.5 * cask->GetCaskHeight();
+    fSectorZMax = halfH;
+
+    if (!fHallDetectors.empty()) {
+        if (!zAxisAligned(fHallRotations[0])) {
+            G4ExceptionDescription ed;
+            ed << "Sector scoring requires hall 0 floor horizontal (local z axis "
+               << "aligned with global z).";
+            G4Exception("DetectorConstruction::ComputeSectorBounds",
+                        "TiltedSectorHall", FatalException, ed);
+        }
+        fSectorZMin = fHallDetectors[0]->GetFloorTopZ()
+                    + fHallPositions[0].z() - caskPos.z();
+    } else {
+        fSectorZMin = -halfH;
+        G4cout << "[SectorScoring] Warning: no experimental hall; using cask "
+               << "bottom z = " << fSectorZMin / mm << " mm as sector lower bound."
+               << G4endl;
+    }
+
+    if (std::fabs(fSectorZMin - (-halfH)) > 1. * mm) {
+        G4cout << "[SectorScoring] Warning: sector lower bound zMin = "
+               << fSectorZMin / mm << " mm differs from cask bottom z = "
+               << -halfH / mm << " mm by more than 1 mm." << G4endl;
+    }
+
+    if (fSectorZMin >= fSectorZMax) {
+        G4ExceptionDescription ed;
+        ed << "Sector lower bound zMin = " << fSectorZMin / mm
+           << " mm is not below zMax = " << fSectorZMax / mm << " mm.";
+        G4Exception("DetectorConstruction::ComputeSectorBounds",
+                    "InvalidSectorBounds", FatalException, ed);
+    }
+
+    fSectorDz = (fSectorZMax - fSectorZMin) / (G4double)fSectorZLayers;
+    fSectorBoundsComputed = true;
+
+    G4cout << "[SectorScoring] sector bounds (cask-local): zMin = "
+           << fSectorZMin / mm << " mm, zMax = " << fSectorZMax / mm
+           << " mm, dz = " << fSectorDz / mm << " mm, " << fSectorZLayers
+           << " layers." << G4endl;
+}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+G4double DetectorConstruction::GetHallFloorTopZ() const
+{
+    if (fHallDetectors.empty()) {
+        G4cout << "[DetectorConstruction] Warning: GetHallFloorTopZ() called with "
+               << "no experimental hall; returning 0." << G4endl;
+        return 0.;
+    }
+
+    const G4RotationMatrix* rot = fHallRotations[0];
+    G4ThreeVector axis(0., 0., 1.);
+    if (rot) axis.transform(*rot);
+    if (std::fabs(axis.x()) >= 1e-9 || std::fabs(axis.y()) >= 1e-9) {
+        G4Exception("DetectorConstruction::GetHallFloorTopZ",
+                    "TiltedHallFloor", FatalException,
+                    "Hall floor is not horizontal (local z axis not aligned with global z).");
+    }
+
+    return fHallDetectors[0]->GetFloorTopZ() + fHallPositions[0].z();
+}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+std::vector<DetectorConstruction::DetEnvelope>
+DetectorConstruction::BuildDetectorEnvelopes() const
+{
+    std::vector<DetEnvelope> envelopes;
+    envelopes.reserve(fCLYCDetectors.size());
+
+    for (size_t i = 0; i < fCLYCDetectors.size(); ++i) {
+        GeometryCLYC* det = fCLYCDetectors[i];
+        if (!det) continue;
+
+        const G4double back = det->GetEnvelopeBackLength();
+        const G4double R    = det->GetEnvelopeOuterRadius();
+
+        // Assembly origin = PE-plug front face. The body extends backwards
+        // (local -z) over 'back', so the local box centre is at -back/2.
+        G4ThreeVector localCenter(0., 0., -0.5 * back);
+        G4ThreeVector center = localCenter;
+        if (i < fCLYCRotations.size() && fCLYCRotations[i]) {
+            center.transform(*fCLYCRotations[i]);
+        }
+        if (i < fCLYCPositions.size()) center += fCLYCPositions[i];
+
+        DetEnvelope env;
+        env.type       = "CLYC";
+        env.index      = (G4int)i;
+        env.center     = center;
+        env.rotation   = (i < fCLYCRotations.size() && fCLYCRotations[i])
+                         ? *fCLYCRotations[i] : G4RotationMatrix();
+        env.halfLength = G4ThreeVector(R, R, 0.5 * back);
+        envelopes.push_back(env);
+    }
+
+    return envelopes;
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -440,6 +597,14 @@ G4ThreeVector DetectorConstruction::GetCLYCCrystalPosition(G4int index) const
     if (fCLYCRotations[index]) globalOffset.transform(*fCLYCRotations[index]);
 
     return fCLYCPositions[index] + globalOffset;
+}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+G4RotationMatrix* DetectorConstruction::GetCLYCRotation(G4int index) const
+{
+    if (index < 0 || index >= (G4int)fCLYCRotations.size()) return nullptr;
+    return fCLYCRotations[index];
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

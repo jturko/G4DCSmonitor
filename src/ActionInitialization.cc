@@ -28,11 +28,13 @@
 /// \brief Implementation of the ActionInitialization class
 
 #include "ActionInitialization.hh"
+#include "DetectorConstruction.hh"
 
 #include "PrimaryGeneratorAction.hh"
 #include "RunAction.hh"
 #include "SteppingAction.hh"
 #include "EventAction.hh"
+#include "SectorTrackingAction.hh"
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
@@ -62,6 +64,10 @@ void ActionInitialization::Build() const
 
     EventAction* eventAction = new EventAction(runAction);
     SetUserAction(eventAction);
+
+    if (fDetector && fDetector->IsBackgroundSectorMode()) {
+        SetUserAction(new SectorTrackingAction());
+    }
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

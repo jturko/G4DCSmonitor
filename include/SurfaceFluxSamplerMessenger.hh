@@ -38,6 +38,9 @@ class SurfaceFluxSamplerMessenger : public G4UImessenger
     // run driver
     G4UIcmdWithAnInteger*      fCaskNumCmd       = nullptr;
     G4UIcmdWithADoubleAndUnit* fSourceRotZCmd    = nullptr;
+    G4UIcmdWithAnInteger*      fGlobalFuelCmd    = nullptr;
+    G4UIcmdWithAnInteger*      fBatchIdCmd       = nullptr;
+    G4UIcmdWithAnInteger*      fSourceTypeCmd    = nullptr;
     G4UIcmdWithAnInteger*      fNumPrimariesCmd  = nullptr;
     G4UIcmdWithADouble*        fDecayRateCmd     = nullptr;
     G4UIcmdWithADoubleAndUnit* fStartRunCmd      = nullptr;

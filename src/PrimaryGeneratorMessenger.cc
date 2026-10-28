@@ -28,7 +28,7 @@ PrimaryGeneratorMessenger::PrimaryGeneratorMessenger(PrimaryGeneratorAction* gun
     fSourceModeCmd = new G4UIcmdWithAString("/dcs-monitor/gun/sourceMode", this);
     fSourceModeCmd->SetGuidance("Select the source distribution mode.");
     fSourceModeCmd->SetParameterName("mode", false);
-    fSourceModeCmd->SetCandidates("GPS CASTOR440_surface CASTOR440_surface_from_TTree CASTOR440_surface_from_CSV CASTOR440_fuel CASTOR440_fuel_biased");
+    fSourceModeCmd->SetCandidates("GPS CASTOR440_surface CASTOR440_surface_from_TTree CASTOR440_surface_from_CSV BACKGROUND_SECTOR_from_TTree CASTOR440_fuel CASTOR440_fuel_biased");
     fSourceModeCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
 
     // For FuelFlux generators -- set the CASTOR440 cask/fuel assembly 
@@ -104,6 +104,11 @@ void PrimaryGeneratorMessenger::SetNewValue(G4UIcommand* command, G4String newVa
             if(G4Threading::G4GetThreadId() == 0) 
                 G4cout << " --> Setting source mode to the CASTOR 440/84 surface flux, sampled from MCNP CSV data (kCASTOR440_surface_from_CSV)" << G4endl;
             fPrimaryGeneratorAction->SetSourceMode(kCASTOR440_surface_from_CSV);
+        }
+        else if (newValue == "BACKGROUND_SECTOR_from_TTree") {
+            if(G4Threading::G4GetThreadId() == 0)
+                G4cout << " --> Setting source mode to unit-weight background-sector replay (kBACKGROUND_SECTOR_from_TTree)" << G4endl;
+            fPrimaryGeneratorAction->SetSourceMode(kBACKGROUND_SECTOR_from_TTree);
         }
         else if (newValue == "CASTOR440_fuel") {
             if(G4Threading::G4GetThreadId() == 0) 

@@ -6,6 +6,7 @@
 #include "PrimaryGeneratorMessenger.hh"
 #include "RunAction.hh"
 #include "SurfaceFluxSampler.hh"
+#include "SectorFluxSampler.hh"
 
 #include "G4Event.hh"
 #include "G4ParticleDefinition.hh"
@@ -59,6 +60,10 @@ PrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 
         case kCASTOR440_surface_from_CSV:
             GenerateVertexCASTOR440SurfaceFromCSV(anEvent);
+            break;
+
+        case kBACKGROUND_SECTOR_from_TTree:
+            GenerateVertexBackgroundSectorFromTree(anEvent);
             break;
 
         case kCASTOR440_fuel:
@@ -473,3 +478,40 @@ void PrimaryGeneratorAction::GenerateVertexCASTOR440SurfaceFromCSV(G4Event* even
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+// p2_bkgd: replay a unit-weight sector phase-space source. The sampler has
+// already folded all weights into the entry list and returns coordinates in
+// the global frame, so no cask translation/rotation is applied here.
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+void PrimaryGeneratorAction::GenerateVertexBackgroundSectorFromTree(G4Event* event)
+{
+    auto& s = SectorFluxSampler::Instance();
+
+    G4ThreeVector pos, dir;
+    G4double ekin = 0., t = 0.;
+    G4int pid = 0;
+
+    if (!s.Sample(pos, dir, ekin, t, pid)) {
+        G4Exception("PrimaryGeneratorAction", "SectorSampleFail",
+                    FatalException, "No background sector entries loaded.");
+        return;
+    }
+
+    auto* def = G4ParticleTable::GetParticleTable()->FindParticle(pid);
+    if (!def) {
+        G4ExceptionDescription ed;
+        ed << "Unknown PDG code " << pid;
+        G4Exception("PrimaryGeneratorAction", "BadPID", FatalException, ed);
+        return;
+    }
+
+    fParticleGun->SetParticleDefinition(def);
+    fParticleGun->SetParticleEnergy(ekin);
+    fParticleGun->SetParticlePosition(pos);
+    fParticleGun->SetParticleMomentumDirection(dir);
+    fParticleGun->SetParticleTime(t);
+    fParticleGun->SetParticleWeight(1.0);
+    fParticleGun->GeneratePrimaryVertex(event);
+}

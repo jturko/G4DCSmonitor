@@ -85,7 +85,9 @@
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-PhysicsList::PhysicsList(const G4String& biasParticle) : fBiasingParticle(biasParticle)
+PhysicsList::PhysicsList(const G4String& biasParticle,
+                         G4bool backgroundSectorMode)
+    : fBiasingParticle(biasParticle), fBackgroundSectorMode(backgroundSectorMode)
 {
     G4int verb = 1;
     SetVerboseLevel(verb);
@@ -133,6 +135,11 @@ PhysicsList::PhysicsList(const G4String& biasParticle) : fBiasingParticle(biasPa
                     "InvalidBiasingParticle", 
                     FatalException, 
                     ed);
+    }
+
+    if (fBackgroundSectorMode) {
+        RegisterPhysics(new G4ParallelWorldPhysics("SectorScoringWorld"));
+        G4cout << "[PhysicsList] Built sector scoring parallel world" << G4endl;
     }
 }
 
