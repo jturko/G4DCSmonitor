@@ -40,10 +40,34 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# Single source of truth for the (baseFuel, hexantRot) -> globalFuel map:
-# the repo's orbit table, identical to the ZLN_setup_v4 copy (diff-verified).
-# shellcheck source=../examples/p2-detector_response/_orbit_map.sh
-. "${SCRIPT_DIR}/../examples/p2-detector_response/_orbit_map.sh"
+# Forward orbit map (baseFuel, hexantRot) -> globalFuel (0..83).
+# Sources ../examples/p2-detector_response/_orbit_map.sh when present in the
+# checkout, with an identical inline fallback so slurm/ works standalone.
+if [ -f "${SCRIPT_DIR}/../examples/p2-detector_response/_orbit_map.sh" ]; then
+    # shellcheck source=../examples/p2-detector_response/_orbit_map.sh
+    . "${SCRIPT_DIR}/../examples/p2-detector_response/_orbit_map.sh"
+else
+    lookup_global_fuel() {
+        local base="$1" rot="$2"
+        case "${base}:${rot}" in
+            0:0)   echo  0 ;; 0:60)   echo 28 ;; 0:120)  echo 73 ;; 0:180)  echo 83 ;; 0:240)  echo 55 ;; 0:300)  echo 10 ;;
+            1:0)   echo  1 ;; 1:60)   echo 19 ;; 1:120)  echo 65 ;; 1:180)  echo 82 ;; 1:240)  echo 64 ;; 1:300)  echo 18 ;;
+            2:0)   echo  2 ;; 2:60)   echo 11 ;; 2:120)  echo 56 ;; 2:180)  echo 81 ;; 2:240)  echo 72 ;; 2:300)  echo 27 ;;
+            3:0)   echo  3 ;; 3:60)   echo  4 ;; 3:120)  echo 46 ;; 3:180)  echo 80 ;; 3:240)  echo 79 ;; 3:300)  echo 37 ;;
+            5:0)   echo  5 ;; 5:60)   echo 38 ;; 5:120)  echo 74 ;; 5:180)  echo 78 ;; 5:240)  echo 45 ;; 5:300)  echo  9 ;;
+            6:0)   echo  6 ;; 6:60)   echo 29 ;; 6:120)  echo 66 ;; 6:180)  echo 77 ;; 6:240)  echo 54 ;; 6:300)  echo 17 ;;
+            7:0)   echo  7 ;; 7:60)   echo 20 ;; 7:120)  echo 57 ;; 7:180)  echo 76 ;; 7:240)  echo 63 ;; 7:300)  echo 26 ;;
+            8:0)   echo  8 ;; 8:60)   echo 12 ;; 8:120)  echo 47 ;; 8:180)  echo 75 ;; 8:240)  echo 71 ;; 8:300)  echo 36 ;;
+            13:0)  echo 13 ;; 13:60)  echo 39 ;; 13:120) echo 67 ;; 13:180) echo 70 ;; 13:240) echo 44 ;; 13:300) echo 16 ;;
+            14:0)  echo 14 ;; 14:60)  echo 30 ;; 14:120) echo 58 ;; 14:180) echo 69 ;; 14:240) echo 53 ;; 14:300) echo 25 ;;
+            15:0)  echo 15 ;; 15:60)  echo 21 ;; 15:120) echo 48 ;; 15:180) echo 68 ;; 15:240) echo 62 ;; 15:300) echo 35 ;;
+            22:0)  echo 22 ;; 22:60)  echo 40 ;; 22:120) echo 59 ;; 22:180) echo 61 ;; 22:240) echo 43 ;; 22:300) echo 24 ;;
+            23:0)  echo 23 ;; 23:60)  echo 31 ;; 23:120) echo 49 ;; 23:180) echo 60 ;; 23:240) echo 52 ;; 23:300) echo 34 ;;
+            32:0)  echo 32 ;; 32:60)  echo 41 ;; 32:120) echo 50 ;; 32:180) echo 51 ;; 32:240) echo 42 ;; 32:300) echo 33 ;;
+            *) echo "[orbit_map] no entry for (base=$base, rot=$rot)" >&2; return 2 ;;
+        esac
+    }
+fi
 
 MACDIR="${MACDIR:?export MACDIR (dir for macros + manifest.txt)}"
 DATADIR="${DATADIR:?export DATADIR (absolute data root baked into the macros)}"
@@ -91,11 +115,33 @@ want() {  # want <needle> <haystack-multiline>
 }
 
 CHUNK_IDX_FMT="%0${#NCHUNKS}d"
+CHUNK_INDICES=()
+local_k=1
+while [ "${local_k}" -le "${NCHUNKS}" ]; do
+    printf -v ch_idx "${CHUNK_IDX_FMT}" "${local_k}"
+    CHUNK_INDICES+=("${ch_idx}")
+    local_k=$(( local_k + 1 ))
+done
 
+# Precompute zero-padded indices and the (baseFuel, rot) -> globalFuel table
+# once so the 4620-config inner loop runs with zero subshells/forks.
+declare -A BB_PAD=()
+declare -A GF_RAW=()
+declare -A GF_PAD=()
+for _bb in "${BASE_FUELS[@]}"; do
+    printf -v "BB_PAD[${_bb}]" '%02d' "${_bb}"
+    for _rot in "${ROTS[@]}"; do
+        _gg="$(lookup_global_fuel "${_bb}" "${_rot}")"
+        GF_RAW["${_bb}_${_rot}"]="${_gg}"
+        printf -v "GF_PAD[${_bb}_${_rot}]" '%02d' "${_gg}"
+    done
+done
+
+echo "generate_p15_macros.sh: writing macros to ${MACDIR} ..."
 mkdir -p "${MACDIR}"
 MANIFEST="${MACDIR}/manifest.txt"
 MANIFEST_TMP="${MANIFEST}.tmp"
-: > "${MANIFEST_TMP}"
+exec 3>"${MANIFEST_TMP}"
 
 N_TOTAL=0
 N_GENERATED=0
@@ -108,16 +154,16 @@ for SRC_LINE in "${SOURCES[@]}"; do
     # sourcePid is a no-op filter for these pid-homogeneous p1 files (ZLN v4 sets 0)
     SOURCE_PID=0
     case "${SRC}" in neutron_*) SOURCE_PID=2112 ;; esac
+    printf '  [%-13s] baseFuel:' "${SRC}"
 
     for BB in "${BASE_FUELS[@]}"; do
         want "${BB}" "${WANT_BASES}" || continue
-        BBP="$(printf '%02d' "${BB}")"
+        printf ' %s' "${BB}"
+        BBP="${BB_PAD[${BB}]}"
         # p1 file: unpadded fuel index in the SurfaceFlux_v3 names
         GLOB="${P1_BASE_DIR}/${SRC}/using/surface_${TAG}_fuel${BB}_nShells${NSHELLS}_nEvts*.root"
         MAPFILE=()
-        if compgen -G "${GLOB}" > /dev/null; then
-            mapfile -t MAPFILE < <(compgen -G "${GLOB}")
-        fi
+        mapfile -t MAPFILE < <(compgen -G "${GLOB}" || true)
         if [ "${#MAPFILE[@]}" -eq 0 ]; then
             echo "WARNING: no p1 file for ${SRC} baseFuel ${BB}: ${GLOB}" >&2
             N_MISSING[${SRC}]=$(( ${N_MISSING[${SRC}]:-0} + 1 ))
@@ -128,7 +174,7 @@ for SRC_LINE in "${SOURCES[@]}"; do
             printf '  %s\n' "${MAPFILE[@]}" >&2
         fi
         SRC_FILE="${MAPFILE[0]}"
-        BASENAME="$(basename "${SRC_FILE}")"
+        BASENAME="${SRC_FILE##*/}"
         if [[ "${BASENAME}" =~ nEvts([0-9]+)\.root$ ]]; then
             NEVTS="${BASH_REMATCH[1]}"
         else
@@ -138,18 +184,24 @@ for SRC_LINE in "${SOURCES[@]}"; do
         fi
 
         for C in "${CASKS[@]}"; do
-            want "${C}" "${WANT_CASKS}" || continue
+            [ -z "${WANT_CASKS}" ] || want "${C}" "${WANT_CASKS}" || continue
             for ROT in "${ROTS[@]}"; do
-                want "${ROT}" "${WANT_ROTS}" || continue
-                GG="$(lookup_global_fuel "${BB}" "${ROT}")"
-                GGP="$(printf '%02d' "${GG}")"
+                [ -z "${WANT_ROTS}" ] || want "${ROT}" "${WANT_ROTS}" || continue
+                GG="${GF_RAW[${BB}_${ROT}]}"
+                GGP="${GF_PAD[${BB}_${ROT}]}"
                 CFGDIR="${DATADIR}/p15/${SRC}/cask${C}/gFuel${GGP}"
                 STEM="${CFGDIR}/p15_${SRC}_cask${C}_gFuel${GGP}"
                 MAC_BASE="run_baseFuel${BBP}_${SRC}_cask${C}_gFuel${GGP}.mac"
                 MAC="${MACDIR}/${MAC_BASE}"
 
-                cat > "${MAC}" <<EOF
-# ===================================================================
+                CHUNKS_TEXT=""
+                for CHUNK_IDX in "${CHUNK_INDICES[@]}"; do
+                    CHUNKS_TEXT+="/analysis/setFileName               ${STEM}_chunk${CHUNK_IDX}
+/dcs-monitor/surf/startRun          ${CHUNK_S} s
+"
+                done
+
+                printf '%s\n%s' "# ===================================================================
 # Auto-generated by slurm/generate_p15_macros.sh -- DO NOT EDIT BY HAND
 #   p1.5 background-sector production, one config per macro
 #   base fuel : ${BB}   source : ${SRC}   cask : ${C}   hexant rot : ${ROT} deg
@@ -250,30 +302,19 @@ for SRC_LINE in "${SOURCES[@]}"; do
 /dcs-monitor/surf/globalFuel        ${GG}
 /dcs-monitor/surf/batchId           0
 /dcs-monitor/surf/sourceType        ${STYPE}
-/dcs-monitor/surf/decayRate         ${RATE}
-EOF
+/dcs-monitor/surf/decayRate         ${RATE}" "${CHUNKS_TEXT}" > "${MAC}"
 
-                # chunk blocks: one fresh output file per chunk (T_gen per
-                # chunk; the merged library file carries the summed row)
-                local_k=1
-                while [ "${local_k}" -le "${NCHUNKS}" ]; do
-                    CHUNK_IDX="$(printf "${CHUNK_IDX_FMT}" "${local_k}")"
-                    cat >> "${MAC}" <<EOF
-/analysis/setFileName               ${STEM}_chunk${CHUNK_IDX}
-/dcs-monitor/surf/startRun          ${CHUNK_S} s
-EOF
-                    local_k=$(( local_k + 1 ))
-                done
-
-                printf '%s|%s|%s|%s\n' "${MAC_BASE}" "${CFGDIR}" "${STEM}" "${NCHUNKS}" >> "${MANIFEST_TMP}"
+                printf '%s|%s|%s|%s\n' "${MAC_BASE}" "${CFGDIR}" "${STEM}" "${NCHUNKS}" >&3
                 N_GENERATED=$(( N_GENERATED + 1 ))
                 N_PER_SOURCE[${SRC}]=$(( ${N_PER_SOURCE[${SRC}]:-0} + 1 ))
                 N_TOTAL=$(( N_TOTAL + 1 ))
             done
         done
     done
+    printf ' (%d macros)\n' "${N_PER_SOURCE[${SRC}]:-0}"
 done
 
+exec 3>&-
 mv "${MANIFEST_TMP}" "${MANIFEST}"
 
 echo "generate_p15_macros.sh: generated ${N_GENERATED} macros + manifest in ${MACDIR}"

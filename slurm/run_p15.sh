@@ -27,6 +27,7 @@
 #   MERGE       default 1    (in-task hadd + sectorMeta consolidation)
 #   KEEP_CHUNKS default 1    (1 = keep chunk files after verified merge)
 #   PARTITION / ACCOUNT   empty = cluster default profile
+#   SKIP_GEN    1 = reuse existing ${MACDIR}/manifest.txt + macros without regenerating
 #   DRY_RUN     1 = generate macros + print the sbatch command, don't submit
 # =====================================================================
 set -euo pipefail
@@ -78,8 +79,12 @@ else
 fi
 
 # --- generate macros + manifest ---------------------------------------
-export MACDIR DATADIR P1_BASE_DIR MEAS_TIME CHUNK_S THREADS
-"${SCRIPT_DIR}/generate_p15_macros.sh"
+if [ "${SKIP_GEN:-0}" = "1" ]; then
+    echo "run_p15.sh: SKIP_GEN=1 -- reusing existing ${MACDIR}/manifest.txt"
+else
+    export MACDIR DATADIR P1_BASE_DIR MEAS_TIME CHUNK_S THREADS
+    "${SCRIPT_DIR}/generate_p15_macros.sh"
+fi
 
 N_TASKS="$(wc -l < "${MACDIR}/manifest.txt")"
 N_TASKS="${N_TASKS//[[:space:]]/}"
