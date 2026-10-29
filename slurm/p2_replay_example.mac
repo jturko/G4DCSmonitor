@@ -1,0 +1,104 @@
+# =====================================================================
+# p2_replay_example.mac -- replay ONE p1.5 background-sector library
+# file into a placed detector (the p2_bkgd step).
+#
+# Validated end-to-end against a run_local.sh smoke library (2026-10-28):
+# autoCells selection, N = M_unique * T_replay/T_gen, detector hits.
+#
+# EDIT before running:
+#   1. /dcs-monitor/bkg/sourceFile  -> one p1.5 library file
+#      (data_<VERSION>/p15/<source>/cask<C>/gFuel<G>/p15_<...>.root)
+#   2. /analysis/setFileName        -> output name
+#   3. (optional) detector position/rotation and/or startRun exposure
+#
+# Everything else stays as production p1.5 (12 casks + hall + 8 z layers)
+# so the recorded shell crossings replay in matching geometry.
+# =====================================================================
+
+# --- verbosity + threads + pre-init geometry commands ----------------
+/control/verbose 0
+/run/verbose 0
+/tracking/verbose 0
+/event/verbose 0
+/process/verbose 0
+
+/run/numberOfThreads 32
+/dcs-monitor/det/useBiasing false
+/dcs-monitor/det/setBiasingShells 1
+/dcs-monitor/det/setSectorZLayers 8
+
+# --- detector: edit position/rotation for the desired placement ------
+# autoCells then maps the detector envelope onto the shell cells it
+# overlaps (cells are sectors of 64 around cask index 0, see README).
+/dcs-monitor/det/setPosition 2930 1580 150 mm
+/dcs-monitor/det/setRotation 0 -90 0
+/dcs-monitor/det/clyc/add
+
+# --- cask array: fixed order, cask index 0 FIRST (holds the shell) ---
+/dcs-monitor/det/setRotation 0 0 0
+/dcs-monitor/det/setPosition 1580 1580 0 mm
+/dcs-monitor/det/castor440/add
+/dcs-monitor/det/setPosition 1580 -1580 0 mm
+/dcs-monitor/det/castor440/add
+/dcs-monitor/det/setPosition -1580 1580 0 mm
+/dcs-monitor/det/castor440/add
+/dcs-monitor/det/setPosition -1580 -1580 0 mm
+/dcs-monitor/det/castor440/add
+/dcs-monitor/det/setPosition 6240 1580 0 mm
+/dcs-monitor/det/castor440/add
+/dcs-monitor/det/setPosition 6240 -1580 0 mm
+/dcs-monitor/det/castor440/add
+/dcs-monitor/det/setPosition 9400 1580 0 mm
+/dcs-monitor/det/castor440/add
+/dcs-monitor/det/setPosition 9400 -1580 0 mm
+/dcs-monitor/det/castor440/add
+/dcs-monitor/det/setPosition -6240 1580 0 mm
+/dcs-monitor/det/castor440/add
+/dcs-monitor/det/setPosition -6240 -1580 0 mm
+/dcs-monitor/det/castor440/add
+/dcs-monitor/det/setPosition -9400 1580 0 mm
+/dcs-monitor/det/castor440/add
+/dcs-monitor/det/setPosition -9400 -1580 0 mm
+/dcs-monitor/det/castor440/add
+
+# --- hall -------------------------------------------------------------
+/dcs-monitor/det/setPosition 0 0 0 mm
+/dcs-monitor/det/setRotation 0 0 0
+/dcs-monitor/det/hall/add
+/dcs-monitor/det/hall/setLength 22000 mm
+/dcs-monitor/det/hall/setWallInnerY 5410 mm
+/dcs-monitor/det/hall/setFloorTopZ -2040 mm
+/dcs-monitor/det/hall/setUseCeiling false
+
+/run/initialize
+
+# --- replay source ----------------------------------------------------
+/dcs-monitor/gun/sourceMode BACKGROUND_SECTOR_from_TTree
+# EDIT: path to the library file of one p1.5 config
+/dcs-monitor/bkg/sourceFile /bigdata/DCS-Monitor-II/turko46/SectorBkgd/data_v1/p15/gamma_662keV/cask1/gFuel00/p15_gamma_662keV_cask1_gFuel00.root
+/dcs-monitor/bkg/sectorId -1
+/dcs-monitor/bkg/autoCells true
+/dcs-monitor/bkg/maxEntries 0
+# tgen is taken from the file's sectorMeta (180 s for lib files); the
+# command below only overrides it (or supplies it if the meta is absent).
+/dcs-monitor/bkg/tgen 180 s
+
+# --- output toggles ---------------------------------------------------
+/dcs-monitor/run/writePrimary false
+/dcs-monitor/run/writeSurfaceFlux false
+/dcs-monitor/run/writeFluxMap false
+
+# --- run --------------------------------------------------------------
+# CLYC hits are always written (no toggle needed); the 'primary' tree
+# only appears when writePrimary is true and writePrimaryOnlyOnHit
+# forces it to only-event streams that hit the detector anyway.
+/analysis/setFileName /tmp/p2_bkgd/out/bkg_gamma662_cask1_gFuel00_180s
+# Full statistics: T_replay = T_gen -> the M_unique selected entries are
+# replayed exactly once (N = M_unique * T_replay/T_gen).
+/dcs-monitor/bkg/startRun 180 s
+# Quick look: T_replay = T_gen/100 -> N = M_unique/100 events.
+# /analysis/setFileName out_quicklook
+# /dcs-monitor/bkg/startRun 1.8 s
+# Oversample (few entries in the detector cells only, e.g. short stats
+# checks): T_replay >> T_gen; each selected entry is carried
+# N_replay/M_unique times.

@@ -1,0 +1,8 @@
+# Generated artifacts stay outside the repo (under DATAROOT); ignore any
+# that are created here by hand or by run_local.sh defaults.
+data_local/
+logs/
+*.root
+*.log
+*.out
+*.err
