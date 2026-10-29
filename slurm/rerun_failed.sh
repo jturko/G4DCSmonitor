@@ -40,28 +40,33 @@ MANIFEST="${MACDIR}/manifest.txt"
 N_TASKS="$(wc -l < "${MANIFEST}")"
 N_TASKS="${N_TASKS//[[:space:]]/}"
 
-# failed terminal states (sacct), excluding anything still in squeue
+# failed terminal states (sacct -X), excluding anything still in squeue
 FAILED_STATES_RE='^(FAILED|TIMEOUT|OUT_OF_MEMORY|NODE_FAIL|BOOT_FAIL|DEADLINE|PREEMPTED|CANCELLED)$'
 declare -A ACTIVE=()
 while read -r qid; do
     qid="${qid//[[:space:]]/}"
-    ACTIVE["${qid}"]=1
-done < <(squeue -h -j "${JOB}" --array -o '%i' 2>/dev/null || true)
+    if [ -n "${qid}" ]; then
+        ACTIVE["${qid}"]=1
+    fi
+done < <(squeue -h -r -j "${JOB}" -o '%i' 2>/dev/null || true)
 
+declare -A SEEN_FAILED=()
 FAILED=()
 while IFS='|' read -r jid state; do
     jid="${jid//[[:space:]]/}"
+    state="${state%% *}"   # strip trailing "by <uid>" on "CANCELLED by ..."
     state="${state//[[:space:]]/}"
     if [[ "${jid}" =~ ^${JOB}_([0-9]+)$ ]]; then
         idx="${BASH_REMATCH[1]}"
         if [ -n "${ACTIVE[${jid}]:-}" ]; then
             continue   # still queued/running
         fi
-        if [[ "${state}" =~ ${FAILED_STATES_RE} ]]; then
+        if [[ "${state}" =~ ${FAILED_STATES_RE} ]] && [ -z "${SEEN_FAILED[${idx}]:-}" ]; then
+            SEEN_FAILED["${idx}"]=1
             FAILED+=("${idx}")
         fi
     fi
-done < <(sacct -j "${JOB}" --noheader --parsable2 -o JobID,State 2>/dev/null || true)
+done < <(sacct -X -j "${JOB}" --noheader --parsable2 -o JobID,State 2>/dev/null || true)
 
 if [ "${#FAILED[@]}" -eq 0 ]; then
     echo "rerun_failed.sh: no failed tasks for array job ${JOB}"
@@ -80,9 +85,12 @@ if [ "${#OK_LIST[@]}" -eq 0 ]; then
     exit 0
 fi
 
+# Sort numerically for clean --array= output
+mapfile -t OK_LIST < <(printf '%s\n' "${OK_LIST[@]}" | sort -n -u)
+echo "rerun_failed.sh: found ${#OK_LIST[@]} failed task(s) for job ${JOB}: $(IFS=,; echo "${OK_LIST[*]}")"
+
 # resubmit in chunks of 1000 indices (sbatch --array spec length limits)
 GROUP=1000
-N_SUBMIT=$(( ( ${#OK_LIST[@]} + GROUP - 1 ) / GROUP ))
 I=0
 JOB_IDS=()
 while [ "${I}" -lt "${#OK_LIST[@]}" ]; do
@@ -108,8 +116,14 @@ while [ "${I}" -lt "${#OK_LIST[@]}" ]; do
     if [ -n "${ACCOUNT:-}" ]; then
         SBATCH_ARGS+=(--account="${ACCOUNT}")
     fi
-    JOB_IDS+=("$(sbatch "${SBATCH_ARGS[@]}" "${SCRIPT_DIR}/p15_job.sbatch")")
+    if [ "${DRY_RUN:-0}" = "1" ]; then
+        echo "[dry-run] would run: sbatch $(printf '%q ' "${SBATCH_ARGS[@]}") ${SCRIPT_DIR}/p15_job.sbatch"
+    else
+        JOB_IDS+=("$(sbatch "${SBATCH_ARGS[@]}" "${SCRIPT_DIR}/p15_job.sbatch")")
+    fi
 done
 
-echo "rerun_failed.sh: resubmitted ${#OK_LIST[@]} task(s) as ${JOB_IDS[*]}"
-echo "  logs: ${LOGDIR}/"
+if [ "${DRY_RUN:-0}" != "1" ]; then
+    echo "rerun_failed.sh: resubmitted ${#OK_LIST[@]} task(s) as ${JOB_IDS[*]}"
+    echo "  logs: ${LOGDIR}/"
+fi

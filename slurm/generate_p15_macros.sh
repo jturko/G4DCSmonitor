@@ -195,10 +195,13 @@ for SRC_LINE in "${SOURCES[@]}"; do
                 MAC="${MACDIR}/${MAC_BASE}"
 
                 CHUNKS_TEXT=""
+                local_b=1
                 for CHUNK_IDX in "${CHUNK_INDICES[@]}"; do
-                    CHUNKS_TEXT+="/analysis/setFileName               ${STEM}_chunk${CHUNK_IDX}
+                    CHUNKS_TEXT+="/dcs-monitor/surf/batchId           ${local_b}
+/analysis/setFileName               ${STEM}_chunk${CHUNK_IDX}
 /dcs-monitor/surf/startRun          ${CHUNK_S} s
 "
+                    local_b=$(( local_b + 1 ))
                 done
 
                 printf '%s\n%s' "# ===================================================================

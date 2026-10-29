@@ -28,6 +28,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace {
 
@@ -64,13 +65,15 @@ void Fail(const std::string& msg)
 
 bool Eq(const MetaRow& a, const MetaRow& b)
 {
+    // Note: batchId increments across chunks (1..nChunks) so that
+    // SectorFluxSampler's (sourceKey, evtNb) deduplication does not collide
+    // across independent chunk runs whose evtNb restarts at 0.
     return a.nps == b.nps
         && a.ratio == b.ratio
         && a.sourceCask == b.sourceCask
         && a.sourceType == b.sourceType
         && a.hexant == b.hexant
         && a.globalFuel == b.globalFuel
-        && a.batchId == b.batchId
         && a.targetCask == b.targetCask
         && a.R_in_mm == b.R_in_mm
         && a.R_out_mm == b.R_out_mm
@@ -134,6 +137,8 @@ void consolidate_meta(const char* fname, Int_t nChunksExpected)
     MetaRow ref{};
     Double_t tgenSum = 0.;
     Long64_t mSum = 0;
+    std::vector<Long64_t> chunkM(static_cast<std::size_t>(nRows), 0);
+    bool allSameBatchId = true;
     for (Long64_t i = 0; i < nRows; ++i) {
         meta->GetEntry(i);
         row.sourceFile = sourceFilePtr ? *sourceFilePtr : std::string();
@@ -145,9 +150,15 @@ void consolidate_meta(const char* fname, Int_t nChunksExpected)
         }
         if (i == 0) {
             ref = row;
-        } else if (!Eq(ref, row)) {
-            Fail("row " + std::to_string(i) + ": provenance fields differ from row 0");
+        } else {
+            if (!Eq(ref, row)) {
+                Fail("row " + std::to_string(i) + ": provenance fields differ from row 0");
+            }
+            if (row.batchId != ref.batchId) {
+                allSameBatchId = false;
+            }
         }
+        chunkM[static_cast<std::size_t>(i)] = row.M;
         tgenSum += row.T_gen;
         mSum += row.M;
     }
@@ -160,6 +171,32 @@ void consolidate_meta(const char* fname, Int_t nChunksExpected)
     }
     if (gFailed) {
         gSystem->Exit(1);
+    }
+
+    // If the chunks were generated with a constant batchId across >1 chunks
+    // (legacy macro without per-chunk batchId 1..N), stamp batchId = 1..nRows
+    // onto each chunk's range in sectorFlux so (sourceKey, evtNb) never collides
+    // across chunks during replay deduplication.
+    if (nRows > 1 && allSameBatchId && sf && sfEntries > 0 && sf->GetBranch("batchId")) {
+        std::cout << "consolidate_meta: stamping per-chunk batchId (1.." << nRows
+                  << ") onto " << sfEntries << " sectorFlux entries" << std::endl;
+        Double_t batchVal = 0.;
+        sf->SetBranchAddress("batchId", &batchVal);
+        f->cd();
+        TTree* sfFixed = sf->CloneTree(0);
+        Long64_t entryIdx = 0;
+        for (Long64_t c = 0; c < nRows; ++c) {
+            const Long64_t count = chunkM[static_cast<std::size_t>(c)];
+            for (Long64_t k = 0; k < count; ++k, ++entryIdx) {
+                sf->GetEntry(entryIdx);
+                batchVal = static_cast<Double_t>(c + 1);
+                sfFixed->Fill();
+            }
+        }
+        gDirectory->Delete("sectorFlux;*");
+        sfFixed->Write("sectorFlux", TObject::kOverwrite);
+        delete sfFixed;
+        sf = dynamic_cast<TTree*>(f->Get("sectorFlux"));
     }
 
     // Rewrite: drop all sectorMeta cycles, write one consolidated row with
