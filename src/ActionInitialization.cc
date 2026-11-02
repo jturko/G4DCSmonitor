@@ -36,6 +36,8 @@
 #include "EventAction.hh"
 #include "SectorTrackingAction.hh"
 
+#include <mutex>
+
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 ActionInitialization::ActionInitialization(DetectorConstruction* detector) : fDetector(detector) {}
@@ -52,6 +54,13 @@ void ActionInitialization::BuildForMaster() const
 
 void ActionInitialization::Build() const
 {
+    // Workers run Build() concurrently. Constructing the user actions builds
+    // UI messengers and G4GeneralParticleSource; commands flagged
+    // commandsShouldBeInMaster are registered into the shared master command
+    // tree, which is not thread-safe. Serialise construction.
+    static std::mutex buildMutex;
+    std::lock_guard<std::mutex> lock(buildMutex);
+
     PrimaryGeneratorAction* primary = new PrimaryGeneratorAction(fDetector);
     SetUserAction(primary);
 
