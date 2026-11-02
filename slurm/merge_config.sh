@@ -34,6 +34,11 @@ fi
     exit 2
 }
 
+# G4's wroot writer corrupts files that cross START_BIG_FILE = 2.0e9 B;
+# the result is a garbage header and an enormous (sparse) apparent size.
+# Never hand such a file to hadd.
+MAX_CHUNK_BYTES="${MAX_CHUNK_BYTES:-4000000000}"
+
 # chunk list, zero-padded exactly like generate_p15_macros.sh (width of <nchunks>)
 CHUNKS=()
 for k in $(seq -w 1 "${NCHUNKS}"); do
@@ -42,6 +47,14 @@ for k in $(seq -w 1 "${NCHUNKS}"); do
         echo "FATAL: missing chunk ${f} -- task incomplete; chunks kept" >&2
         exit 1
     }
+    size="$(stat -c %s "${f}")"
+    if [ "${size}" -gt "${MAX_CHUNK_BYTES}" ]; then
+        echo "FATAL: ${f} is ${size} bytes (> MAX_CHUNK_BYTES=${MAX_CHUNK_BYTES})." >&2
+        echo "       A wroot chunk that crosses 2.0e9 B is corrupt." >&2
+        echo "       Delete the chunk files, regenerate the macro with" >&2
+        echo "       CHUNK_S=10 (18 chunks), then rerun this config." >&2
+        exit 1
+    fi
     CHUNKS+=("${f}")
 done
 

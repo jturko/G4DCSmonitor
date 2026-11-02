@@ -4,15 +4,23 @@
 #
 # One macro per (baseFuel, source, cask, hexant) config.  Each macro
 # builds the 12-cask array + concrete hall (NO detector placed) once,
-# then runs its config as NCHUNKS blocks of CHUNK_S seconds each
-# (default: 180 s per config in 10 x 18 s chunks; 18 s chunks are
-# ~1.4 GB for gamma 662 keV, while a single 2.7 GB file proved
-# unreadable in the sector validation -- report/sector_implementation).
+# then runs its config as NCHUNKS blocks of CHUNK_S seconds each.
+#
+# CHUNK SIZE LIMIT (hard): G4's wroot writer switches its on-disk
+# offsets at START_BIG_FILE = 2.0e9 bytes.  A chunk file that crosses
+# that boundary while its directory is written gets a corrupt header
+# (garbage END / key seeks) and the subsequent ROOT reopen fails with
+# "TFile::Seek: cannot seek to position -<n>", heap corruption, or a
+# 7 EB sparse file.  Observed on the hottest gamma-662 configs with
+# 18 s chunks (~2.1 GB).  Keep every chunk file below ~1.5 GB: use
+# 10 s chunks for gamma_662keV (~1.2 GB worst case, 18 chunks).
 #
 # Manifest line format (line i -> array task i-1):
 #   run_baseFuel<B>_<SRC>_cask<C>_gFuel<G>.mac|<CFGDIR>|<STEM>|<NCHUNKS>
 #   CFGDIR = absolute per-config output dir (chunk files + merged file)
 #   STEM   = absolute merged-file stem, no .root
+# Subset runs (SOURCES_ONLY=...) update only those configs' macros and
+# manifest lines; existing lines for other configs are preserved.
 #
 # Env knobs:
 #   MACDIR       (required) output dir for the macros + manifest.txt
@@ -318,7 +326,20 @@ for SRC_LINE in "${SOURCES[@]}"; do
 done
 
 exec 3>&-
-mv "${MANIFEST_TMP}" "${MANIFEST}"
+
+# Keep the manifest lines of configs this run did not regenerate (subset
+# runs with *_ONLY): regenerated configs replace their old line in place,
+# genuinely new configs are appended.  A full run rewrites every line.
+if [ -s "${MANIFEST}" ]; then
+    awk -F'|' 'NR==FNR { new[$1] = $0; next }
+               { if ($1 in new) { print new[$1]; seen[$1] = 1 } else print }
+               END { for (k in new) if (!(k in seen)) print new[k] }' \
+        "${MANIFEST_TMP}" "${MANIFEST}" > "${MANIFEST}.merged"
+    mv "${MANIFEST}.merged" "${MANIFEST}"
+    rm -f "${MANIFEST_TMP}"
+else
+    mv "${MANIFEST_TMP}" "${MANIFEST}"
+fi
 
 echo "generate_p15_macros.sh: generated ${N_GENERATED} macros + manifest in ${MACDIR}"
 for SRC_LINE in "${SOURCES[@]}"; do
