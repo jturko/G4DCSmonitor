@@ -1,0 +1,6 @@
+# R(E) = FWHM(E)/E, R in percent, E in keV
+# fit R(E) = b/sqrt(E), b = 123.935 +/- 0.403 percent*sqrt(keV), fitted to the 661.64 and 1332.51 keV lines
+E_keV,n_distances,FWHM_mean_keV,FWHM_std_err_keV,R_mean_pct,R_std_err_pct,R_model_pct,residual_pct,used_in_fit
+661.64,3,31.786,0.086,4.8042,0.0130,4.8182,-0.29,1
+1173.23,3,39.837,0.183,3.3955,0.0156,3.6183,-6.16,0
+1332.51,3,45.372,0.550,3.4050,0.0413,3.3951,0.29,1

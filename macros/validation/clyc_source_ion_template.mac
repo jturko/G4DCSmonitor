@@ -1,0 +1,54 @@
+# CLYC source spectrum from a radioactive-decay ion at a fixed distance.
+# Template placeholders: @Z@, @A@, @NAME@, @DIST_MM@, @OUTPUT@, @NEVENTS@
+#
+# The ion is placed at the centre of the epoxy source puck. PrimaryGeneratorAction
+# copies that centre into the GPS point source before the first event. The ion is
+# at rest; G4RadioactiveDecayPhysics produces the decay products.
+
+/control/verbose 0
+/run/verbose 0
+/tracking/verbose 0
+/event/verbose 0
+
+/run/numberOfThreads 8
+/dcs-monitor/det/useBiasing false
+
+# CLYC detector at z = 0 (metal front face), no PE plug or collimators.
+/dcs-monitor/det/setPosition 0 0 0 mm
+/dcs-monitor/det/setRotation 0 0 0
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/clyc/setPbColLength 0.0 mm
+/dcs-monitor/det/clyc/setPEColLength 0.0 mm
+/dcs-monitor/det/clyc/setPEPlugLipLength 0.0 mm
+/dcs-monitor/det/clyc/setPEPlugInnerLength 0.0 mm
+
+# Epoxy calibration-source puck: r = 10 mm, length = 2 mm, source at centre.
+/dcs-monitor/det/sourcePuck/setPosition 0 0 @DIST_MM@ mm
+/dcs-monitor/det/sourcePuck/add
+
+/run/initialize
+
+# Allow the full calibration-source decay chain.  With 1e60 year the Np-237
+# ground state (T1/2 = 2.14e6 y) and its descendants also decay.  Their pulses
+# are later than the prompt 59.54 keV pulse, so the 1 us analysis clustering
+# keeps them separate; the 1e4 year cross-check stops the chain at Np-237.
+# For that cross-check, replace 1e60 with 1e4 below.
+/process/had/rdm/thresholdForVeryLongDecayTime 1e60 year
+
+# Radioactive-decay ion source at rest at the puck centre.
+/dcs-monitor/gun/sourceMode GPS
+/gps/particle ion
+/gps/ion @Z@ @A@ 0 0
+/gps/ene/type Mono
+/gps/energy 0 MeV
+/gps/pos/type Point
+/gps/pos/centre 0 0 @DIST_MM@ mm
+/gps/ang/type iso
+
+# Output: hits tree only.
+/dcs-monitor/run/writePrimary false
+/dcs-monitor/run/writeSurfaceFlux false
+/dcs-monitor/run/writeFluxMap false
+/analysis/setFileName @OUTPUT@
+
+/run/beamOn @NEVENTS@

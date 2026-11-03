@@ -1,0 +1,60 @@
+# Cutaway rendering of the CLYC detector with the source puck flush against
+# the detector front face.  The half-space y > 0 is removed by a cutaway
+# plane; all visible volumes are opaque and no trajectories are drawn.  The
+# exported PDF is converted to
+# report/eff_clyc/figures/fig_vis_flush_cutaway.png by
+# report/eff_clyc/scripts/make_vis_figs.sh.
+/control/verbose 0
+/run/verbose 0
+/tracking/verbose 0
+/event/verbose 0
+/vis/verbose warnings
+/run/numberOfThreads 1
+/dcs-monitor/det/useBiasing false
+
+/dcs-monitor/det/setPosition 0 0 0 mm
+/dcs-monitor/det/setRotation 0 0 0
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/clyc/setPbColLength 0.0 mm
+/dcs-monitor/det/clyc/setPEColLength 0.0 mm
+/dcs-monitor/det/clyc/setPEPlugLipLength 0.0 mm
+/dcs-monitor/det/clyc/setPEPlugInnerLength 0.0 mm
+
+# Flush puck: centre 1 mm in front of the detector front plane, so the
+# 2 mm-thick puck touches that plane and the source is 3 mm from the crystal.
+/dcs-monitor/det/sourcePuck/setPosition 0 0 1 mm
+/dcs-monitor/det/sourcePuck/add
+
+/run/initialize
+
+/vis/open OGL 1600x900-0+0
+/vis/viewer/set/autoRefresh false
+/vis/drawVolume
+/vis/viewer/set/style surface
+/vis/viewer/set/background 1 1 1 1
+/vis/viewer/set/lineSegmentsPerCircle 200
+/vis/viewer/set/edge false
+/vis/viewer/set/auxiliaryEdge false
+/vis/viewer/set/projection orthogonal
+
+# Opaque material colours (no transparent surfaces).
+/vis/geometry/set/colour SourcePuckLog 0.88 0.45 0.16 1
+/vis/geometry/set/colour CasingLog     0.78 0.78 0.80 1
+/vis/geometry/set/colour ReflectorLog  0.94 0.91 0.84 1
+/vis/geometry/set/colour CrystalLog    0.18 0.62 0.32 1
+/vis/geometry/set/colour OpticalInterfaceLog 0.95 0.76 0.20 1
+/vis/geometry/set/colour MagShieldLog  0.33 0.34 0.38 1
+/vis/geometry/set/colour BaseLog       0.16 0.16 0.18 1
+/vis/geometry/set/visibility PMTGlassLog 0 false
+/vis/geometry/set/visibility PMTVacuumLog 0 true
+/vis/geometry/set/colour PMTVacuumLog 0.76 0.84 0.93 1
+
+# Axial half-section at y = 0; look along +y with the beam axis horizontal.
+/vis/viewer/set/upVector 0 0 1
+/vis/viewer/addCutawayPlane 0 0 0 mm 0 1 0
+/vis/viewer/set/viewpointThetaPhi 80 -45
+/vis/viewer/zoom 1.1
+/vis/viewer/set/autoRefresh true
+/vis/viewer/flush
+/vis/ogl/export /tmp/eff_vis_flush_cutaway_v2.pdf
+/vis/disable

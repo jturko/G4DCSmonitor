@@ -1,0 +1,78 @@
+\begin{tikzpicture}[
+    x=1cm, y=1cm,
+    >=Latex,
+    font=\footnotesize,
+    dim/.style={<->, >=Latex, thin, draw=black!55},
+    ext/.style={thin, draw=black!45},
+    leader/.style={thin, draw=black!55},
+    axis/.style={dash pattern=on 2pt off 2pt, draw=black!45},
+    crystal/.style={fill=blue!12, draw=blue!55!black, thick},
+    casing/.style={fill=black!6, draw=black!60},
+    puck/.style={fill=orange!18, draw=orange!65!black},
+    cone/.style={fill=red!7, draw=red!55!black, thin},
+  ]
+
+  % Stepped casing: snout, shoulder, wide body (cut away at the right)
+  \fill[casing] (2.05,-1.45) rectangle (3.5,1.45);
+  \fill[casing] (3.5,-2.94) rectangle (5.55,2.94);
+  \draw[black!60] (2.05,-1.45) -- (3.5,-1.45) -- (3.5,-2.94) --
+    (5.55,-2.94) -- (5.55,2.94) -- (3.5,2.94) -- (3.5,1.45) --
+    (2.05,1.45) -- cycle;
+
+  % Entrance window (Al) and reflector cap (Teflon)
+  \draw[fill=gray!35, draw=black!60] (2.0,-1.45) rectangle (2.05,1.45);
+  \draw[fill=white, draw=black!60] (2.05,-1.45) rectangle (2.2,1.45);
+
+  % Solid-angle cone to the crystal front face
+  \fill[cone] (0,0) -- (2.2,1.25) -- (2.2,-1.25) -- cycle;
+  \draw[red!55!black, thin] (0,0) -- (2.2,1.25);
+  \draw[red!55!black, thin] (0,0) -- (2.2,-1.25);
+  \draw[red!55!black, thin] (1.35,0) arc[start angle=0, end angle=29.6, radius=1.35];
+  \node[red!55!black, right] at (1.40,0.12) {$\theta_{\max}$};
+  \node[red!55!black, fill=red!7, inner sep=1pt] at (1.05,0) {$\Omega(d)$};
+
+  % CLYC crystal
+  \draw[crystal] (2.2,-1.25) rectangle (4.7,1.25);
+  \node[blue!45!black] at (3.45,0.55) {CLYC crystal};
+
+  % Source puck and point source (drawn over the cone base)
+  \draw[puck, rounded corners=1pt] (-0.10,-1.0) rectangle (0.10,1.0);
+  \fill[orange!80!black] (0,0) circle (1.6pt);
+  \node[above=2pt] at (0,1.0) {source point};
+  \node[left, align=right, text=orange!45!black] at (-0.18,-0.55) {epoxy puck};
+
+  % Detector front plane and crystal front face
+  \draw[axis] (2.0,-3.45) -- (2.0,3.5);
+  \draw[axis] (2.2,-3.45) -- (2.2,3.5);
+  \node[left, align=right, text=black!60] at (1.9,3.5) {detector\\front plane};
+  \node[right, align=left, text=black!60] at (2.3,3.5) {crystal\\front face};
+
+  % 2 mm recess
+  \draw[dim] (2.0,1.65) -- (2.2,1.65);
+  \draw[leader] (2.1,1.65) -- (1.75,2.15);
+  \node[left, align=right, text=black!60] at (1.72,2.15) {2 mm\\recess};
+
+  % Crystal radius
+  \draw[dim] (4.85,0) -- (4.85,1.25);
+  \draw[ext] (4.7,1.25) -- (4.85,1.25);
+  \draw[ext] (4.7,0) -- (4.85,0);
+  \draw[leader] (4.85,0.62) -- (5.6,0.62);
+  \node[right, text=black!60] at (5.6,0.62) {$r=12.5$ mm};
+
+  % Axial dimensions
+  \draw[ext] (0,-1.0) -- (0,-3.2);
+  \draw[ext] (2.0,-2.4) -- (2.0,-3.45);
+  \draw[ext] (2.2,-3.2) -- (2.2,-3.45);
+  \draw[dim] (0,-2.4) -- (2.0,-2.4);
+  \node[below, text=black!60, fill=white, inner sep=1pt] at (1.0,-2.4)
+    {$d_{\mathrm{nom}}$};
+  \draw[dim] (0,-3.2) -- (2.2,-3.2);
+  \node[below, text=black!60, fill=white, inner sep=1pt] at (1.1,-3.2)
+    {$d=d_{\mathrm{nom}}+2$ mm};
+
+  % Detector continuation
+  \draw[axis] (5.55,-2.94) -- (5.55,2.94);
+  \node[right, align=left, text=black!60] at (5.6,2.0)
+    {detector body\\and PMT\\(cut away)};
+
+\end{tikzpicture}

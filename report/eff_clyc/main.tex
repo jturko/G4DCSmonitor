@@ -3,7 +3,7 @@
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
 \usepackage{lmodern}
-\usepackage[margin=2.2cm]{geometry}
+\usepackage[margin=1.8cm]{geometry}
 \usepackage{graphicx}
 \usepackage{booktabs}
 \usepackage{siunitx}
@@ -12,16 +12,20 @@
 \usepackage{caption}
 \usepackage{subcaption}
 \usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,calc}
 \usepackage{float}
 \usepackage[hidelinks]{hyperref}
 
 \sisetup{detect-all}
 \setlength{\emergencystretch}{2em}
+\setlength{\textfloatsep}{10pt plus 2pt minus 2pt}
+\setlength{\intextsep}{8pt plus 2pt minus 2pt}
 \captionsetup{font=small,labelfont=bf}
 \graphicspath{{figures/}}
 
-\title{CLYC Full-Energy Peak Efficiency versus Source Distance\\[2pt]
-\large Simulation and Measurement Validation for the DCS-Monitor}
+\title{CLYC Full-Energy Peak Efficiency for the DCS-Monitor\\[2pt]
+\large CLYC2 Distance Comparison, Peak Integration, Detector Resolution, and Flush-Source Response}
 \author{DCS-Monitor simulation notes}
 \date{\today}
 
@@ -30,702 +34,381 @@
 \maketitle
 
 \begin{abstract}
-The DCS-Monitor uses a CLYC scintillator to detect gamma radiation from a
-spent-fuel cask. This report compares the simulated full-energy peak efficiency
-of the CLYC detector with a nine-point measurement at source-to-detector
-distances of \SI{200}{mm}, \SI{300}{mm}, and \SI{400}{mm} and gamma energies of
-\SI{661.64}{keV}, \SI{1173.23}{keV}, and \SI{1332.51}{keV}. The simulation uses
-\num{1e7} incident gammas per point, an isotropic point source at the centre of
-a \SI{2}{mm}-thick epoxy source puck, and the full CLYC detector and casing
-geometry. The measured efficiencies are taken from
-\texttt{effDist\_clyc1.csv}; the column labelled \texttt{Efficiency (\%)} is a
-factor \num{1000} larger than the value obtained from the measurement formula,
-so the corrected measured efficiency is that column divided by \num{1000}.
-
-At \SI{661.64}{keV}, the simulation and measurement agree within
-\SI{9}{\percent}: the simulation-to-measurement ratios are
-\num{1.059}, \num{0.963}, and \num{0.915} at \SI{200}{mm}, \SI{300}{mm}, and
-\SI{400}{mm}. At \SI{1173.23}{keV}, the simulation is \num{1.48}--\num{1.70}
-times the measurement, a discrepancy of \num{4}--\num{8} standard deviations
-using the simulation statistical error. At \SI{1332.51}{keV}, the ratios are
-\num{1.353}, \num{1.213}, and \num{1.014}; the first two points are
-\num{4.7} and \num{2.2} standard deviations high, while the \SI{400}{mm} point
-is consistent with the measurement but has an \SI{11.9}{\percent} statistical
-uncertainty. The measured \SI{1173.23}{keV}/\SI{1332.51}{keV} ratio is
-\num{0.94}, \num{0.92}, and \num{0.90}, whereas the reference column of the CSV
-gives \num{1.21} and the simulation gives \num{1.18}, \num{1.12}, and
-\num{1.49}. The measured ratio is therefore inverted relative to both the
-reference and the simulation. A no-puck control at \SI{200}{mm} and
-\SI{661.64}{keV} gives \num{0.00876(30)}\,\% versus \num{0.00843(29)}\,\% with
-the puck, so the epoxy puck changes the efficiency by
-\SI{3.8 \pm 4.8}{\percent}, consistent with zero. The \SI{661.64}{keV}
-agreement validates the geometry, the source distance, and the analysis chain
-at the \SI{10}{\percent} level. The energy-dependent discrepancy at
-\SI{1173.23}{keV} and \SI{1332.51}{keV} is not explained by the source puck;
-the most plausible remaining cause is that the simulation uses one
-monoenergetic gamma per event and does not model the \SI{1173.23}--%
-\SI{1332.51}{keV} cascade of \ce{^{60}Co} or the detector response. A cascade
-source, a detector response model, and the measured spectra are the next
-validation steps.
+This report compares simulated and measured full-energy peak efficiencies for the CLYC2 detector at nominal source-to-detector distances of \SI{200}{mm}, \SI{300}{mm}, and \SI{400}{mm}. The simulated efficiency is obtained from isotropic Geant4 runs with $10^7$ gammas per point and a $\pm\SI{2}{\percent}$ total-energy window. The measured efficiency is obtained from the 2026-10-27 CLYC2 spectra after subtracting the \SI{600}{s} environmental background and fitting each peak with a Gaussian plus linear background over $\pm1.5$ FWHM. No external efficiency table is used for the distance comparison. At \SI{661.64}{keV} the simulation/measurement ratio is 0.98--1.03; at \SI{1332.51}{keV} it is 0.92--1.11. At \SI{1173.23}{keV} the simulation is 19--36\% larger than the measurement. The \SI{1173.23}{keV} peak sits on the Compton continuum from the \SI{1332.51}{keV} line; the Gaussian peak area has a \SI{10}{\percent} background-model uncertainty, but the excess is larger. The measured \SI{1173}{keV}/\SI{1332}{keV} ratio is 1.00--1.04, compared with 1.18 in the simulation. Cascade summing is negligible at these distances, so the line-dependent excess points to the Co-60 source geometry or the detector response model. Separately, the \SI{2}{cm} calibration file is compared with a radioactive-decay simulation in which the source puck is flush with the detector front face. The flush simulation agrees at \SI{46.54}{keV}, \SI{661.64}{keV}, and \SI{1408.01}{keV} and, after pulse clustering, at \SI{59.54}{keV}; the \SI{121.78}{keV}, \SI{344.28}{keV}, and \ce{^{60}Co} lines remain high. The detector resolution is $R(E)=(123.9\pm0.4)/\sqrt{E/\mathrm{keV}}\,\%$ (FWHM $=1.239\sqrt{E/\mathrm{keV}}\,\mathrm{keV}$), fitted to the \SI{661.64}{keV} and \SI{1332.51}{keV} lines.
 \end{abstract}
 
-\tableofcontents
+\section{Geometry and Solid Angle Efficiency Bound}
 
-\section{Motivation and scope}
+The detector model uses a cylindrical CLYC crystal of diameter \SI{25}{mm} and length \SI{25}{mm} (radius $r=\SI{12.5}{mm}$, density \SI{3.31}{g\,cm^{-3}}) placed inside a stepped aluminium casing (\texttt{GeometryCLYC.cc}). The front face of the crystal sits \SI{2}{mm} behind the front surface of the detector casing ($z_{\mathrm{recess}}=\SI{2}{mm}$), consisting of a \SI{0.5}{mm} aluminium entrance window and a \SI{1.5}{mm} Teflon reflector cap. Behind the \SI{29}{mm} snout, the wider detector body and PMT are surrounded by a \SI{0.64}{mm}-thick MuMetal magnetic shield. The calibration sources are modeled as isotropic point sources at the centre of an epoxy puck of radius \SI{10}{mm}, thickness \SI{2}{mm}, and density \SI{1.16}{g\,cm^{-3}} (\ce{H32C15N2O4}).
 
-The DCS-Monitor simulation must predict the CLYC count rate for a source at a
-known distance. A full-energy peak efficiency that is wrong by a factor of
-\num{1.5} would change the inferred activity or the alarm threshold by the same
-factor. The measurement in \texttt{effDist\_clyc1.csv} provides nine
-independent points: three distances and three gamma lines. This report uses
-those points to test the detector geometry, the source placement, and the
-analysis chain.
+For a nominal source-to-detector distance $d_{\mathrm{nom}}$, the true distance between the source and the crystal front face is $d=d_{\mathrm{nom}}+\SI{2}{mm}$. Figure~\ref{fig:setup} shows the axial geometry and the solid-angle cone.
 
-The scope is deliberately narrow. The simulation is a Geant4 transport of
-monoenergetic gammas through the CLYC detector and its casing. It does not
-simulate scintillation light, light collection, or the electronics. The
-efficiency is defined as the number of events whose total energy deposition in
-the crystal lies within $\pm\SI{2}{\percent}$ of the incident gamma energy,
-divided by the number of incident gammas. The measurement is the full-energy
-peak efficiency obtained from the net peak area, the source activity, the
-emission probability, and the measurement time. The two definitions are
-compared at the same nominal source-to-detector distance.
-
-The report is a validation note, not a final calibration. The statistical
-uncertainties are reported; the systematic uncertainties of the source
-activity, the distance, the detector geometry, and the peak fitting are not yet
-included. The conclusions are therefore statements about the consistency of
-the present simulation and data, not a complete uncertainty budget.
-
-\section{Experimental data}
-
-The measurement file is
-\texttt{/home/turko46/data/CLYC\_validation/effDist\_clyc1.csv}. It contains
-nine rows: \ce{^{137}Cs} at \SI{661.64}{keV} and \ce{^{60}Co} at
-\SI{1173.23}{keV} and \SI{1332.51}{keV}, each at \SI{200}{mm},
-\SI{300}{mm}, and \SI{400}{mm}. The detector is labelled CLYC1. The initial
-activities are \SI{4.77e6}{Bq} for \ce{^{137}Cs} and \SI{18.50e6}{Bq} for
-\ce{^{60}Co}; the current activities at the measurement dates are
-\SI{3.65e6}{Bq} and \SI{11.31e6}{Bq}, respectively. The measurement time is
-\SI{600}{s} for every row.
-
-The experimental efficiency is
-\begin{equation}
-  \epsilon_{\mathrm{exp}}
-  = \frac{N_{\mathrm{peak}}}{A(t)\,p_\gamma\,t}\times 100,
-  \label{eq:eff-exp}
-\end{equation}
-where $N_{\mathrm{peak}}$ is the net peak area, $A(t)$ is the current activity
-in becquerel, $p_\gamma=P_\gamma/100$ is the emission probability per decay,
-and $t$ is the measurement time in seconds. For the \SI{200}{mm}
-\SI{661.64}{keV} row,
-\begin{equation}
-  \epsilon_{\mathrm{exp}}
-  = \frac{148423}{(3.65\times10^6)(0.8510)(600)}\times 100
-  = \SI{0.00796}{\percent}.
-  \label{eq:eff-exp-example}
-\end{equation}
-The CSV column labelled \texttt{Efficiency (\%)} contains \num{7.96} for this
-row, which is exactly \num{1000} times the result of
-Eq.~\eqref{eq:eff-exp-example}. The same factor of \num{1000} applies to all
-nine rows. The corrected measured efficiency used in this report is therefore
-\begin{equation}
-  \epsilon_{\mathrm{meas}} = \frac{\texttt{Efficiency (\%)}}{1000}.
-  \label{eq:csv-correction}
-\end{equation}
-The origin of the factor is not documented in the CSV. It is not caused by the
-emission probability: using $P_\gamma$ as a percentage instead of a fraction
-would change the result by a factor of \num{100}, not \num{1000}. The factor is
-consistent across all rows, so it is treated as a column-normalisation error
-and corrected once.
-
-The CSV also contains an \texttt{Efficiency Reference Value (\%)} column with
-values \num{6.64}, \num{3.14}, and \num{2.60} for the three energies. This
-column is not the measured efficiency and is not used as the denominator in
-this report. It is used only to compare the energy dependence: its
-\SI{1173.23}{keV}/\SI{1332.51}{keV} ratio is \num{1.21}. The measured ratio is
-\num{0.94}, \num{0.92}, and \num{0.90}; the simulation ratio is \num{1.18},
-\num{1.12}, and \num{1.49}. The reference column therefore follows the
-simulation better than the measurement, which is one of the central results of
-this report.
-
-\begin{table}[H]
+\begin{figure}[t]
   \centering
-  \caption{Experimental data from \texttt{effDist\_clyc1.csv}. The column
-  \texttt{eff}$_{\mathrm{CSV}}$ is the CSV value; the column
-  \texttt{eff}$_{\mathrm{meas}}$ is that value divided by \num{1000}, following
-  Eq.~\eqref{eq:csv-correction}. The current activity $A(t)$ is used in
-  Eq.~\eqref{eq:eff-exp}.}
-  \label{tab:data}
-  \small
-  \setlength{\tabcolsep}{4pt}
-  \begin{tabular}{@{}rrrrrrrrr@{}}
-    \toprule
-    $d$ [mm] & Nuclide & $E$ [keV] & $A(t)$ [Bq] & $P_\gamma$ [\%] &
-    $t$ [s] & $N_{\mathrm{peak}}$ & eff$_{\mathrm{CSV}}$ [\%] &
-    eff$_{\mathrm{meas}}$ [\%] \\
-    \midrule
-    200 & \ce{^{137}Cs} & 661.64  & \num{3.65e6} & 85.10 & 600 & 148423 & 7.96 & 0.00796 \\
-    200 & \ce{^{60}Co}  & 1173.23 & \num{11.31e6} & 99.97 & 600 & 153103 & 2.26 & 0.00226 \\
-    200 & \ce{^{60}Co}  & 1332.51 & \num{11.31e6} & 99.99 & 600 & 163177 & 2.41 & 0.00241 \\
-    300 & \ce{^{137}Cs} & 661.64  & \num{3.65e6} & 85.10 & 600 & 74617  & 4.00 & 0.00400 \\
-    300 & \ce{^{60}Co}  & 1173.23 & \num{11.31e6} & 99.97 & 600 & 76163  & 1.12 & 0.00112 \\
-    300 & \ce{^{60}Co}  & 1332.51 & \num{11.31e6} & 99.99 & 600 & 82693  & 1.22 & 0.00122 \\
-    400 & \ce{^{137}Cs} & 661.64  & \num{3.65e6} & 85.10 & 600 & 41666  & 2.24 & 0.00224 \\
-    400 & \ce{^{60}Co}  & 1173.23 & \num{11.31e6} & 99.97 & 600 & 42612  & 0.63 & 0.00063 \\
-    400 & \ce{^{60}Co}  & 1332.51 & \num{11.31e6} & 99.99 & 600 & 47252  & 0.70 & 0.00070 \\
-    \bottomrule
-  \end{tabular}
-\end{table}
+  \begin{subfigure}[b]{0.42\linewidth}
+    \centering
+    \resizebox{\linewidth}{!}{\input{setup_diagram.tex}}
+    \caption{Schematic axial section (not to scale).}
+    \label{fig:setup_schematic}
+  \end{subfigure}\hfill
+  \begin{subfigure}[b]{0.55\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{fig_vis_flush_cutaway.png}
+    \caption{Geant4 cutaway half-section.}
+    \label{fig:setup_render}
+  \end{subfigure}
+  \caption{Axial geometry of the source and detector. Left: the point source is at the centre of the \SI{2}{mm} epoxy puck; the detector front plane is at \(d_{\mathrm{nom}}\) and the crystal front face is \SI{2}{mm} farther, at \(d=d_{\mathrm{nom}}+\SI{2}{mm}\). The red cone is the solid angle \(\Omega(d)\) subtended by the crystal face of radius \(r=\SI{12.5}{mm}\). Right: Geant4 OGL cutaway view of the detector cut in half at \(y=0\), in the flush-source-to-detector-face geometry (\(d_{\mathrm{nom}}=\SI{1}{mm}\), \(d=\SI{3}{mm}\)); the source is at the left and the orange epoxy puck touches the detector front plane. The render uses opaque material colours: orange epoxy puck, grey aluminium casing, cream Teflon reflector, green CLYC crystal, yellow optical interface, pale blue PMT vacuum, dark PMT base, and dark grey MuMetal shield. The thin PMT glass envelope is omitted for clarity. The detector is \SI{125}{mm} long. The left drawing is schematic; the distance scan at \(d_{\mathrm{nom}}=\SI{200}{mm}\), \SI{300}{mm}, and \SI{400}{mm} is not drawn to scale.}
+  \label{fig:setup}
+\end{figure}
 
-\section{Geometry and source model}
-
-\subsection{CLYC detector and source puck}
-
-The detector is a CLYC scintillator with a \SI{25}{mm} diameter and a
-\SI{25}{mm} length. The crystal front face is \SI{2}{mm} behind the detector
-front plane. The crystal is mounted in the detector body and magnesium shield
-described by \texttt{GeometryCLYC.cc}; the body is included in the simulation,
-so the gamma must traverse the detector entrance window and the surrounding
-material before reaching the crystal. The crystal density is
-\SI{3.31}{g\,cm^{-3}}.
-
-The source is an epoxy puck with a radius of \SI{10}{mm}, a thickness of
-\SI{2}{mm}, and a density of \SI{1.16}{g\,cm^{-3}}. The gamma source is at the
-puck centre. The puck is centred on the detector axis at
-$(0,0,d)$, where $d$ is the nominal source-to-detector distance. Because the
-crystal front face is \SI{2}{mm} behind the detector front plane, the
-crystal-to-source distance is $d+\SI{2}{mm}$. The source is isotropic in the
-production runs. The event-display macros described in
-Section~\ref{sec:vis} use a focused source only to make the tracks visible;
-they are not the production source model.
-
-\subsection{Geometric acceptance}
-
-For a point source on the detector axis and a circular crystal face of radius
-$r$, the fraction of the full solid angle subtended by the face is
+\subsection{Solid angle and geometric acceptance}
+For an isotropic point source emitting into $4\pi$, the solid angle subtended by the circular crystal entrance face of radius $r$ at distance $d$ along the detector axis is
 \begin{equation}
-  \epsilon_\Omega(d)
-  = \frac{1}{2}\left(1-\frac{d}{\sqrt{d^2+r^2}}\right),
+  \Omega(d)=2\pi\left(1-\frac{d}{\sqrt{d^2+r^2}}\right),
+  \label{eq:solid-angle}
+\end{equation}
+and the geometric acceptance is
+\begin{equation}
+  \epsilon_\Omega(d)=\frac{\Omega(d)}{4\pi}
+  =\frac{1}{2}\left(1-\frac{d}{\sqrt{d^2+r^2}}\right)\times100\%.
   \label{eq:omega}
 \end{equation}
-where $d$ is the crystal-to-source distance and $r=\SI{12.5}{mm}$. Using
-$d=d_{\mathrm{nom}}+\SI{2}{mm}$ gives
+For the geometries used here,
 \begin{equation}
   \epsilon_\Omega =
   \begin{cases}
-    \SI{0.0955}{\percent}, & d_{\mathrm{nom}}=\SI{200}{mm},\\
-    \SI{0.0428}{\percent}, & d_{\mathrm{nom}}=\SI{300}{mm},\\
-    \SI{0.0242}{\percent}, & d_{\mathrm{nom}}=\SI{400}{mm}.
+    \SI{0.0955}{\percent}, & d_{\mathrm{nom}} = \SI{200}{mm} \ (d=\SI{202}{mm}),\\
+    \SI{0.0428}{\percent}, & d_{\mathrm{nom}} = \SI{300}{mm} \ (d=\SI{302}{mm}),\\
+    \SI{0.0242}{\percent}, & d_{\mathrm{nom}} = \SI{400}{mm} \ (d=\SI{402}{mm}),\\
+    \SI{38.33}{\percent}, & d_{\mathrm{nom}} = \SI{1}{mm} \ (d=\SI{3}{mm})\quad\text{(flush)}.
   \end{cases}
   \label{eq:omega-values}
 \end{equation}
-The geometric acceptance is not the detection efficiency. It is the fraction
-of emitted gammas that intersect the crystal front face. The intrinsic
-efficiency is the ratio of the full-energy peak efficiency to
-$\epsilon_\Omega$; it removes the leading $1/d^2$ dependence and is useful for
-comparing the three distances.
 
-\begin{table}[H]
-  \centering
-  \caption{Reference detector and source geometry. The crystal-to-source
-  distance is the nominal distance plus \SI{2}{mm} because the crystal front
-  face is recessed behind the detector front plane. The geometric acceptance
-  follows Eq.~\eqref{eq:omega}.}
-  \label{tab:geometry}
-  \begin{tabular}{@{}lll@{}}
-    \toprule
-    Quantity & Value & Note \\
-    \midrule
-    Crystal material & CLYC & \SI{3.31}{g\,cm^{-3}} \\
-    Crystal dimensions & \SI{25}{mm} $\times$ \SI{25}{mm} & diameter $\times$ length \\
-    Crystal front face & \SI{2}{mm} behind detector front & recessed \\
-    Detector body & \SI{29}{mm} snout & magnesium shield behind \\
-    Source puck material & epoxy & \SI{1.16}{g\,cm^{-3}} \\
-    Source puck dimensions & \SI{10}{mm} radius, \SI{2}{mm} thick & disc \\
-    Source position & puck centre & $(0,0,d)$ \\
-    Nominal distances & \SI{200}{mm}, \SI{300}{mm}, \SI{400}{mm} & source to detector front \\
-    Crystal-to-source distance & $d+\SI{2}{mm}$ & used in Eq.~\eqref{eq:omega} \\
-    Geometric acceptance & \num{0.0955}, \num{0.0428}, \num{0.0242}\,\% &
-    at \SI{200}{mm}, \SI{300}{mm}, \SI{400}{mm} \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-\subsection{Visual check of the detector and source}
-\label{sec:vis}
-
-Figure~\ref{fig:vis} shows two Geant4/OpenGL views of the detector, the source
-puck, and ten \SI{661.64}{keV} gamma tracks. The source is at \SI{200}{mm}.
-The top panel is a side view along the detector axis; the bottom panel is an
-oblique view. The detector body is drawn semi-transparently so that the
-crystal and the tracks inside the body are visible. The orange disc is the
-source puck. The tracks are green; several leave the detector body, which is
-expected for an isotropic source and a finite crystal. The source in these
-renders is focused toward the detector to keep the ten tracks in the field of
-view; the production runs use an isotropic source, so the renders are
-illustrative and are not used to compute the efficiency.
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=\linewidth]{fig_vis_side.pdf}\\[2pt]
-  \includegraphics[width=0.82\linewidth]{fig_vis_oblique.pdf}
-  \caption{Geant4/OpenGL event displays for ten \SI{661.64}{keV} gammas from
-  the source puck at \SI{200}{mm}. Top: side view along the detector axis;
-  the source puck appears edge-on at the left and the detector is at the
-  right. Bottom: oblique view showing the puck, the detector body, the crystal,
-  and the tracks. The source is focused toward the detector only for these
-  renders; the production source is isotropic.}
-  \label{fig:vis}
-\end{figure}
-
-\section{Simulation method}
-
-\subsection{Production matrix and physics}
-
-The production matrix is three distances times three energies, with
-\num{1e7} incident gammas per point. The runs use the \texttt{G4DCSmonitor}
-binary built from this repository, the \texttt{GPS} source mode, and the
-physics list in \texttt{PhysicsList.cc}: \texttt{G4EmStandardPhysics\_option4}
-for electromagnetic transport, with hadronic HP, thermal-neutron, ion, and
-gamma-nuclear components included for the full simulation. The gamma
-efficiency is controlled by the electromagnetic physics and the geometry; the
-hadronic components do not contribute at these energies.
-
-The source is a point at the puck centre with an isotropic angular
-distribution. The detector geometry includes the crystal, the detector body,
-and the magnesium shield. The production macro writes the \texttt{hits} tree
-and the \texttt{meta} tree. The \texttt{hits} tree stores one row per pulse;
-the analysis sums all rows with the same event number to recover the total
-energy deposited in the crystal per event. The analysis uses detector
-identifier \num{0} for the CLYC crystal and ignores zero-weight rows.
-
-\begin{table}[H]
-  \centering
-  \caption{Simulation production matrix and full-energy peak counts. Each point
-  uses \num{1e7} incident gammas. $N_{\mathrm{peak}}$ counts events whose total
-  energy deposition lies within $\pm\SI{2}{\percent}$ of the incident energy.
-  The last column is the relative statistical uncertainty
-  $\sqrt{N_{\mathrm{peak}}}/N_{\mathrm{peak}}$, expressed as a percentage.}
-  \label{tab:sim}
-  \small
-  \begin{tabular}{@{}rrrrrr@{}}
-    \toprule
-    $d$ [mm] & $E$ [keV] & $N_{\mathrm{inc}}$ & $N_{\mathrm{peak}}$ &
-    $\epsilon_{\mathrm{sim}}$ [\%] & rel. stat [\%] \\
-    \midrule
-    200 & 661.64  & \num{1e7} & 843 & \num{0.00843(29)} & 3.4 \\
-    200 & 1173.23 & \num{1e7} & 384 & \num{0.00384(20)} & 5.1 \\
-    200 & 1332.51 & \num{1e7} & 326 & \num{0.00326(18)} & 5.5 \\
-    300 & 661.64  & \num{1e7} & 385 & \num{0.00385(20)} & 5.1 \\
-    300 & 1173.23 & \num{1e7} & 166 & \num{0.00166(13)} & 7.8 \\
-    300 & 1332.51 & \num{1e7} & 148 & \num{0.00148(12)} & 8.2 \\
-    400 & 661.64  & \num{1e7} & 205 & \num{0.00205(14)} & 7.0 \\
-    400 & 1173.23 & \num{1e7} & 106 & \num{0.00106(10)} & 9.7 \\
-    400 & 1332.51 & \num{1e7} & 71  & \num{0.00071(8)}  & 11.9 \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-\subsection{Efficiency definitions and analysis}
-
-The simulated full-energy peak efficiency is
+\subsection{Maximum efficiency bound and intrinsic efficiency}
+The total full-energy peak efficiency factorizes as
 \begin{equation}
-  \epsilon_{\mathrm{sim}}
-  = \frac{N_{\mathrm{peak}}}{N_{\mathrm{inc}}}\times 100,
+  \epsilon=\epsilon_\Omega(d)\,\epsilon_{\mathrm{int}}(E_\gamma,d),
+  \label{eq:factorization}
+\end{equation}
+where $\epsilon_{\mathrm{int}}\in[0,1]$ is the probability that a gamma entering the crystal deposits all of its energy. Because $\epsilon_{\mathrm{int}}\le1$, the geometric acceptance is a hard upper bound,
+\begin{equation}
+  \epsilon\le\epsilon_{\max}(d)=\epsilon_\Omega(d).
+  \label{eq:eff-max}
+\end{equation}
+
+\section{Calculation Methods}
+
+\subsection{Measured efficiency}
+The 2026-10-27 CLYC2 spectra are converted from CNF to ROOT with \texttt{cnf2root}. The converter writes the channel-count histogram, the calibrated energy histogram, and the acquisition metadata, including live time and the energy calibration. The analysis uses the native $\sim\SI{1.96}{keV}$ energy bins; rebinning to \SI{2}{keV} by bin centre would alias the two grids.
+
+The \SI{600}{s} environmental background spectrum is subtracted bin by bin. This removes room and cosmic background; it does not remove source-induced Compton continuum. Each full-energy peak is then fitted with a Gaussian plus linear background over $\pm1.5$ FWHM around the observed peak. The fit range for the \SI{1173.23}{keV} line is \SI{1113.5}{keV}--\SI{1233.0}{keV}; for the \SI{1332.51}{keV} line it is \SI{1264.4}{keV}--\SI{1400.6}{keV}. The Gaussian area is the measured peak area.
+
+The measured efficiency is
+\begin{equation}
+  \epsilon_{\mathrm{exp}}=\frac{N_{\mathrm{peak}}}{A_{\mathrm{exact}}P_\gamma t_{\mathrm{live}}/100}\times100\%,
+  \label{eq:eff-exp}
+\end{equation}
+where $A_{\mathrm{exact}}$ is the source activity at the measurement date, $P_\gamma$ is the gamma-ray emission probability in percent, $t_{\mathrm{live}}=\SI{600}{s}$, and $N_{\mathrm{peak}}$ is the Gaussian peak area. The statistical uncertainty is obtained from the Gaussian fit.
+
+For the \SI{1173.23}{keV} line, the peak sits on the Compton continuum from the \SI{1332.51}{keV} line. A local sideband integration over the $\pm1$ FWHM peak region with sidebands at 1.2--1.8 FWHM gives a peak area that differs from the Gaussian-plus-linear fit by about \SI{10}{\percent}. This is treated as the background-model systematic for the \SI{1173.23}{keV} line. For the \SI{661.64}{keV} and \SI{1332.51}{keV} lines the two methods agree to about \SI{1}{\percent}.
+
+\subsection{Simulated efficiency}
+The simulations use \texttt{G4EmStandardPhysics\_option4}. For each energy and distance, $10^7$ monoenergetic gammas are generated isotropically from the puck centre. All energy deposited in the CLYC crystal is summed per event. Full-energy peak events satisfy
+\begin{equation}
+  0.98E_\gamma\le E_{\mathrm{dep}}\le1.02E_\gamma.
+  \label{eq:sim-window}
+\end{equation}
+The simulated efficiency and statistical uncertainty are
+\begin{equation}
+  \epsilon_{\mathrm{sim}}=\frac{N_{\mathrm{peak}}}{N_{\mathrm{inc}}}\times100\%,
+  \qquad
+  \sigma_{\mathrm{sim}}=\frac{\sqrt{N_{\mathrm{peak}}}}{N_{\mathrm{inc}}}\times100\%,
   \label{eq:eff-sim}
 \end{equation}
-where $N_{\mathrm{inc}}=\num{1e7}$ and $N_{\mathrm{peak}}$ is the number of
-events with
+with $N_{\mathrm{inc}}=10^7$. The simulation is not resolution-smeared here; the full-energy peak is a delta line, so the $\pm2\%$ window contains the complete peak.
+
+The simulation/measurement ratio and statistical pull are
 \begin{equation}
-  (1-0.02)E \le E_{\mathrm{dep}} \le (1+0.02)E.
-  \label{eq:window}
-\end{equation}
-The $\pm\SI{2}{\percent}$ window captures the full-energy peak and excludes the
-single-escape peak at $E-\SI{511}{keV}$ and the double-escape peak at
-$E-\SI{1022}{keV}$. The simulation has no detector resolution, so the
-full-energy peak is a delta function; the window is wide enough to contain it
-and narrow enough to exclude the escape peaks. The statistical uncertainty is
-\begin{equation}
-  \sigma_{\mathrm{sim}}
-  = \frac{\sqrt{N_{\mathrm{peak}}}}{N_{\mathrm{inc}}}\times 100.
-  \label{eq:eff-sim-error}
-\end{equation}
-The measured efficiency is given by Eq.~\eqref{eq:eff-exp}; its statistical
-uncertainty is dominated by the net peak area,
-\begin{equation}
-  \sigma_{\mathrm{meas}}
-  = \frac{\epsilon_{\mathrm{meas}}}{\sqrt{N_{\mathrm{peak}}}}.
-  \label{eq:eff-meas-error}
-\end{equation}
-The simulation-to-measurement ratio is
-\begin{equation}
-  R = \frac{\epsilon_{\mathrm{sim}}}{\epsilon_{\mathrm{meas}}},
+  R=\frac{\epsilon_{\mathrm{sim}}}{\epsilon_{\mathrm{exp}}},
   \qquad
-  \sigma_R = R\sqrt{
-    \left(\frac{\sigma_{\mathrm{sim}}}{\epsilon_{\mathrm{sim}}}\right)^2
-    +
-    \left(\frac{\sigma_{\mathrm{meas}}}{\epsilon_{\mathrm{meas}}}\right)^2
-  }.
-  \label{eq:ratio}
+  \mathrm{pull}=\frac{\epsilon_{\mathrm{sim}}-\epsilon_{\mathrm{exp}}}
+  {\sqrt{\sigma_{\mathrm{sim}}^2+\sigma_{\mathrm{exp}}^2}}.
+  \label{eq:ratio-pull}
 \end{equation}
-The pull is
+
+\subsection{Flush source response}
+For the flush geometry, the source puck touches the detector front face. The
+source is at the puck centre, \SI{1}{mm} from the detector front plane and
+\SI{3}{mm} from the crystal front face. The decay chain is tracked with
+\texttt{G4RadioactiveDecayPhysics} using parent ions at rest at the puck centre
+($N_{\mathrm{decays}}=10^6$ per source). The long-decay threshold is
+\SI{1e60}{y}, and the analysis merges pulses whose leading-edge times differ by
+at most the \SI{1}{\micro\second} CLYC resolving time. The \SI{1e4}{y}
+cross-check stops the \ce{^{241}Am} chain at \ce{^{237}Np}; it does not change
+the \ce{^{137}Cs}, \ce{^{210}Pb}, \ce{^{152}Eu}, or \ce{^{60}Co} results.
+The simulated peak efficiency is
 \begin{equation}
-  \mathrm{pull}
-  = \frac{\epsilon_{\mathrm{sim}}-\epsilon_{\mathrm{meas}}}
-  {\sqrt{\sigma_{\mathrm{sim}}^2+\sigma_{\mathrm{meas}}^2}}.
-  \label{eq:pull}
+  \epsilon_{\mathrm{sim}}(E_\gamma)=
+  \frac{N_{\mathrm{pulse}}(E_\gamma)}{N_{\mathrm{decays}}P_\gamma(E_\gamma)}
+  \times100\%,
+  \label{eq:flush-eff}
 \end{equation}
+with the statistical uncertainty obtained from the pulse count.
 
-\section{Results}
+\subsection{The \SI{2}{cm} calibration file}
+The calibration file \texttt{eff\_clyc1.csv} is labelled as a \SI{2}{cm}
+measurement. The file has no detector column and is treated as CLYC1-only.
+Its printed values match Eq.~\eqref{eq:eff-exp} without a factor of
+\num{1000}. At lower energies (\SI{32}{keV}--\SI{121}{keV}) the values range
+from \SI{15.4}{\percent} to \SI{23.9}{\percent}. The file documents neither the
+actual source position nor the detector identity, so the measured values are
+compared with the flush simulation of Sec.~\ref{sec:source_response}.
 
-\subsection{Efficiency versus distance}
+\section{Distance Comparison Results}
+\label{sec:distance_results}
 
-Figure~\ref{fig:eff} shows the simulated and measured full-energy peak
-efficiencies as functions of distance. The simulation points are filled
-markers connected by lines; the measurement points are open markers. The
-vertical axis is logarithmic because the efficiency falls by an order of
-magnitude between \SI{200}{mm} and \SI{400}{mm}. The \SI{661.64}{keV} curves
-overlap within the marker size at \SI{200}{mm} and separate by up to
-\SI{9}{\percent} at the larger distances. The \SI{1173.23}{keV} and
-\SI{1332.51}{keV} simulation curves lie above the measurement at every
-distance, with the largest separation at \SI{200}{mm}.
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=\linewidth]{fig_eff_vs_distance.pdf}
-  \caption{Full-energy peak efficiency versus source-to-detector distance for
-  the three gamma lines. Filled markers and solid lines are the simulation;
-  open markers are the measurement. The vertical axis is logarithmic. The
-  simulation uses \num{1e7} incident gammas per point; the error bars are the
-  statistical uncertainties of Eqs.~\eqref{eq:eff-sim-error}
-  and~\eqref{eq:eff-meas-error}.}
-  \label{fig:eff}
-\end{figure}
-
-\subsection{Ratio and energy dependence}
-
-Figure~\ref{fig:ratio} shows $R=\epsilon_{\mathrm{sim}}/
-\epsilon_{\mathrm{meas}}$. The shaded band is $\pm\SI{10}{\percent}$ around
-$R=1$, and the dashed line is $R=1$. The \SI{661.64}{keV} points lie inside
-the band at all three distances. The \SI{1173.23}{keV} points lie above the
-band at all three distances; the ratios are \num{1.699}, \num{1.482}, and
-\num{1.683}. The \SI{1332.51}{keV} points are \num{1.353} at \SI{200}{mm},
-\num{1.213} at \SI{300}{mm}, and \num{1.014} at \SI{400}{mm}; the first two
-are above the band, while the last is inside it.
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.92\linewidth]{fig_eff_ratio.pdf}
-  \caption{Simulation-to-measurement efficiency ratio versus distance. The
-  shaded band is $\pm\SI{10}{\percent}$ around $R=1$; the dashed line is
-  $R=1$. The error bars follow Eq.~\eqref{eq:ratio}. The \SI{661.64}{keV}
-  points are consistent with unity; the \SI{1173.23}{keV} and
-  \SI{1332.51}{keV} points are high, except for the \SI{400}{mm}
-  \SI{1332.51}{keV} point.}
-  \label{fig:ratio}
-\end{figure}
-
-Table~\ref{tab:comparison} collects the numerical comparison. The pull column
-uses Eq.~\eqref{eq:pull}. The \SI{661.64}{keV} pulls are \num{1.6},
-\num{-0.8}, and \num{-1.4}; none is significant at the $2\sigma$ level.
-The \SI{1173.23}{keV} pulls are \num{7.9}, \num{4.2}, and \num{4.3}; all are
-significant. The \SI{1332.51}{keV} pulls are \num{4.7}, \num{2.2}, and
-\num{0.1}; the \SI{200}{mm} and \SI{300}{mm} points are significant, while the
-\SI{400}{mm} point is not.
+Table~\ref{tab:comparison} lists the nine CLYC2 points. The measured efficiencies are the Gaussian peak areas from the 2026-10-27 spectra; no external efficiency table is used. Figure~\ref{fig:distance_plots} shows the efficiencies and the simulation/measurement ratios.
 
 \begin{table}[H]
   \centering
-  \caption{Comparison of simulated and measured full-energy peak efficiencies.
-  The measured values are the corrected CSV values from
-  Eq.~\eqref{eq:csv-correction}. The ratio and pull follow
-  Eqs.~\eqref{eq:ratio} and~\eqref{eq:pull}. The simulation uncertainty is
-  statistical only; the measured uncertainty is the Poisson error on the net
-  peak area.}
+  \caption{Simulated and measured full-energy peak efficiencies for CLYC2 at the nominal source-to-detector distance \(d_{\mathrm{nom}}\). The source-to-crystal-front-face distance is \(d=d_{\mathrm{nom}}+\SI{2}{mm}\). The measured efficiency is from the Gaussian-plus-linear fit to the 2026-10-27 spectrum. All points satisfy $\epsilon<\epsilon_\Omega(d)$.}
   \label{tab:comparison}
   \small
-  \begin{tabular}{@{}rrrrrr@{}}
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{@{}rrlrrrr@{}}
     \toprule
-    $d$ [mm] & $E$ [keV] & $\epsilon_{\mathrm{sim}}$ [\%] &
-    $\epsilon_{\mathrm{meas}}$ [\%] & $R$ & pull \\
+    $d_{\mathrm{nom}}$ [mm] & $E_\gamma$ [keV] & Source &
+    $\epsilon_{\mathrm{sim}}$ [\%] & $\epsilon_{\mathrm{exp}}$ [\%] &
+    $R$ & Pull [$\sigma$] \\
     \midrule
-    200 & 661.64  & \num{0.00843(29)} & 0.00796 & 1.059 & 1.6 \\
-    200 & 1173.23 & \num{0.00384(20)} & 0.00226 & 1.699 & 7.9 \\
-    200 & 1332.51 & \num{0.00326(18)} & 0.00241 & 1.353 & 4.7 \\
-    300 & 661.64  & \num{0.00385(20)} & 0.00400 & 0.963 & -0.8 \\
-    300 & 1173.23 & \num{0.00166(13)} & 0.00112 & 1.482 & 4.2 \\
-    300 & 1332.51 & \num{0.00148(12)} & 0.00122 & 1.213 & 2.2 \\
-    400 & 661.64  & \num{0.00205(14)} & 0.00224 & 0.915 & -1.4 \\
-    400 & 1173.23 & \num{0.00106(10)} & 0.00063 & 1.683 & 4.3 \\
-    400 & 1332.51 & \num{0.00071(8)}  & 0.00070 & 1.014 & 0.1 \\
+    200 & 661.64  & \ce{^{137}Cs} & \num{0.00843(29)} & \num{0.00819(7)} & 1.030 & $+0.8$ \\
+    200 & 1173.23 & \ce{^{60}Co}  & \num{0.00384(20)} & \num{0.00296(3)} & 1.298 & $+4.4$ \\
+    200 & 1332.51 & \ce{^{60}Co}  & \num{0.00326(18)} & \num{0.00294(3)} & 1.108 & $+1.8$ \\
+    \addlinespace[2pt]
+    300 & 661.64  & \ce{^{137}Cs} & \num{0.00385(20)} & \num{0.00389(5)} & 0.990 & $-0.2$ \\
+    300 & 1173.23 & \ce{^{60}Co}  & \num{0.00166(13)} & \num{0.00140(2)} & 1.189 & $+2.0$ \\
+    300 & 1332.51 & \ce{^{60}Co}  & \num{0.00148(12)} & \num{0.00135(2)} & 1.096 & $+1.1$ \\
+    \addlinespace[2pt]
+    400 & 661.64  & \ce{^{137}Cs} & \num{0.00205(14)} & \num{0.00210(3)} & 0.975 & $-0.4$ \\
+    400 & 1173.23 & \ce{^{60}Co}  & \num{0.00106(10)} & \num{0.00078(2)} & 1.362 & $+2.8$ \\
+    400 & 1332.51 & \ce{^{60}Co}  & \num{0.00071(8)}  & \num{0.00078(1)} & 0.915 & $-0.8$ \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-The measured \SI{1173.23}{keV}/\SI{1332.51}{keV} ratio is \num{0.94} at
-\SI{200}{mm}, \num{0.92} at \SI{300}{mm}, and \num{0.90} at \SI{400}{mm}. The
-CSV reference column gives \num{1.21}; the simulation gives \num{1.18},
-\num{1.12}, and \num{1.49}. The measured ratio is therefore inverted: the
-\SI{1332.51}{keV} peak is larger than the \SI{1173.23}{keV} peak at every
-distance, while the reference and the simulation both put the
-\SI{1173.23}{keV} peak above the \SI{1332.51}{keV} peak. The \SI{400}{mm} simulation ratio of \num{1.49} is higher than the
-reference ratio because the \SI{400}{mm} \SI{1332.51}{keV} point has only
-$N_{\mathrm{peak}}=71$ and an \SI{11.9}{\percent} statistical uncertainty; the
-ratio is correspondingly imprecise.
+\begin{figure}[H]
+  \centering
+  \begin{subfigure}[b]{0.46\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{fig_eff_vs_distance.pdf}
+    \caption{Efficiency vs \(d_{\mathrm{nom}}\) and the geometric bound.}
+    \label{fig:eff_dist}
+  \end{subfigure}\hfill
+  \begin{subfigure}[b]{0.46\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{fig_eff_ratio.pdf}
+    \caption{Simulation / measurement ratio.}
+    \label{fig:eff_ratio}
+  \end{subfigure}
+  \caption{Distance comparison for CLYC2. (a) Full-energy peak efficiency vs \(d_{\mathrm{nom}}\). Filled markers and solid lines are the simulation; open markers are the experimental Gaussian peak areas. The simulation and experiment markers are offset horizontally by \(\pm\SI{3}{mm}\) so that they do not overlap; all quoted values and the table use the nominal \(d_{\mathrm{nom}}\). The dashed grey curve is the geometric bound from Eq.~\eqref{eq:omega}. (b) Ratio \(R=\epsilon_{\mathrm{sim}}/\epsilon_{\mathrm{exp}}\). The green band is $\pm\SI{10}{\percent}$; the dashed line is \(R=1\).}
+  \label{fig:distance_plots}
+\end{figure}
 
-\subsection{Spectra at \SI{200}{mm}}
+The \ce{^{137}Cs} \SI{661.64}{keV} ratio is 0.98--1.03 at the three distances, with pulls between $-0.4$ and $+0.8\sigma$. The \ce{^{60}Co} \SI{1332.51}{keV} ratio is 0.92--1.11, with pulls between $-0.8$ and $+1.8\sigma$. The \SI{1173.23}{keV} ratio is 1.19--1.36, with pulls between $+2.0$ and $+4.4\sigma$.
 
-Figure~\ref{fig:spectra} shows the simulated total-energy-deposition spectra
-at \SI{200}{mm} for the three energies. The histograms are normalised to
-\num{1e7} incident gammas and to the bin width in keV, so the vertical axis is
-events per \num{1e7} incident gammas per keV. The dashed vertical lines mark
-the $\pm\SI{2}{\percent}$ window and the central line marks the incident
-energy. The \SI{661.64}{keV} spectrum has a clear full-energy peak at
-\SI{661.64}{keV}. The \SI{1173.23}{keV} and \SI{1332.51}{keV} spectra have
-smaller full-energy peaks on a Compton continuum; the peaks are still visible
-above the continuum, and the $\pm\SI{2}{\percent}$ window contains them.
+The \SI{1173.23}{keV} line is therefore the outlier. The measured \SI{1173}{keV}/\SI{1332}{keV} ratio is 1.00--1.04, while the simulated ratio is 1.18. The \SI{1173.23}{keV} Gaussian area has the \SI{10}{\percent} background-model systematic from the sideband check; the \SI{10}{\percent} background-model uncertainty does not remove the excess. The \SI{1332.51}{keV} line changes by only 0.92--1.11, so the excess is line-dependent rather than a common normalization.
+
+At \SI{200}{mm}--\SI{400}{mm} the Co-60 cascade summing is negligible: the total interaction probability per gamma is about $3.3\times10^{-4}$, so the probability that both cascade gammas interact is about $10^{-7}$ and the \SI{2505.74}{keV} sum peak is negligible. The \SI{1173.23}{keV} excess is therefore not cascade summing. It points to an energy-dependent source or detector effect, such as the actual Co-60 source capsule or holder, the detector active volume, or the reflector/casing model. The available data do not identify which.
+
+\section{Experimental Spectra and Peak Integration}
+\label{sec:peak_integration}
+
+The 2026-10-27 CLYC2 spectra are the only measured spectra used in this report. The CNF conversion, \SI{600}{s} background subtraction, and Gaussian fits are described in Sec.~\ref{sec:distance_results}. The Gaussian peak areas for the nine points are the measured efficiencies in Table~\ref{tab:comparison}. The fit ranges are $\pm1.5$ FWHM; the \SI{1173.23}{keV} fit range is \SI{1113.5}{keV}--\SI{1233.0}{keV}. The local sideband integration over the same peak region gives an independent area; for \SI{1173.23}{keV} it differs from the Gaussian fit by about \SI{10}{\percent}, and this is the continuum-model systematic. For \SI{661.64}{keV} and \SI{1332.51}{keV} the two methods agree to about \SI{1}{\percent}.
+
+Figure~\ref{fig:exp_sim_co_fits} shows the Gaussian-plus-quadratic-background fits to the 200 mm Co-60 spectra. This figure is a diagnostic: the table uses the Gaussian-plus-linear fit for the measured efficiency, while the figure uses a quadratic background because the \SI{1173.23}{keV} peak sits on the curved \SI{1332.51}{keV} Compton continuum. The fitted simulation/experiment peak-area ratios in the figure are 1.21 at \SI{1173.23}{keV} and 1.04 at \SI{1332.51}{keV}; the table gives 1.30 and 1.11. The difference between the two ratios is the background-model uncertainty of the \SI{1173.23}{keV} line.
+
+\section{Detector Resolution and Simulated Spectrum Comparison}
+\label{sec:resolution}
+
+\subsection{Resolution model}
+The FWHM of the \SI{661.64}{keV}, \SI{1173.23}{keV}, and \SI{1332.51}{keV} peaks is extracted from the same Gaussian-plus-linear fits at 200, 300, and 400 mm. The three distances give consistent widths; Table~\ref{tab:resolution} lists the mean and the standard error of the mean. The resolution \(R=\mathrm{FWHM}/E\) is \SI{4.80}{\percent} at \SI{661.64}{keV}, \SI{3.40}{\percent} at \SI{1173.23}{keV}, and \SI{3.41}{\percent} at \SI{1332.51}{keV}. The \SI{1173.23}{keV} width is affected by the broad background under the peak, so it is not used in the fit. The two stable lines give
+\[
+  \mathrm{FWHM}(E)=\SI{1.239}{\sqrt{E/\mathrm{keV}}}\,\SI{}{\kilo\electronvolt},
+  \qquad
+  R(E)=\frac{123.9\pm0.4}{\sqrt{E/\mathrm{keV}}}\,\%.
+\]
+The \SI{1173.23}{keV} point lies \SI{6.2}{\percent} below this curve, consistent with the background-model bias.
+
+\begin{table}[H]
+  \centering
+  \caption{Measured FWHM and resolution of the three CLYC2 lines, averaged over the 200, 300, and 400 mm spectra. The uncertainty is the standard error of the mean over the three distances. The model is \(R(E)=123.9/\sqrt{E/\mathrm{keV}}\,\%\), fitted to the \SI{661.64}{keV} and \SI{1332.51}{keV} lines; the \SI{1173.23}{keV} point is a cross-check.}
+  \label{tab:resolution}
+  \small
+  \setlength{\tabcolsep}{5pt}
+  \begin{tabular}{@{}rrrrrrc@{}}
+    \toprule
+    $E_\gamma$ [keV] & $n$ & FWHM [keV] & $R$ [\%] & $R_{\mathrm{model}}$ [\%] & residual [\%] & fit \\
+    \midrule
+    661.64  & 3 & \num{31.786(86)}  & \num{4.804(13)} & 4.818 & $-0.3$ & yes \\
+    1173.23 & 3 & \num{39.837(183)} & \num{3.396(16)} & 3.618 & $-6.2$ & no  \\
+    1332.51 & 3 & \num{45.372(550)} & \num{3.405(41)} & 3.395 & $+0.3$ & yes \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=\linewidth]{fig_spectra_200mm.pdf}
-  \caption{Simulated total energy deposition spectra at \SI{200}{mm} for
-  \SI{661.64}{keV}, \SI{1173.23}{keV}, and \SI{1332.51}{keV}. The histograms
-  are normalised to \num{1e7} incident gammas per keV. The dashed vertical
-  lines mark the $\pm\SI{2}{\percent}$ window; the central line marks the
-  incident energy. The full-energy peaks are the sharp structures at the
-  incident energies; the lower continuum is Compton scattering in the crystal
-  and the surrounding material.}
-  \label{fig:spectra}
+  \includegraphics[width=0.88\linewidth]{fig_resolution.pdf}
+  \caption{(a) Resolution \(R=\mathrm{FWHM}/E\) and (b) FWHM versus \(E_\gamma\). Filled circles are the \SI{661.64}{keV} and \SI{1332.51}{keV} lines used in the fit; the open square is the \SI{1173.23}{keV} cross-check. The dashed curve is \(R(E)=123.9/\sqrt{E/\mathrm{keV}}\,\%\) (FWHM \(=1.239\sqrt{E/\mathrm{keV}}\,\mathrm{keV}\)).}
+  \label{fig:resolution}
 \end{figure}
 
-\subsection{No-puck control}
+The model is used only to smear the simulated spectra: each event with deposited energy \(E_{\mathrm{dep}}\) is replaced by a Gaussian draw with mean \(E_{\mathrm{dep}}\) and standard deviation \(\sigma(E_{\mathrm{dep}})=\mathrm{FWHM}(E_{\mathrm{dep}})/2.3548\). The smearing conserves the number of events and does not change the peak areas. The model is an extrapolation between and below the fitted lines.
 
-The no-puck control uses the same geometry and source position as the
-\SI{200}{mm} \SI{661.64}{keV} point, but omits the epoxy puck. The control
-gives $\epsilon_{\mathrm{sim}}=\num{0.00876(30)}\,\%$, compared with
-\num{0.00843(29)}\,\% with the puck. The ratio is \num{1.100}. The fractional
-change is
-\begin{equation}
-  \frac{\epsilon_{\mathrm{with\ puck}}-\epsilon_{\mathrm{no\ puck}}}
-  {\epsilon_{\mathrm{no\ puck}}}
-  = -\SI{3.8 \pm 4.8}{\percent}.
-  \label{eq:nopuck}
-\end{equation}
-The puck therefore changes the \SI{661.64}{keV} efficiency by less than
-\SI{10}{\percent} at the $1\sigma$ level. The puck attenuation at
-\SI{1173.23}{keV} and \SI{1332.51}{keV} is smaller than at \SI{661.64}{keV},
-so the puck cannot explain the \num{1.5}--\num{1.7} factor at
-\SI{1173.23}{keV} or the \num{1.2}--\num{1.35} factor at
-\SI{1332.51}{keV}. The control supports the conclusion that the discrepancy is
-in the detector response or the source model, not in the source encapsulation.
+\subsection{Simulated and experimental spectra at 200 mm}
+\label{sec:spectra_200mm}
 
-\section{Discussion}
+The 200 mm simulated spectra use the existing $10^7$-event monoenergetic runs, with the GPS emission restricted to a 15 degree cone around the detector axis. The cone increases the number of events that reach the crystal by the inverse of the cone solid-angle fraction $f=(1-\cos15^\circ)/2=0.017037$; the equivalent isotropic incident count is $N_{\mathrm{inc,eff}}=N_{\mathrm{gen}}/f=\num{5.87e8}$. The cone run reproduces the isotropic peak efficiencies within about \(1\sigma\): \SI{0.00871}{\percent} versus \SI{0.00843}{\percent} at \SI{661.64}{keV}, \SI{0.00373}{\percent} versus \SI{0.00384}{\percent} at \SI{1173.23}{keV}, and \SI{0.00308}{\percent} versus \SI{0.00326}{\percent} at \SI{1332.51}{keV}. The cone cut removes gammas emitted outside 15 degrees that scatter into the crystal; those gammas contribute mainly to the continuum, so the peak comparison is quantitative and the continuum comparison is qualitative.
 
-\subsection{What the \SI{661.64}{keV} agreement shows}
+Both simulated spectra (with and without resolution) use the same events and the same scaling. The number of emitted gammas is
+\[
+  N_{\mathrm{emit}}=A_{\mathrm{exact}}P_\gamma t_{\mathrm{live}}/100,
+\]
+and the scale factor is $N_{\mathrm{emit}}f/N_{\mathrm{gen}}$. For Cs-137 at 200 mm, $N_{\mathrm{emit}}=\num{2.834e8}$ and the scale factor is 0.4828. For Co-60, the \SI{1173.23}{keV} and \SI{1332.51}{keV} runs are summed, each with its own $N_{\mathrm{emit}}$ (\num{7.031e8} and \num{7.032e8}) and scale factor 1.198. The unsmeared spectrum fills each event at its deposited energy; the smeared spectrum replaces it by a Gaussian draw with $\sigma(E_{\mathrm{dep}})=\mathrm{FWHM}(E_{\mathrm{dep}})/2.3548$. The \SI{2505.74}{keV} sum peak is not present in the monoenergetic runs.
 
-The \SI{661.64}{keV} ratios are \num{1.059}, \num{0.963}, and \num{0.915}.
-The corresponding pulls are \num{1.6}, \num{-0.8}, and \num{-1.4}. The
-simulation and measurement therefore agree within the combined statistical
-uncertainties at all three distances. This agreement tests several ingredients
-at once: the crystal diameter and length, the \SI{2}{mm} crystal recess, the
-source-to-detector distance, the $\pm\SI{2}{\percent}$ analysis window, and
-the conversion from the CSV efficiency to the corrected measured efficiency.
-A \SI{10}{\percent} error in the crystal radius would change the efficiency by
-about \SI{20}{\percent}; a \SI{10}{\percent} error in the source distance would
-change it by about \SI{20}{\percent} at \SI{200}{mm} and less at
-\SI{400}{mm}. Both would be larger than the observed \SI{661.64}{keV}
-differences.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.66\linewidth]{fig_exp_sim_200mm_CS.pdf}
+  \caption{Simulated and experimental Cs-137 spectra at \(d_{\mathrm{nom}}=\SI{200}{mm}\). (a) Raw experimental spectrum (grey), \SI{600}{s} background-subtracted spectrum (black), resolution-smeared simulation (red dashed), and simulation without resolution (blue dotted), all scaled to the measured live time and activity. (b) Ratio of the background-subtracted spectrum to the resolution-smeared simulation over the full x-range; the ratio axis is logarithmic, the dashed line is ratio \(=1\), and the green band is \(\pm10\%\). The simulation uses the 15 degree cone run; the \SI{661.64}{keV} peak is quantitative, the low-energy continuum is qualitative because the simulation contains only the \SI{661.64}{keV} gamma. The experimental file is \texttt{Meas1\_200\_CS\_Clyc2.root}, the background file is \texttt{Hintergrund.root}, and the simulation file is \texttt{clyc\_eff\_200mm\_661p64keV\_cone.root}.}
+  \label{fig:exp_sim_cs}
+\end{figure}
 
-The agreement does not validate the absolute efficiency at the
-\SI{1}{\percent} level. The simulation/measurement ratio is \num{1.059} at
-\SI{200}{mm}, \num{0.963} at \SI{300}{mm}, and \num{0.915} at \SI{400}{mm}.
-The pattern is not monotonic; it is consistent with the
-\SI{3}{}--\SI{7}{\percent} statistical errors of the simulation and the
-\SI{0.5}{\percent} statistical errors of the measurement, plus the systematic
-uncertainties that are not yet quantified. The \SI{661.64}{keV} result is a \SI{10}{\percent}-level
-validation, not a precision calibration.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.66\linewidth]{fig_exp_sim_200mm_Co.pdf}
+  \caption{Simulated and experimental Co-60 spectra at \(d_{\mathrm{nom}}=\SI{200}{mm}\). (a) Raw experimental spectrum (grey), \SI{600}{s} background-subtracted spectrum (black), and the sum of the \SI{1173.23}{keV} and \SI{1332.51}{keV} simulations with resolution (red dashed) and without resolution (blue dotted), all scaled to the measured live time and activity. (b) Ratio of the background-subtracted spectrum to the resolution-smeared simulation over the full x-range; the ratio axis is logarithmic, the dashed line is ratio \(=1\), and the green band is \(\pm10\%\). The \SI{2505.74}{keV} sum peak is absent from the monoenergetic simulation. The ratio in (b) is a bin-by-bin interval comparison; at \SI{1173.23}{keV} the interval contains Compton continuum from the \SI{1332.51}{keV} line, so it is not the full-energy peak efficiency of Table~\ref{tab:comparison}. The experimental file is \texttt{Meas1\_200\_Co\_Clyc2.root}, the background file is \texttt{Hintergrund.root}, and the simulation is the sum of \texttt{clyc\_eff\_200mm\_1173p23keV\_cone.root} and \texttt{clyc\_eff\_200mm\_1332p51keV\_cone.root}.}
+  \label{fig:exp_sim_co}
+\end{figure}
 
-\subsection{Why \SI{1173.23}{keV} and \SI{1332.51}{keV} disagree}
 
-The \SI{1173.23}{keV} simulation is high by \SI{48}{}--\SI{70}{\percent}; the
-\SI{1332.51}{keV} simulation is high by \SI{1}{}--\SI{35}{\percent}. The
-discrepancy is energy dependent: it is small at \SI{661.64}{keV}, large at
-\SI{1173.23}{keV}, and intermediate at \SI{1332.51}{keV}. A geometric error
-would scale all three energies similarly, because the geometric acceptance is
-independent of energy. The \SI{661.64}{keV} agreement therefore argues against
-a geometry error as the primary cause.
 
-The most plausible source-model difference is that the simulation generates
-one monoenergetic gamma per event, while \ce{^{60}Co} emits
-\SI{1173.23}{keV} and \SI{1332.51}{keV} gammas in cascade. In the measurement,
-the two gammas can deposit energy in the crystal in the same event. True
-coincidence summing can add counts to a full-energy peak (summing in) or
-remove counts from it (summing out), depending on the source--detector
-geometry and the surrounding material. The simulation does not include the
-cascade, so it cannot reproduce either effect. The measured
-\SI{1173.23}{keV}/\SI{1332.51}{keV} ratio is inverted relative to the
-reference and the simulation; cascade summing is a plausible explanation for
-an energy-dependent change of this sign and size. The present data do not
-prove this explanation, because the CSV contains net peak areas rather than
-spectra and the simulation has no coincidence model. A \ce{^{60}Co} cascade
-source in Geant4, with both gammas emitted in the same event, is the direct
-test.
+For Cs-137 at 200 mm, the resolution-smeared simulation reproduces the \SI{661.64}{keV} peak: the ratio of the background-subtracted counts to the smeared simulation in the \(\pm2\%\) interval is 0.955, and the smeared simulated peak area is about \SI{5}{\percent} above the measured Gaussian area. The simulation lies below the measured continuum at low energy; the experimental spectrum contains room background and scattered radiation from the source environment, which the monoenergetic simulation does not. The \SI{200}{mm} Cs-137 spectrum has no resolved \SI{32}{keV} Ba X-ray peak, so the source encapsulation may absorb the X-rays; the simulation does not model the encapsulation. The \SI{661.64}{keV} peak itself is the quantitative comparison.
 
-A second source-model difference is the detector response. The simulation
-records total energy deposition and applies a $\pm\SI{2}{\percent}$ window. The
-measurement fits a full-energy peak with a finite resolution and a background.
-If the \SI{1173.23}{keV} and \SI{1332.51}{keV} peaks sit on a larger Compton
-background than the \SI{661.64}{keV} peak, the peak-fit area can be biased by
-the background model. The measured spectra are not in the CSV, so this effect
-cannot be separated from cascade summing with the present data. A consistent
-peak-fit procedure applied to the measured spectra, and a simulation with
-detector resolution and a realistic background, are needed.
+For Co-60 at 200 mm, the table gives $\epsilon_{\mathrm{sim}}/\epsilon_{\mathrm{exp}}=1.30$ at \SI{1173.23}{keV} and 1.11 at \SI{1332.51}{keV}. The bin-by-bin ratio in Fig.~\ref{fig:exp_sim_co}(b) is not the same quantity. The \(\pm2\%\) interval at \SI{1173.23}{keV} is \SI{46.9}{keV} wide, or \num{1.18} FWHM, and contains Compton continuum from the \SI{1332.51}{keV} line: the background-subtracted interval integral is \num{23396} counts, compared with \num{20800} in the Gaussian peak, while the smeared simulation gives \num{24306} counts in the interval and about \num{26200} in the full-energy peak. The interval ratio is therefore \num{0.963}, whereas the full-energy peak ratio is $20{,}819/26{,}210=0.79$ (simulation/measurement \num{1.26}), consistent with the table ratio 1.30. Figure~\ref{fig:exp_sim_co_fits} shows the fitted peaks and their Gaussian and background components; the fitted ratios are 1.21 and 1.04. The \SI{1173.23}{keV} peak area has the \SI{10}{\percent} background-model uncertainty from Sec.~\ref{sec:peak_integration}; the excess is larger. The \SI{1332.51}{keV} agreement is within the peak-integral uncertainty. The experimental Co-60 spectrum has lines at \SI{141.8}{keV} and \SI{222.1}{keV} that are not Co-60 lines and are absent from the simulation. The \SI{2505.74}{keV} sum peak is also absent; at \SI{200}{mm} it is expected to be small, about 5 counts, so it does not explain the \SI{1173.23}{keV} excess. At 200--400 mm the total interaction probability per gamma is about \(3.3\times10^{-4}\), so the summing-out probability is below \SI{0.05}{\percent}. The Co-60 excess is therefore not cascade summing; the Co-60 source geometry or the detector response model is the more likely cause.
 
-A third possibility is an error in the source activity or the emission
-probability for \ce{^{60}Co}. The measured \SI{1173.23}{keV} and
-\SI{1332.51}{keV} efficiencies use the same current activity
-(\SI{11.31e6}{Bq}) and nearly the same emission probabilities
-(\SI{99.97}{\percent} and \SI{99.99}{\percent}). A common activity error would
-shift both efficiencies by the same factor and would not invert their ratio.
-An error in the ratio of the two emission probabilities would have to be about
-\SI{30}{\percent} to explain the measured \num{0.90} ratio, which is much
-larger than the quoted values. The activity explanation is therefore less
-likely than the cascade or peak-fit explanations, but it is not excluded
-without an independent activity measurement.
+The conversion, analysis, and plotting scripts are \path{report/eff_clyc/scripts/convert_exp_spectra.sh}, \path{analyze_exp_spectra.C}, \path{make_exp_sim_figs.C}, and \path{make_distance_figs.C}. The peak-integration summaries are in \path{report/eff_clyc/data/}; the \SI{15}{degree} cone runs are produced by \path{scripts/run_clyc_eff_cone_200mm.sh}.
 
-The \SI{200}{mm} measured points are lower than the \SI{300}{mm} and
-\SI{400}{mm} trends. The \SI{661.64}{keV} \SI{200}{mm} point is
-\SI{5.6}{\percent} below the simulation, while the \SI{1173.23}{keV} and
-\SI{1332.51}{keV} \SI{200}{mm} points are \SI{41}{\percent} and
-\SI{26}{\percent} below. The close geometry increases the solid angle and the
-probability of cascade summing, so the larger discrepancy at \SI{200}{mm} is
-qualitatively consistent with the cascade hypothesis. A source-distance error
-of a few millimetres would change the geometric acceptance by a few percent,
-not by \SI{40}{\percent}; the \SI{661.64}{keV} point at the same distance is
-consistent with the simulation, so a common distance error is unlikely.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.98\linewidth]{fig_exp_sim_200mm_Co_fits.pdf}
+  \caption{Gaussian-plus-background fits to the 200 mm Co-60 spectra. (a) \SI{1173.23}{keV} and (b) \SI{1332.51}{keV}. Black: experiment after the \SI{600}{s} environmental background subtraction. Red dashed: resolution-smeared simulation. Both spectra are fitted over \(\pm1.5\) FWHM of the measured peak with a Gaussian plus quadratic background. For each fit, the thick magenta/orange curve is the peak-plus-background fit, the thin blue/green curve is the Gaussian peak, and the dotted blue/green curve is the background. The fitted peak areas are \num{20592} (experiment) and \num{24885} (simulation) at \SI{1173.23}{keV}, and \num{20670} and \num{21438} at \SI{1332.51}{keV}; the simulation/experiment ratios are 1.21 and 1.04. The quadratic background is used because the \SI{1173.23}{keV} peak sits on the curved Compton continuum from the \SI{1332.51}{keV} line. The data files are \texttt{Meas1\_200\_Co\_Clyc2.root} and \texttt{Hintergrund.root}; the simulation is the sum of \texttt{clyc\_eff\_200mm\_1173p23keV\_cone.root} and \texttt{clyc\_eff\_200mm\_1332p51keV\_cone.root}.}
+  \label{fig:exp_sim_co_fits}
+\end{figure}
 
-\subsection{Intrinsic efficiency}
+\section{Radioactive-Decay Source Response in the Flush Geometry}
+\label{sec:source_response}
 
-Dividing the full-energy peak efficiency by the geometric acceptance of
-Eq.~\eqref{eq:omega} removes the leading distance dependence. The
-\SI{661.64}{keV} intrinsic efficiency is \num{0.083}--\num{0.094} for both
-the simulation and the measurement, with no significant distance trend. The
-\SI{1173.23}{keV} measured intrinsic efficiency is \num{0.024}--\num{0.026},
-compared with \num{0.039}--\num{0.044} in the simulation. The
-\SI{1332.51}{keV} measured intrinsic efficiency is \num{0.025}--\num{0.029},
-compared with \num{0.029}--\num{0.035} in the simulation. The
-\SI{661.64}{keV} agreement and the \SI{1173.23}{keV} disagreement are
-therefore properties of the detector response, not of the distance scaling.
-This is the strongest argument that the geometric acceptance and the source
-placement are not the primary problem.
+Table~\ref{tab:source_eff} lists the simulated peak efficiencies for the nine lines in the flush-source-to-detector-face geometry (\(d_{\mathrm{nom}}=\SI{1}{mm}\), \(d=\SI{3}{mm}\); \(N_{\mathrm{decays}}=10^6\) per source). The file has no detector column and is treated as CLYC1-only; the simulated curve is the same for both detectors because the geometry is identical. Figure~\ref{fig:source_eff} plots the flush simulation alongside the printed CSV values and the geometric acceptance; panel (b) shows the intrinsic efficiencies.
 
-\subsection{Limitations}
+\begin{table}[H]
+  \centering
+  \caption{Simulated peak efficiencies in the
+  flush-source-to-detector-face geometry (\(d_{\mathrm{nom}}=\SI{1}{mm}\),
+  \(d=\SI{3}{mm}\); \(N_{\mathrm{decays}}=10^6\) per source). The efficiency
+  is the number of \SI{1}{\micro\second} pulses in the \(\pm\SI{2}{\percent}\)
+  window divided by \(N_{\mathrm{decays}}P_\gamma\). The source runs use the
+  \SI{1e60}{y} threshold; the \ce{^{241}Am} \SI{1e4}{y} cross-check is
+  discussed in the text. The last column is
+  \(R=\epsilon_{\mathrm{flush}}/\epsilon_{\mathrm{CSV}}\).}
+  \label{tab:source_eff}
+  \footnotesize
+  \setlength{\tabcolsep}{3.5pt}
+  \begin{tabular}{lS[table-format=4.2]S[table-format=2.3]S[table-format=2.2]S[table-format=1.3]}
+    \toprule
+    Source & {$E_\gamma$ [keV]} &
+    {$\epsilon_{\mathrm{flush}}$ [\%]} & {$\epsilon_{\mathrm{CSV}}$ [\%]} &
+    {$R$} \\
+    \midrule
+    \ce{^{137}Cs} & 32.00   & 15.900 & 18.50 & 0.859 \\
+    \ce{^{210}Pb} & 46.54   & 25.233 & 23.85 & 1.058 \\
+    \ce{^{241}Am} & 59.54   & 28.614 & 23.80 & 1.202 \\
+    \ce{^{152}Eu} & 121.78  & 18.006 & 15.40 & 1.169 \\
+    \ce{^{152}Eu} & 344.28  & 6.274  & 4.87  & 1.288 \\
+    \ce{^{137}Cs} & 661.64  & 2.057  & 1.87  & 1.100 \\
+    \ce{^{60}Co}  & 1173.23 & 0.892  & 0.51  & 1.749 \\
+    \ce{^{60}Co}  & 1332.51 & 0.706  & 0.56  & 1.261 \\
+    \ce{^{152}Eu} & 1408.01 & 0.431  & 0.40  & 1.079 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
-The comparison has several limitations. The simulation statistical
-uncertainties are \SI{3}{}--\SI{12}{\percent}; the \SI{400}{mm}
-\SI{1332.51}{keV} point has only \num{71} peak events. The measured
-statistical uncertainties are \SI{0.25}{}--\SI{0.5}{\percent}, but the
-systematic uncertainties of the activity, the distance, the detector
-geometry, and the peak fitting are not included. The simulation has no
-detector resolution, no scintillation light, no light-collection efficiency,
-and no electronics threshold. The measured efficiency is a full-energy peak
-efficiency from a fit; the simulated efficiency is a total-energy-deposition
-window. The two definitions are close but not identical. The CSV contains net
-peak areas rather than spectra, so the peak-fit method cannot be checked. The
-\ce{^{60}Co} cascade is not simulated. The reference column of the CSV is not
-the measured efficiency and is not used as a denominator; it is used only for
-the energy-dependence comparison. These limitations do not affect the
-\SI{661.64}{keV} conclusion, but they limit the interpretation of the
-\SI{1173.23}{keV} and \SI{1332.51}{keV} discrepancies.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.78\linewidth]{fig_flush_comparison.pdf}
+  \caption{Simulated \(\epsilon\) in the flush-source-to-detector-face
+  geometry compared with the printed CSV values. (a) Raw efficiency; the
+  dashed line marks the geometric acceptance
+  \(\epsilon_\Omega(3\,\mathrm{mm})=\SI{38.33}{\percent}\). (b) Intrinsic
+  efficiency; the flush simulation and the CSV are divided by
+  \(\epsilon_\Omega(3\,\mathrm{mm})\).}
+  \label{fig:source_eff}
+\end{figure}
 
-\section{Conclusion and next steps}
+The flush simulation is physically consistent throughout: it stays below the
+\SI{38.33}{\percent} geometric bound at every line, and the \SI{32}{keV} peak
+efficiency (\SI{15.90}{\percent}) is lower than the \SI{46.54}{keV} and
+\SI{59.54}{keV} values because photoelectric absorption in the \SI{2}{mm}
+epoxy puck attenuates the \SI{32}{keV} X-ray. Above \SI{122}{keV}, the
+efficiency drops smoothly with energy to \SI{0.431}{\percent} at
+\SI{1408}{keV}.
 
-The CLYC simulation reproduces the measured \SI{661.64}{keV} full-energy peak
-efficiency within \SI{9}{\percent} at \SI{200}{mm},
-\SI{300}{mm}, and \SI{400}{mm}. The agreement validates the detector geometry,
-the \SI{2}{mm} crystal recess, the source distance, the $\pm\SI{2}{\percent}$
-analysis window, and the correction of the CSV efficiency by a factor of
-\num{1000}. The simulation overestimates the \SI{1173.23}{keV} efficiency by
-\SI{48}{}--\SI{70}{\percent} and the \SI{1332.51}{keV} efficiency by
-\SI{1}{}--\SI{35}{\percent}; the \SI{1173.23}{keV} discrepancy is significant
-at $4$--$8\sigma$. The measured
-\SI{1173.23}{keV}/\SI{1332.51}{keV} ratio is \num{0.90}{}--\num{0.94}, while
-the reference and the simulation give \num{1.21} and \num{1.12}{}--%
-\num{1.49}. The no-puck control changes the \SI{661.64}{keV} efficiency by
-\SI{3.8 \pm 4.8}{\percent}, so the epoxy puck is not the cause.
+A puck touching the detector front face puts the source \SI{1}{mm} from the
+front plane and \SI{3}{mm} from the crystal. The puck is \SI{2}{mm} thick and
+the source is at its centre; the crystal front face is \SI{2}{mm} behind the
+front plane. Eq.~\eqref{eq:omega} then gives
+\(\epsilon_\Omega(3\,\mathrm{mm})=\SI{38.33}{\percent}\). Figure~\ref{fig:source_eff}
+compares the raw and intrinsic efficiencies of the flush simulation with the
+printed CSV values; Table~\ref{tab:source_eff} lists the numbers.
+The flush simulation agrees with the CSV at \SI{46.54}{keV}, \SI{661.64}{keV},
+\SI{1408.01}{keV}, and \SI{59.54}{keV} after the \SI{1}{\micro\second} pulse
+clustering (\(R=\num{1.058}\), \num{1.100}, \num{1.079}, and \num{1.202}); the
+\SI{32.00}{keV} line is \SI{15.90}{\percent} against \SI{18.50}{\percent}
+(\(R=\num{0.859}\)), and the \ce{^{60}Co} lines remain high (\(R=\num{1.749}\)
+and \num{1.261}).
 
-The next steps are:
+The \SI{59.54}{keV} value changed most when the analysis moved from an
+event sum to pulse counting. Summing all hits in an event gives
+\SI{11.41}{\percent} in the flush geometry. The \texttt{hits} tree stores one
+row per shower pulse; merging rows whose leading-edge times differ by at most
+\SI{1}{\micro\second} gives \SI{28.61}{\percent}. The \SI{1e4}{y} cross-check
+gives \SI{28.06}{\percent}; the \num{0.56}-percentage-point difference is the
+late-chain contribution. In the \SI{1e60}{y} file, \num{2204} of the
+\num{101387} rows in the \SI{59.54}{keV} window have \(t\ge\SI{1e21}{ns}\), so
+those pulses come from \ce{^{237}Np} or its descendants rather than from the
+primary decay. They are separate in time from the prompt pulse, so the
+clustering does not remove them; it prevents them from being summed with it.
+The \SI{1e60}{y} run is a full-chain stress test; for a fresh \ce{^{241}Am}
+source the \SI{1e4}{y} result is the physical one.
+
+The \ce{^{60}Co} lines remain high after the pulse clustering. This is not a
+missing-cascade effect: the flush \ce{^{60}Co} simulation includes the cascade,
+so the \SI{1173.23}{keV} and \SI{1332.51}{keV} peaks already include coincidence
+summing and the \SI{2505.74}{keV} sum peak is present. At \SI{3}{mm} the
+summing-out is strong, but the simulation still gives
+\SI{0.892}{\percent} and \SI{0.706}{\percent} against \SI{0.51}{\percent} and
+\SI{0.56}{\percent} in the CSV. The flush hypothesis is plausible for some
+lines and not for others; no parameter was tuned.
+
+\section{Conclusions}
 \begin{enumerate}
-  \item Simulate \ce{^{60}Co} as a cascade source, with both the
-        \SI{1173.23}{keV} and \SI{1332.51}{keV} gammas emitted in the same
-        event, and compare the coincidence-summed full-energy peaks with the
-        measurement.
-  \item Add a detector response model with energy resolution, a light-collection
-        efficiency, and an electronics threshold, and fit the simulated
-        spectra with the same peak model used for the measured spectra.
-  \item Obtain the measured spectra and repeat the peak fit with a consistent
-        background model; check whether the \SI{1173.23}{keV} and
-        \SI{1332.51}{keV} net peak areas change.
-  \item Measure the source activity and the source-to-detector distance
-        independently, and propagate their uncertainties into the efficiency.
-  \item Extend the matrix to more distances and energies, and add a full
-        systematic uncertainty budget before using the simulation for a
-        calibration.
+\setlength{\itemsep}{0pt}
+  \item The geometric solid angle sets a strict physical ceiling $\epsilon\le\epsilon_\Omega(d)$, with upper bounds of \SI{0.0955}{\percent} at \SI{200}{mm}, \SI{0.0428}{\percent} at \SI{300}{mm}, \SI{0.0242}{\percent} at \SI{400}{mm}, and \SI{38.33}{\percent} for the flush-source-to-detector-face geometry ($d=\SI{3}{mm}$).
+  \item The \SI{661.64}{keV} simulation/measurement ratio is 0.98--1.03, with pulls between $-0.4$ and $+0.8\sigma$.
+  \item The \SI{1332.51}{keV} simulation/measurement ratio is 0.92--1.11, with pulls between $-0.8$ and $+1.8\sigma$. The \SI{1173.23}{keV} ratio is 1.19--1.36, with pulls between $+2.0$ and $+4.4\sigma$. The measured \SI{1173}{keV}/\SI{1332}{keV} ratio is 1.00--1.04, compared with 1.18 in the simulation. The line-dependent excess is not cascade summing at 200--400 mm; the Co-60 source geometry or the detector response model is the more likely cause.
+  \item The distance-comparison efficiencies are from Gaussian-plus-linear fits to the 2026-10-27 CLYC2 spectra. The \SI{1173.23}{keV} Gaussian area has a \SI{10}{\percent} background-model systematic from the sideband check; the \SI{661.64}{keV} and \SI{1332.51}{keV} areas agree with the sideband method to about \SI{1}{\percent}. No external efficiency table is used for the distance comparison.
+  \item The flush-source simulation agrees with the \SI{2}{cm} calibration file at \SI{46.54}{keV}, \SI{661.64}{keV}, \SI{1408.01}{keV}, and, after the \SI{1}{\micro\second} pulse clustering, \SI{59.54}{keV}; the \SI{121.78}{keV}, \SI{344.28}{keV} and \ce{^{60}Co} lines remain high, so source position alone does not explain the scale difference.
+  \item The detector resolution is \(R(E)=(123.9\pm0.4)/\sqrt{E/\mathrm{keV}}\,\%\) (FWHM \(=1.239\sqrt{E/\mathrm{keV}}\,\mathrm{keV}\)) over \SI{661}{keV}--\SI{1332}{keV}. The resolution-smeared \SI{200}{mm} simulation reproduces the \SI{661.64}{keV} peak within about \SI{5}{\percent} and the \SI{1332.51}{keV} peak within about \SI{5}{\percent}; the \SI{1173.23}{keV} full-energy peak area is 19--36\% larger than the measurement.
 \end{enumerate}
-
-\appendix
-
-\section{Reproducing the efficiency scan}
-
-The production scan is driven by
-\texttt{scripts/run\_clyc\_eff\_gamma.sh}. The default production mode uses
-\num{1e7} events per point and the nine-point matrix:
-\begin{verbatim}
-cmake --build build -j
-scripts/run_clyc_eff_gamma.sh --production
-\end{verbatim}
-The driver writes the macros, logs, and ROOT files to
-\texttt{build/validation/clyc\_eff/}. The no-puck control is
-\begin{verbatim}
-scripts/run_clyc_eff_gamma.sh --nev 10000000 --nopuck \
-  --distances 200 --energies 661.64
-\end{verbatim}
-The efficiency analysis is
-\texttt{scripts/analyze\_clyc\_eff.C}; one point is analysed with
-\begin{verbatim}
-root -l -b -q \
-  'scripts/analyze_clyc_eff.C("build/validation/clyc_eff/\
-clyc_eff_200mm_661p64keV.root",661.64,10000000,0.00796)'
-\end{verbatim}
-and the same call is repeated for the other eight points with the
-corresponding energy and corrected CSV efficiency. The report figures are
-generated by
-\begin{verbatim}
-root -l -b -q report/eff_clyc/scripts/make_eff_figs.C
-\end{verbatim}
-The event displays are generated by
-\begin{verbatim}
-bash report/eff_clyc/scripts/make_vis_figs.sh
-\end{verbatim}
-The display macros use ten events and a focused source for visibility; they do
-not change the production macros or the efficiency results.
-
-\section{Data and code locations}
-
-\begin{itemize}
-  \item Measurement: \texttt{/home/turko46/data/CLYC\_validation/effDist\_clyc1.csv}.
-  \item Production outputs: \texttt{build/validation/clyc\_eff/}.
-  \item Efficiency analysis: \texttt{scripts/analyze\_clyc\_eff.C}.
-  \item Production driver: \texttt{scripts/run\_clyc\_eff\_gamma.sh}.
-  \item Production templates: \path{macros/validation/clyc_eff_gamma_template.mac}
-        and \path{macros/validation/clyc_eff_gamma_nopuck_template.mac}.
-  \item Detector geometry: \texttt{src/GeometryCLYC.cc} and
-        \texttt{src/DetectorConstruction.cc}.
-  \item Source placement: \texttt{src/PrimaryGeneratorAction.cc}.
-  \item Physics list: \texttt{src/PhysicsList.cc}.
-  \item Report figures: \texttt{report/eff\_clyc/figures/}.
-  \item Figure scripts: \texttt{report/eff\_clyc/scripts/}.
-  \item Event-display macros: \texttt{report/eff\_clyc/vis/}.
-\end{itemize}
 
 \end{document}
