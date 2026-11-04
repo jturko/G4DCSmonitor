@@ -356,10 +356,10 @@ void MakeFigure(const char* outPdf, const char* expFile, const char* bkgFile,
                                  : "Meas1_200_Co_Clyc2.root";
     const TString simName = isCS ? "clyc_eff_200mm_661p64keV_cone.root"
                                  : "clyc_eff_200mm_1173+1332keV_cone.root";
-    TLegend leg(0.02, 0.02, 0.95, 0.32);
-    leg.SetBorderSize(1);
+    TLegend leg(0.18, 0.04, 0.72, 0.33);
+    leg.SetBorderSize(0);
     leg.SetFillColor(kWhite);
-    leg.SetFillStyle(1001);
+    leg.SetFillStyle(0);
     leg.SetTextSize(0.040);
     leg.AddEntry(raw, Form("%s (raw)", expName.Data()), "l");
     leg.AddEntry(net, Form("%s #minus Hintergrund.root",
@@ -531,10 +531,10 @@ void MakeCoFitFigure(const char* outPdf, const char* expFile, const char* bkgFil
     sim->SetDirectory(nullptr);
     for (std::size_t k = 1; k < sims.size(); ++k) sim->Add(sims[k].hist, 1.);
 
-    TCanvas c("c_co_fits", "", 1500, 820);
-    TPad* p1 = new TPad("p_fit1", "", 0.0, 0.24, 0.5, 1.0);
-    TPad* p2 = new TPad("p_fit2", "", 0.5, 0.24, 1.0, 1.0);
-    TPad* pLeg = new TPad("p_fitleg", "", 0.0, 0.0, 1.0, 0.24);
+    TCanvas c("c_co_fits", "", 1000, 580);
+    TPad* p1 = new TPad("p_fit1", "", 0.0, 0.25, 0.5, 1.0);
+    TPad* p2 = new TPad("p_fit2", "", 0.5, 0.25, 1.0, 1.0);
+    TPad* pLeg = new TPad("p_fitleg", "", 0.0, 0.0, 1.0, 0.25);
     p1->Draw();
     p2->Draw();
     pLeg->Draw();
@@ -626,11 +626,17 @@ void MakeCoFitFigure(const char* outPdf, const char* expFile, const char* bkgFil
     }
 
     pLeg->cd();
-    TLegend* leg = new TLegend(0.01, 0.02, 0.99, 0.98);
+    pLeg->SetTopMargin(0.02);
+    pLeg->SetBottomMargin(0.04);
+    pLeg->SetLeftMargin(0.02);
+    pLeg->SetRightMargin(0.02);
+
+    TLegend* leg = new TLegend(0.01, 0.04, 0.99, 0.96);
     leg->SetNColumns(4);
     leg->SetBorderSize(0);
     leg->SetFillStyle(0);
-    leg->SetTextSize(0.09);
+    leg->SetTextFont(62);
+    leg->SetTextSize(0.12);
     auto addLine = [&](Color_t colour, Style_t style, Width_t width,
                        const char* text) {
         TLine* line = new TLine(0., 0., 1., 0.);
@@ -639,14 +645,16 @@ void MakeCoFitFigure(const char* outPdf, const char* expFile, const char* bkgFil
         line->SetLineWidth(width);
         leg->AddEntry(line, text, "l");
     };
-    addLine(kBlack, 1, 2, "experiment #minus 600 s background");
-    addLine(kRed + 1, 2, 2, "simulation + resolution");
-    addLine(kMagenta + 1, 1, 3, "exp fit: peak + background");
-    addLine(kBlue + 1, 1, 1, "exp fit: peak");
-    addLine(kBlue + 1, 3, 1, "exp fit: background");
-    addLine(kOrange + 1, 1, 3, "sim fit: peak + background");
-    addLine(kGreen + 2, 1, 1, "sim fit: peak");
-    addLine(kGreen + 2, 3, 1, "sim fit: background");
+    // Row 1: Experiment items
+    addLine(kBlack, 1, 2, "exp: data #minus bkg");
+    addLine(kMagenta + 1, 1, 3, "exp: fit (peak + bkg)");
+    addLine(kBlue + 1, 1, 2, "exp: fit (peak)");
+    addLine(kBlue + 1, 2, 2, "exp: fit (bkg)");
+    // Row 2: Simulation items
+    addLine(kRed + 1, 2, 2, "sim: + resolution");
+    addLine(kOrange + 1, 1, 3, "sim: fit (peak + bkg)");
+    addLine(kGreen + 2, 1, 2, "sim: fit (peak)");
+    addLine(kGreen + 2, 2, 2, "sim: fit (bkg)");
     leg->Draw();
 
     const TString rawPdf = TString(outPdf).ReplaceAll(".pdf", "_raw.pdf");

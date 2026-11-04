@@ -22,21 +22,35 @@ in a second worktree next to it.
 - There is **no global install** of the binary and nothing is taken from `$PATH`;
   the drivers resolve `build/G4DCSmonitor` relative to their own location and exec
   the absolute path. `BIN=/abs/path/G4DCSmonitor` overrides it.
-- `main` has no `report/`, no `macros/muon/` and no `slurm/` drivers; its
+- `main` has no `report/` and no `macros/muon/`; it has `slurm/` drivers for the
+  p1.5 background-sector production campaign (see `slurm/README.md`); its
   `macros/run.mac` needs **both** `--biasing gamma` on the command line and
   `/dcs-monitor/det/useBiasing true` in the macro (see *CLI / biasing*).
+- The login node reaches HPC data through the sshfs mount `/mnt/bigdata`;
+  `~/bigdata`, `~/my-bigdata-dcs`, and `~/my-bigdata-rimanus` are symlinks into it.
+  Never search it recursively (see the global rules).
 
-## READ-ONLY Geant4 reference tree (`.refs/`) — hard rule
-- **Never modify anything reachable under `.refs/` or the Geant4 install/source
-  trees it points at.** `.refs/` is a read-only reference for understanding Geant4;
-  treat every path you resolve into it as read-only, for reading and searching only.
-- `.refs/` contains symlinks into a machine-local Geant4 v11.3.2:
-  `.refs/examples` → `~/programs/geant4/geant4-v11.3.2/examples`,
-  `.refs/source` → `~/programs/geant4/geant4-v11.3.2/source`,
-  `.refs/include` → `~/programs/geant4/install/include/Geant4`.
-  These paths are machine-specific, so `.refs/` is gitignored — do not commit it.
+## READ-ONLY reference trees (`.refs/`) — hard rule
+- **Never modify anything reachable under `.refs/` or the Geant4/ROOT install and
+  source trees it points at.** `.refs/` is a read-only reference for understanding
+  Geant4 and ROOT; treat every path you resolve into it as read-only, for reading
+  and searching only.
+- `.refs/` mirrors the layout used by the MuonScint worktree, with one directory per
+  project:
+  - Geant4 (v11.3.2): `.refs/geant4/examples` →
+    `~/programs/geant4/geant4-v11.3.2/examples`, `.refs/geant4/source` →
+    `~/programs/geant4/geant4-v11.3.2/source`, `.refs/geant4/include` →
+    `~/programs/geant4/install/include/Geant4`.
+  - ROOT (v6.36.02): `.refs/root/include` → `~/programs/root/build/include` (the
+    configured install headers, e.g. `TFile.h`, generated `RConfigure.h`),
+    `.refs/root/source` → `~/programs/root/root-6.36.02` (full source tree,
+    per-module `inc/` + `src/`), `.refs/root/examples` →
+    `~/programs/root/root-6.36.02/tutorials` (the source tree already contains
+    the tutorials; this link is for parity with `.refs/geant4/examples`).
+- These paths are machine-specific, so `.refs/` is gitignored — do not commit it.
+  Re-create the symlinks in any new worktree.
 - The symlinks cannot enforce read-only (Linux has no read-only symlink); this rule
-  is the guarantee. Use `.refs/` to look up G4 APIs, base classes, and official
+  is the guarantee. Use `.refs/` to look up G4/ROOT APIs, base classes, and official
   example implementations instead of guessing.
 
 ## Build & run

@@ -246,6 +246,9 @@ The `examples/` directory contains validated workflows:
 * **`p1-surface_flux_generation/`** — step 1: generate cask surface flux per source.
 * **`p2-detector_response/`** — step 2: replay surface flux into the CLYC detector,
   exploiting the basket's C6 symmetry. Includes analysis macros.
+* **`slurm/`** — p1.5 background-sector production on the HPC (all background
+  casks × hexants × sources × base fuels into the 64-cell sector shell); see
+  `slurm/README.md`.
 
 ## TODO
 ### **Biasing**
