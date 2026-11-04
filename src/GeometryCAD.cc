@@ -12,52 +12,12 @@
 #include <regex>
 #include <set>
 
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
 GeometryCAD::GeometryCAD() {}
 GeometryCAD::~GeometryCAD() {}
 
-// G4int GeometryCAD::Build()
-// {
-//     // validate=false: the FreeCAD file's xsi:noNamespaceSchemaLocation points at
-//     // a CERN URL; on an offline compute node a validating Read() would try to
-//     // fetch it and fail. Reading with validation off avoids that dependency.
-//     G4GDMLParser parser;
-//     parser.Read(fFileName, /*validate=*/false);
-// 
-//     fCADLog = parser.GetVolume(fVolumeName);   // pull out ONLY the part LV
-//     G4String logName = "CADLog_" + fVolumeName;
-//     fCADLog->SetName(logName);
-//     if (!fCADLog) {
-//         G4ExceptionDescription ed;
-//         ed << "GDML volume \"" << fVolumeName << "\" not found in \""
-//            << fFileName << "\". Check the <volume name=...> in the .gdml.";
-//         G4Exception("GeometryCAD::Build", "NoVolume", FatalException, ed);
-//         return 0;
-//     }
-// 
-//     fCADLog->SetVisAttributes(
-//         new G4VisAttributes(true, G4Colour(0.0, 0.7, 0.9, 0.6)));
-// 
-//     G4cout << " -> GeometryCAD: imported \"" << fVolumeName << "\" from "
-//            << fFileName << " (material="
-//            << (fCADLog->GetMaterial() ? fCADLog->GetMaterial()->GetName()
-//                                       : G4String("<null>"))
-//            << ")." << G4endl;
-//     return 1;
-// }
-
-// G4int GeometryCAD::Build()
-// {
-//     fCADLog = G4LogicalVolumeStore::GetInstance()->GetVolume(fVolumeName, false);
-//     if (!fCADLog) {
-//         G4ExceptionDescription ed;
-//         ed << "GDML volume \"" << fVolumeName << "\" not found. "
-//            << "Was its file read? Check <volume name=...>.";
-//         G4Exception("GeometryCAD::Build", "NoVolume", FatalException, ed);
-//         return 0;
-//     }
-//     fCADLog->SetVisAttributes(new G4VisAttributes(true, G4Colour(0.,0.7,0.9,0.6)));
-//     return 1;
-// }
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 G4int GeometryCAD::Build()
 {
@@ -83,7 +43,7 @@ G4int GeometryCAD::Build()
     return 1;
 }
 
-
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 void GeometryCAD::PlaceDetector(G4LogicalVolume* worldLog, G4ThreeVector move,
                                 G4RotationMatrix* rotate, G4int copyNo)
@@ -93,6 +53,7 @@ void GeometryCAD::PlaceDetector(G4LogicalVolume* worldLog, G4ThreeVector move,
                       worldLog, false, copyNo, /*checkOverlaps=*/true);
 }
 
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 void GeometryCAD::DumpGDMLNames(const G4String& file)
 {
@@ -141,3 +102,32 @@ void GeometryCAD::DumpGDMLNames(const G4String& file)
     if (!bad) G4cout << "     (none - all solidrefs resolve)" << G4endl;
     G4cout << "=================================================\n" << G4endl;
 }
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+G4VisAttributes* GeometryCAD::VisAttributesForMaterial(const G4Material* mat)
+{
+    // Default (unknown material) keeps the original cyan-blue so anything
+    // unmapped is still visible and obviously "unclassified".
+    G4Colour col(0.0, 0.7, 0.9, 0.6);
+
+    if (mat) {
+        const G4String n = mat->GetName();
+
+        if      (n == "GDML_Lead")      col = G4Colour(0.60, 0.40, 0.20, 1.00); // brown
+        else if (n == "GDML_BoratedPE") col = G4Colour(0.00, 1.00, 1.00, 0.55); // teal
+        else if (n == "GDML_PEHD")      col = G4Colour(1.00, 1.00, 0.00, 0.55); // yellow
+        else if (n == "GDML_PETG")      col = G4Colour(0.50, 0.50, 0.50, 1.00); // black
+        // add further materials here as your assembly grows, e.g. Al -> grey:
+        // else if (n == "G4_Al")       col = G4Colour(0.60, 0.60, 0.60, 0.50);
+    }
+
+    auto* va = new G4VisAttributes(true, col);
+    va->SetForceSolid(true);   // solid shading reads better for tessellated CAD parts
+    return va;
+}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+
+
