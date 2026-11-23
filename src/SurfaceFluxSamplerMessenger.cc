@@ -26,6 +26,27 @@ SurfaceFluxSamplerMessenger::SurfaceFluxSamplerMessenger()
     fCSVFileCmd->SetGuidance("Path to MCNP surface-crossing CSV file (pid x y z u v w erg wgt; cm, MeV).");
     fCSVFileCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
 
+    fWSSAFileCmd = new G4UIcmdWithAString("/dcs-monitor/surf/wssaFile", this);
+    fWSSAFileCmd->SetGuidance(
+        "Path to an MCNP binary surface-source (.wssa) file.\n"
+        "The particle type is inferred from the file name ('gamma' or "
+        "'neutron') unless wssaPid is set.");
+    fWSSAFileCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+
+    fWSSAMaxEntriesCmd = new G4UIcmdWithAnInteger("/dcs-monitor/surf/wssaMaxEntries", this);
+    fWSSAMaxEntriesCmd->SetGuidance(
+        "Maximum number of WSSA records retained by uniform reservoir sampling.\n"
+        "  > 0 : retain at most this many records (default 10000000)\n"
+        "  <=0 : retain every record");
+    fWSSAMaxEntriesCmd->SetParameterName("nEntries", false);
+    fWSSAMaxEntriesCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+
+    fWSSAPidCmd = new G4UIcmdWithAnInteger("/dcs-monitor/surf/wssaPid", this);
+    fWSSAPidCmd->SetGuidance(
+        "PDG code of the particles stored in the WSSA file: "
+        "2112=neutron, 22=gamma. 0 = infer from the file name.");
+    fWSSAPidCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+
     fMaxEntriesLoadedFromTreeCmd = new G4UIcmdWithAnInteger("/dcs-monitor/surf/maxEntriesLoadedFromTree", this);
     fMaxEntriesLoadedFromTreeCmd->SetGuidance(
         "Cap on the number of entries read from the input ROOT tree at load time.\n"
@@ -112,6 +133,9 @@ SurfaceFluxSamplerMessenger::~SurfaceFluxSamplerMessenger()
     delete fPidCmd;
     delete fFileCmd;
     delete fCSVFileCmd;
+    delete fWSSAFileCmd;
+    delete fWSSAMaxEntriesCmd;
+    delete fWSSAPidCmd;
     delete fDir;
     delete fMaxEntriesLoadedFromTreeCmd;
 }
@@ -129,6 +153,15 @@ void SurfaceFluxSamplerMessenger::SetNewValue(G4UIcommand* cmd, G4String val)
     // ---- sampler configuration (single source of truth: master) ----
     if (cmd == fFileCmd)        { s.SetSourceFile(val); return; }
     if (cmd == fCSVFileCmd)     { s.SetCSVFile(val); return; }
+    if (cmd == fWSSAFileCmd)    { s.SetWSSAFile(val); return; }
+    if (cmd == fWSSAMaxEntriesCmd) {
+        s.SetWSSAMaxEntries(fWSSAMaxEntriesCmd->GetNewIntValue(val));
+        return;
+    }
+    if (cmd == fWSSAPidCmd) {
+        s.SetWSSAPid(fWSSAPidCmd->GetNewIntValue(val));
+        return;
+    }
     if (cmd == fPidCmd)         { /* PID filter is consumed by Sample(); store on sampler */ 
                                   // We piggy-back on fCaskNum-style state: keep it on the
                                   // sampler so workers read it too.

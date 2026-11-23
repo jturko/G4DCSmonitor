@@ -1,4 +1,5 @@
 #include "SurfaceFluxSampler.hh"
+#include "WSSAReader.hh"
 
 #include "Randomize.hh"
 #include "G4SystemOfUnits.hh"
@@ -14,9 +15,12 @@
 #include "TError.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <queue>
+#include <map>
 #include <memory>
+#include <random>
 #include <string>
 #include <fstream>
 #include <sstream>
@@ -482,6 +486,206 @@ void SurfaceFluxSampler::LoadCSV(const std::string& filename,
            << "   total kept weight = " << fKeptWeightTotal << G4endl;
 }
 
+//....oooOO0OOooo  WSSA loader for MCNP binary surface-source data  oooOO0OOooo
+//
+// The WSSA file stores a surface crossing in each particle record.  A single
+// sequential pass reads all h.nrsw records and keeps a uniform reservoir of at
+// most fWSSAMaxEntries records.  The alias table then samples the retained
+// records in proportion to their weights, and Sample() returns weight = 1, as
+// for the CSV and TTree paths.
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+void SurfaceFluxSampler::LoadWSSA(const std::string& filename,
+                                  G4double /*R_mm*/,
+                                  G4double H_mm,
+                                  G4double /*tol_mm*/)
+{
+    if (fLoaded) return;
+
+    const G4double Hhalf = 0.5 * H_mm;
+    const G4double cm2mm = 10.0;
+
+    wssa::Reader reader;
+    std::string err;
+    if (!reader.open(filename, err)) {
+        G4Exception("SurfaceFluxSampler::LoadWSSA", "OpenFail", FatalException,
+                    ("Cannot open WSSA file: " + filename + " (" + err + ")").c_str());
+        return;
+    }
+    if (!reader.readHeader(err)) {
+        G4Exception("SurfaceFluxSampler::LoadWSSA", "HeaderFail", FatalException,
+                    ("Cannot read WSSA header: " + err).c_str());
+        return;
+    }
+
+    const wssa::Header& h = reader.header();
+    if (h.nrsw <= 0 || h.particleRecordBytes <= 0) {
+        G4Exception("SurfaceFluxSampler::LoadWSSA", "NoRecords", FatalException,
+                    "WSSA file contains no particle records.");
+        return;
+    }
+
+    // Particle type: explicit PDG code, otherwise infer from the file name.
+    G4int pdg = fWSSAPid;
+    if (pdg != 22 && pdg != 2112) {
+        std::string lower = filename;
+        std::transform(lower.begin(), lower.end(), lower.begin(),
+                       [](unsigned char c) {
+                           return static_cast<char>(std::tolower(c));
+                       });
+        if (lower.find("gamma") != std::string::npos) {
+            pdg = 22;
+        } else if (lower.find("neutron") != std::string::npos) {
+            pdg = 2112;
+        } else {
+            G4Exception("SurfaceFluxSampler::LoadWSSA", "PidUnknown", FatalException,
+                        ("Cannot infer the particle type from '" + filename +
+                         "'. Set /dcs-monitor/surf/wssaPid 2112 (neutron) "
+                         "or 22 (gamma).").c_str());
+            return;
+        }
+    }
+
+    // Map WSSA surface identifiers to the side/top/bottom classification used
+    // by Sample().  The files in use store the side as MCNP type 15 (cylinder
+    // parallel to z) and the top as type 4 (plane normal to z).
+    std::map<int, G4int> surfById;
+    for (const auto& s : h.surfaces) {
+        if (s.type == 15) {
+            surfById[s.jss] = 0;                                  // side
+        } else if (s.type == 4) {
+            surfById[s.jss] = (s.coeff >= 0.0) ? 1 : 2;            // top/bottom
+        } else {
+            surfById[s.jss] = 0;
+        }
+    }
+
+    const long long Nmax = (fWSSAMaxEntries > 0)
+        ? std::min<long long>(fWSSAMaxEntries, h.nrsw)
+        : h.nrsw;
+
+    std::vector<Crossing> reservoir;
+    reservoir.reserve(static_cast<std::size_t>(
+        std::min<long long>(Nmax, 10000000LL)));
+
+    std::mt19937_64 rng(12345);
+    long long nValid = 0;
+    long long nDegenerate = 0;
+    long long nUnknownSurf = 0;
+    long long nNonPositiveW = 0;
+    G4double sumW = 0.0;
+
+    TStopwatch sw; sw.Start();
+    wssa::Record rec;
+    for (int64_t i = 0; i < h.nrsw; ++i) {
+        if (!reader.next(rec, err)) {
+            G4ExceptionDescription ed;
+            ed << "WSSA read stopped after " << i << " of " << h.nrsw
+               << " records: " << err;
+            G4Exception("SurfaceFluxSampler::LoadWSSA", "ReadFail",
+                        FatalException, ed);
+            return;
+        }
+
+        const double u = rec.u;
+        const double v = rec.v;
+        const double w = rec.w();
+        const double pMag = std::sqrt(u*u + v*v + w*w);
+        if (!(pMag > 0.0)) {
+            ++nDegenerate;
+            continue;
+        }
+
+        Crossing c;
+        c.pid    = pdg;
+        c.ekin   = static_cast<G4float>(rec.erg);
+        c.x      = static_cast<G4float>(rec.x * cm2mm);
+        c.y      = static_cast<G4float>(rec.y * cm2mm);
+        c.z      = static_cast<G4float>(rec.z * cm2mm - Hhalf);
+        c.px     = static_cast<G4float>(u / pMag);
+        c.py     = static_cast<G4float>(v / pMag);
+        c.pz     = static_cast<G4float>(w / pMag);
+
+        const double wgt = std::max<double>(rec.wgt, 0.0);
+        if (rec.wgt <= 0.0) ++nNonPositiveW;
+        c.weight = static_cast<G4float>(wgt);
+
+        const auto it = surfById.find(rec.surfaceId());
+        if (it != surfById.end()) {
+            c.surf = it->second;
+        } else {
+            // Unknown identifier: treat as side so Sample() keeps the recorded
+            // position instead of projecting onto the cask end cap.
+            c.surf = 0;
+            ++nUnknownSurf;
+        }
+
+        ++nValid;
+        if (static_cast<long long>(reservoir.size()) < Nmax) {
+            reservoir.push_back(c);
+            sumW += wgt;
+        } else if (Nmax > 0) {
+            // Algorithm R: replace a uniformly chosen slot with probability
+            // Nmax / nValid.
+            std::uniform_int_distribution<long long> dist(0, nValid - 1);
+            const long long j = dist(rng);
+            if (j < Nmax) {
+                sumW += wgt - std::max<double>(reservoir[j].weight, 0.0);
+                reservoir[j] = c;
+            }
+        }
+
+        if (i > 0 && (i % 10000000LL) == 0) {
+            G4cout << "[SurfaceFluxSampler::LoadWSSA] read " << i
+                   << " / " << h.nrsw << " records (" << reservoir.size()
+                   << " retained)" << G4endl;
+        }
+    }
+
+    if (reservoir.empty()) {
+        G4Exception("SurfaceFluxSampler::LoadWSSA", "NoData", FatalException,
+                    "No valid WSSA particle records found.");
+        return;
+    }
+
+    fAll.data = std::move(reservoir);
+    BuildAlias(fAll);
+
+    // The reservoir sample is uniform, so scaling its weight sum by
+    // nValid / N_sample estimates the total weight of the whole file.
+    fKeptWeightTotal = (static_cast<long long>(fAll.data.size()) < nValid)
+        ? sumW * static_cast<G4double>(nValid) /
+              static_cast<G4double>(fAll.data.size())
+        : sumW;
+
+    fKeepRecordedPosition = true;
+    fLoaded = true;
+
+    const long long nSide = std::count_if(
+        fAll.data.begin(), fAll.data.end(),
+        [](const Crossing& c) { return c.surf == 0; });
+    const long long nTop = std::count_if(
+        fAll.data.begin(), fAll.data.end(),
+        [](const Crossing& c) { return c.surf == 1; });
+    const long long nBottom = std::count_if(
+        fAll.data.begin(), fAll.data.end(),
+        [](const Crossing& c) { return c.surf == 2; });
+
+    sw.Stop();
+    G4cout << "[SurfaceFluxSampler::LoadWSSA] Loaded " << fAll.data.size()
+           << " of " << nValid << " valid records (file declares " << h.nrsw
+           << ", pid=" << pdg << ") in " << sw.RealTime() << " s\n"
+           << "   retained weight sum = " << sumW
+           << ", estimated full-file weight = " << fKeptWeightTotal << '\n'
+           << "   surfaces: side=" << nSide << ", top=" << nTop
+           << ", bottom=" << nBottom << '\n';
+    if (nDegenerate || nUnknownSurf || nNonPositiveW) {
+        G4cout << "   skipped/marked: degenerate direction=" << nDegenerate
+               << ", unknown surface=" << nUnknownSurf
+               << ", non-positive weight=" << nNonPositiveW << G4endl;
+    }
+}
+
 const SurfaceFluxSampler::Bucket*
 SurfaceFluxSampler::GetBucket(G4int /*pid*/) const { return &fAll; }
 
@@ -545,8 +749,11 @@ bool SurfaceFluxSampler::Sample(G4ThreeVector& posLocal,
         }
     } else {
         // ----------------- circular END-CAP (top=1, bottom=2) -----------------
+        // The TTree/CSV sources store cap crossings at the cask-local cap
+        // plane.  A WSSA file stores the exact crossing position, which can
+        // lie slightly outside the Geant4 cap, so keep it there.
         const G4double sign = (c.surf == 1) ? +1.0 : -1.0;
-        zL = sign * (0.5 * fPendingH_mm);
+        if (!fKeepRecordedPosition) zL = sign * (0.5 * fPendingH_mm);
         if (fSmearZ > 0.) {                       // reuse fSmearZ as in-plane sigma
             xL = c.x + G4RandGauss::shoot(0., fSmearZ);
             yL = c.y + G4RandGauss::shoot(0., fSmearZ);
@@ -607,6 +814,16 @@ void SurfaceFluxSampler::DoLoad()
         G4cout << "[SurfaceFluxSampler] Lazy load (CSV) on thread "
                << G4Threading::G4GetThreadId() << " : " << fPendingCSVFile << G4endl;
         LoadCSV(fPendingCSVFile, fPendingR_mm, fPendingH_mm, fPendingTol_mm);
+    } else if (fInputFormat == 2) {
+        // ---- WSSA binary input ----
+        if (fPendingWSSAFile.empty()) {
+            G4Exception("SurfaceFluxSampler::DoLoad", "NoFile", FatalException,
+                        "No WSSA file set. Use /dcs-monitor/surf/wssaFile <path>.");
+            return;
+        }
+        G4cout << "[SurfaceFluxSampler] Lazy load (WSSA) on thread "
+               << G4Threading::G4GetThreadId() << " : " << fPendingWSSAFile << G4endl;
+        LoadWSSA(fPendingWSSAFile, fPendingR_mm, fPendingH_mm, fPendingTol_mm);
     } else {
         // ---- TTree input (original path) ----
         if (fPendingFile.empty()) {

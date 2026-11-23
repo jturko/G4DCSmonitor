@@ -1,0 +1,864 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[margin=2.0cm]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{siunitx}
+\usepackage{amsmath,amssymb}
+\usepackage[font=small,labelfont=bf]{caption}
+\usepackage{subcaption}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,calc}
+\usepackage{xcolor}
+\usepackage{float}
+\usepackage{hyperref}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!50!black,
+  citecolor=blue!50!black,
+  urlcolor=blue!50!black
+}
+
+\sisetup{detect-all}
+\graphicspath{{figures/}}
+
+\title{MCNP WSSA Surface Sources:\\
+Binary Reader, Reference-Map Validation, and Geant4 Replay}
+\author{G4DCSmonitor simulation notes}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\noindent
+The CASTOR~440/84 detector-response simulation needs a source that enters
+through the cask surface.  The six MCNP surface-source files used here are
+written in the binary \texttt{.wssa} format (11.4--54.2~GB per file,
+$1.19\times10^{8}$--$5.64\times10^{8}$ particle records).  This report documents
+two uses of one header-only parser: an offline ROOT reader that validates the
+files against the supplied reference maps, and a Geant4 loader that replays the
+same records as primary vertices.
+
+For the offline reader, 200\,000 random records per file are binned in
+$\varphi$--$z$ and energy, and the reference PNGs are decoded through their
+colour bars.  The resulting 2D map correlations are 0.859--0.987; the
+$\varphi$-profile correlations are 0.902--0.994 for the clockwise-from-$+y$
+convention, which is higher than the counter-clockwise-from-$+x$ convention for
+all six files.  The $z$-profile correlations are 0.952--0.999.  The lowest 2D
+score is Cask~3 gamma (0.859), whose $\varphi$ and $z$ profiles remain at 0.982
+and 0.952.  The supplied maps are dose-rate maps, while the reader sums MCNP
+weights, so the comparison tests geometry and orientation, not absolute dose.
+
+For the Geant4 replay, \texttt{LoadWSSA} reads every record once, retains a
+uniform reservoir sample (default $10^{7}$), builds a Walker alias table from the
+retained weights, and returns unit-weight primaries at the recorded positions.
+A 20-event neutron test and a 20-event gamma test reproduce the expected PDG
+codes, unit directions, and energy ranges.  The gamma test read
+$4.66\times10^{8}$ records in 214.5~s with a 10\,000-record reservoir.  Both
+replay tests are analog and must not be combined with importance biasing.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+\section{Motivation and scope}
+
+The simulation has two distinct source paths.  In the first, a separate program
+reads an MCNP surface-source file and produces histograms that can be compared
+with the reference maps supplied with the data.  In the second, Geant4 draws
+primary vertices directly from the same file for detector response.  Keeping one
+parser for both paths avoids two format implementations that could disagree.
+
+The source files are:
+\begin{center}
+\path{/home/turko46/data/wti/Cask1/},
+\path{/home/turko46/data/wti/Cask2/}, and
+\path{/home/turko46/data/wti/Cask3/}.
+\end{center}
+Each directory contains a neutron and a gamma file, plus a matching reference
+PNG.  The file inventory is given in Table~\ref{tab:files}.  The report is
+organised as two parts:
+\begin{enumerate}
+  \item \textbf{Part~1} is an offline ROOT reader.  It parses the header,
+        samples records, fills $\varphi$--$z$ and energy histograms, and compares
+        the resulting maps with the reference images.
+  \item \textbf{Part~2} is the Geant4 implementation.  It loads the same file
+        into \texttt{SurfaceFluxSampler}, samples crossings with an alias table,
+        and generates primary vertices in the WSSA replay source mode.
+\end{enumerate}
+Figure~\ref{fig:workflow} shows the shared parser and the two branches.
+
+\begin{figure}[t]
+\centering
+\resizebox{0.98\linewidth}{!}{%
+\begin{tikzpicture}[
+  font=\small,
+  box/.style={draw, rounded corners=2pt, align=center, inner sep=4pt,
+              text width=3.3cm, minimum height=10mm},
+  arr/.style={-{Latex[length=2mm]}, thick},
+  node distance=7mm and 9mm
+]
+\node[box] (wssa) {MCNP \texttt{.wssa}\\six files};
+\node[box, right=of wssa] (reader) {\texttt{WSSAReader.hh}\\header + records};
+\node[box, above right=of reader] (root) {\texttt{read\_wssa.C}\\ROOT histograms};
+\node[box, right=of root] (val) {reference PNG\\decode + correlate};
+\node[box, below right=of reader] (load) {\texttt{LoadWSSA}\\reservoir + alias};
+\node[box, right=of load] (g4) {\texttt{CASTOR440\_}\\\texttt{surface\_from\_WSSA}};
+\draw[arr] (wssa) -- (reader);
+\draw[arr] (reader) -- (root);
+\draw[arr] (root) -- (val);
+\draw[arr] (reader) -- (load);
+\draw[arr] (load) -- (g4);
+\node[above=1mm of root, font=\small\itshape]
+  {Part 1: offline reader and validation};
+\node[below=1mm of load, font=\small\itshape]
+  {Part 2: Geant4 replay};
+\end{tikzpicture}}
+\caption{The shared binary parser and the two source branches.  Both branches
+read the same particle records and use the same surface identifiers; only the
+consumer differs.}
+\label{fig:workflow}
+\end{figure}
+
+The report is not a detector-response validation and does not convert the
+reference maps to an absolute dose.  It establishes that the reader reproduces
+the supplied angular and longitudinal structure, and that the Geant4 loader
+produces valid primaries.  Production yields still require a full detector run.
+
+% ---------------------------------------------------------------------------
+\section{The WSSA file format}\label{sec:format}
+
+\subsection{Record structure}
+
+A \texttt{.wssa} file is a sequence of Fortran unformatted records.  Each record
+is stored as
+\begin{center}
+\texttt{[4-byte length][payload][4-byte length]}
+\end{center}
+with little-endian byte order.  The prefix and trailer are equal; the reader
+checks both and stops on a mismatch.  The payload size is the number of bytes
+between the markers.  The header records and the particle stream are summarised
+in Table~\ref{tab:format} and Figure~\ref{fig:format}.
+
+\begin{table}[t]
+\centering
+\caption{Record layout used by all six files.  The record numbers are the
+physical Fortran records, not particle indices.  The payload sizes are the
+values read by \texttt{WSSAReader.hh}; a record may carry additional padding,
+which is ignored.}
+\label{tab:format}
+\footnotesize
+\begin{tabular}{@{}l l p{9.7cm}@{}}
+\toprule
+Record & Payload & Contents \\
+\midrule
+envelope & $4+n+4$ B & little-endian length markers; prefix and trailer must match \\
+0 & 8 B & format identifier; the files contain \texttt{SF\_00001} \\
+1 & $\ge$191 B & code name, version, build date, two date strings, \texttt{aid}, \texttt{knod} \\
+2 & 32 B & \texttt{np} (i8), \texttt{nrsw} (i8), \texttt{nd} (i4), \texttt{njss} (i4), \texttt{nqsw} (i8) \\
+3 & $\ge$12 B & \texttt{nilw} (i4), \texttt{mipt} (i4), \texttt{kq} (i4), padding \\
+\texttt{njss} $\times$ surface & 20/24 B & \texttt{jss}, [\texttt{jsq}], \texttt{type}, \texttt{n}, \texttt{coeff}; 24 B when \texttt{kq}$\neq$0 \\
+\texttt{nilw} $\times$ selected & variable & selected-surface records; none in these files \\
+1 summary & variable & skipped by its recorded length \\
+\texttt{nrsw} $\times$ particle & 88/56 B & 11 doubles, or 7 doubles for the symmetric variant; see text \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The header fields have the following meaning in this reader:
+\begin{itemize}
+  \item \texttt{np} and \texttt{nrsw} are 64-bit counts.  \texttt{nrsw} is the
+        number of particle records, which is the count used by both consumers;
+        \texttt{np} is retained as header metadata.
+  \item \texttt{njss} is the number of surface records.  All six files have
+        \texttt{njss}=4, \texttt{nilw}=0, \texttt{kq}=1, and \texttt{mipt}=37.
+  \item The surface records describe three copies of the side cylinder and one
+        top plane.  The side records have \texttt{jss}=11, 13, 15,
+        \texttt{type}=15, and coefficient 17\,755.5625; the reader converts this
+        to $R=1332.5$~mm.  The top record has \texttt{jss}=903,
+        \texttt{type}=4, and coefficient 408.9, giving $z=4089$~mm.  There is no
+        bottom-plane record.
+\end{itemize}
+
+\begin{figure}[t]
+\centering
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}[font=\scriptsize,
+  rec/.style={draw, align=center, inner sep=2pt, minimum height=6mm},
+  arr/.style={-{Latex[length=1.2mm]}, thick}]
+\node[rec] (r0) {R0\\identifier};
+\node[rec, right=1mm of r0] (r1) {R1\\run info};
+\node[rec, right=1mm of r1] (r2) {R2\\counts};
+\node[rec, right=1mm of r2] (r3) {R3\\flags};
+\node[rec, right=1mm of r3] (rs) {\texttt{njss} surface\\records};
+\node[rec, right=1mm of rs] (rm) {summary\\record};
+\node[rec, right=1mm of rm] (rp) {\texttt{nrsw} particle\\records};
+\draw[arr] (r0) -- (r1);
+\draw[arr] (r1) -- (r2);
+\draw[arr] (r2) -- (r3);
+\draw[arr] (r3) -- (rs);
+\draw[arr] (rs) -- (rm);
+\draw[arr] (rm) -- (rp);
+
+\node[rec, below=11mm of r0.west, anchor=west] (p0) {\texttt{nps}};
+\node[rec, right=1mm of p0] (p1) {$b$};
+\node[rec, right=1mm of p1] (p2) {\texttt{wgt}};
+\node[rec, right=1mm of p2] (p3) {\texttt{erg}};
+\node[rec, right=1mm of p3] (p4) {\texttt{tme}};
+\node[rec, right=1mm of p4] (p5) {$x$};
+\node[rec, right=1mm of p5] (p6) {$y$};
+\node[rec, right=1mm of p6] (p7) {$z$};
+\node[rec, right=1mm of p7] (p8) {$u$};
+\node[rec, right=1mm of p8] (p9) {$v$};
+\node[rec, right=1mm of p9] (p10) {$c$};
+\node[above=2mm of p0, anchor=west, font=\scriptsize\itshape]
+  {one particle record: 11 doubles (88 B payload)};
+\end{tikzpicture}}
+\caption{Top: the record sequence read before the particle stream.  Bottom: the
+fields of one 88-byte particle record.  The 4-byte length markers are not drawn.
+The reader also accepts a 56-byte symmetric record
+(\texttt{nps}, $b$, \texttt{wgt}, \texttt{erg}, \texttt{tme}, $c_s$, $c$), but
+the six files use the 88-byte form.}
+\label{fig:format}
+\end{figure}
+
+\subsection{Particle records and units}
+
+The 88-byte record contains eleven doubles in this order:
+\begin{center}
+\texttt{nps}, $b$, \texttt{wgt}, \texttt{erg}, \texttt{tme},
+$x$, $y$, $z$, $u$, $v$, $c$.
+\end{center}
+The fields used by the source are:
+\begin{itemize}
+  \item \texttt{nps}: history or source-point number; the reader stores its
+        absolute value.
+  \item $b$: a sign carrier.  Only the sign is used, to reconstruct the third
+        direction cosine
+        \begin{equation}
+          w = \operatorname{sgn}(b)\sqrt{\max(0,\,1-u^2-v^2)}.
+        \end{equation}
+        Both consumers then normalise $(u,v,w)$ to a unit vector.
+  \item \texttt{wgt}: the MCNP statistical weight.
+  \item \texttt{erg}: energy in MeV.
+  \item $x,y,z$: position in cm, with $z=0$ at the floor.  The reader converts
+        to mm by multiplying by ten; the Geant4 loader additionally shifts by
+        $-H/2$ to the cask-centred frame.
+  \item $u,v$: direction cosines in $x$ and $y$.
+  \item $c$: surface label; its integer part is the surface identifier
+        (\texttt{floor(c)}).  The fractional part is not used.
+\end{itemize}
+The 56-byte symmetric variant stores only seven doubles
+(\texttt{nps}, $b$, \texttt{wgt}, \texttt{erg}, \texttt{tme}, $c_s$, $c$); it
+has no explicit position or direction.  It is supported by the parser but does
+not occur in these files.
+
+\begin{table}[t]
+\centering
+\caption{The six source files and their reference images.  Sizes are decimal
+GB; record counts are \texttt{nrsw} from the header.  The reference PNGs are the
+maps used in Part~1.}
+\label{tab:files}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}l l r r l@{}}
+\toprule
+File & Particle & Size [GB] & Records & Reference PNG \\
+\midrule
+\texttt{Cask1\_neutrons.wssa} & $n$ & 47.1 & \num{491077633} & \texttt{Cask1\_neutrons.png} \\
+\texttt{Cask1\_gamma.wssa}    & $\gamma$ & 39.0 & \num{405872062} & \texttt{Cask1\_gamma.png} \\
+\texttt{Cask2\_neutrons.wssa} & $n$ & 54.2 & \num{564324097} & \texttt{Cask2\_neutrons.png} \\
+\texttt{Cask2\_gamma.wssa}    & $\gamma$ & 38.8 & \num{404226959} & \texttt{Cask2\_gamma.png} \\
+\texttt{Cask3\_neutrons.wssa} & $n$ & 11.4 & \num{118939773} & \texttt{Cask3\_neutrons.png} \\
+\texttt{Cask3\_gamma.wssa}    & $\gamma$ & 44.7 & \num{465772433} & \texttt{Cask3\_gamma.png} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Geometry and frame}
+
+The WSSA geometry and the Geant4 cask geometry are close but not identical
+(Table~\ref{tab:geometry} and Figure~\ref{fig:geometry}).  The WSSA side
+cylinder is at $R=1332.5$~mm; the Geant4 body is $R=1270$~mm and the fin tips
+reach about 1330~mm.  The WSSA top plane is at $z=4089$~mm; the Geant4 cask is
+4080~mm high.  The loader keeps the recorded crossing positions, so a top
+record within 9~mm of the plane can start slightly above the Geant4 cap.  The
+side surface is 2.5~mm outside the fin tips.
+
+\begin{table}[t]
+\centering
+\caption{WSSA and Geant4 geometry.  The loader uses the cask height for the
+$z$ shift; the radial and tolerance arguments are not used for WSSA because the
+recorded positions are kept.}
+\label{tab:geometry}
+\footnotesize
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.4cm}
+                  >{\raggedright\arraybackslash}p{4.3cm}
+                  >{\raggedright\arraybackslash}p{3.8cm}
+                  >{\raggedright\arraybackslash}p{4.8cm}@{}}
+\toprule
+Quantity & WSSA & Geant4 & Consequence \\
+\midrule
+Side surface & \texttt{jss} 11/13/15, type 15, $R=1332.5$~mm
+             & body $R=1270$~mm; fin tips $\approx1330$~mm
+             & recorded side is 2.5~mm outside the fin tips \\
+Top surface  & \texttt{jss} 903, type 4, $z=4089$~mm
+             & cask height 4080~mm
+             & top plane is 9~mm above the G4 cap \\
+Bottom surface & none & bottom cap at $z=-2040$~mm
+             & no bottom records; the loader would map them to surface~2 \\
+Frame        & floor-based cm; $z=0$ at floor
+             & cask-centred mm; $z=0$ at mid-height
+             & loader uses $z_{\mathrm{mm}}-H/2$ \\
+Particle     & 11 doubles (88~B)
+             & \texttt{Crossing}: 8 floats and 2 ints (40~B)
+             & direction normalised; weight kept in the alias table \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[font=\small, scale=1.0]
+\draw[->, thick] (0,0) -- (0,4.65) node[above] {$z$ [m]};
+\draw[->, thick] (0,0) -- (1.65,0) node[right] {$r$ [m]};
+\draw[fill=gray!12] (0,0) rectangle (1.27,4.08);
+\draw[dashed] (1.33,0) -- (1.33,4.08);
+\draw[blue, thick] (1.3325,0) -- (1.3325,4.089);
+\draw[red, thick] (0,4.089) -- (1.3325,4.089);
+\draw[dashed] (0,4.08) -- (1.3325,4.08);
+\node at (0.63,2.0) {cask body};
+\node[blue, align=left, anchor=west] at (1.38,2.5)
+  {WSSA side\\$R=1.3325$~m};
+\node[align=left, anchor=west] at (1.38,1.2)
+  {fin tips\\$R\approx1.33$~m};
+\node[red, align=left, anchor=south west] at (0.15,4.10)
+  {WSSA top plane\\$z=4.089$~m};
+\node[align=left, anchor=north west] at (0.15,4.04)
+  {G4 cap\\$z=4.080$~m};
+\end{tikzpicture}
+\caption{Qualitative cross-section of the cask and the WSSA surfaces.  The
+drawing is not to scale: the 2.5~mm side offset and the 9~mm top offset are
+annotated but not visible at this scale.  The exact dimensions are in
+Table~\ref{tab:geometry}.}
+\label{fig:geometry}
+\end{figure}
+
+% ---------------------------------------------------------------------------
+\section{Part 1: offline ROOT reader}\label{sec:part1}
+
+\subsection{Parser and histograms}
+
+\texttt{include/WSSAReader.hh} is a header-only, dependency-free parser.  It
+opens the file, reads the header records, records the byte offset of the first
+particle record, and exposes
+\begin{itemize}
+  \item \texttt{next(Record\&, err)} for a sequential pass, and
+  \item \texttt{readAt(index, Record\&, err)} for O(1) random access.
+\end{itemize}
+Random access is valid because every particle record in these files has the
+same on-disk size; \texttt{readAt} seeks to
+\texttt{particleStart + index*particleRecordBytes}.  The reader validates the
+prefix and trailer of every record and uses a 1~MiB buffer.  The parser is
+shared with the Geant4 loader, so a format fix applies to both paths.
+
+\texttt{scripts/wssa/read\_wssa.C} is the ROOT consumer.  It samples either
+random indices or the first $N$ records and fills:
+\begin{itemize}
+  \item \texttt{hE}: 120 log-spaced energy bins from $10^{-9}$ to 20~MeV,
+        weighted by \texttt{wgt};
+  \item \texttt{hPhiZ}: the main $\varphi$--$z$ map; the 200k runs use
+        36 $\varphi$ bins and 41 $z$ bins over 0--4000~mm;
+  \item \texttt{hPhiZ\_alt}: the same map in the complementary orientation;
+  \item \texttt{hPhiZ\_0\_4000}: a presentation map with 36 $\varphi$ bins and
+        80 $z$ bins over 0--4000~mm;
+  \item \texttt{hPhiZ\_side}, \texttt{hPhiZ\_top}, and
+        \texttt{hPhiZ\_unknown}: maps split by the surface classification;
+  \item \texttt{hPhi} and \texttt{hZ}: the one-dimensional projections.
+\end{itemize}
+The ROOT file also contains a \texttt{TNamed} called \texttt{wssa\_info} with
+the input path, \texttt{nrsw}, \texttt{njss}, \texttt{kq}, the processed count,
+the mode, and the weighting flag.
+
+The angle conventions are:
+\begin{align}
+  \text{mode 0:}\quad & \varphi = \operatorname{atan2}(y,x),\\
+  \text{mode 1:}\quad & \varphi = 90^\circ - \operatorname{atan2}(y,x),\\
+  \text{mode 2:}\quad & \varphi = -\operatorname{atan2}(y,x),
+\end{align}
+each reduced to $[0,360^\circ)$.  Mode~1 is clockwise from $+y$; mode~0 is
+counter-clockwise from $+x$; mode~2 is clockwise from $+x$.  The default and
+the mode used for the 200k validation runs is mode~1, because the supplied
+reference images use a clockwise angle.
+
+The surface classification in the ROOT reader is geometric.  For a record with
+surface identifier \texttt{id}, the reader looks up the header coefficient
+\texttt{coeff} and computes
+\[
+  d_{\text{cyl}} = \left|\sqrt{\texttt{coeff}} - \sqrt{x^2+y^2}\right|,
+  \qquad
+  d_{\text{plane}} = \left|\texttt{coeff} - z\right|,
+\]
+with both distances in cm.  A record is on the side if
+$d_{\text{cyl}}<0.5$~cm and $d_{\text{cyl}}<d_{\text{plane}}$; it is on the top
+if $d_{\text{plane}}<0.5$~cm; otherwise it is unknown.  In the six 200k samples
+the unknown count is zero.
+
+\subsection{Sampling and integral checks}
+
+The 200k runs use
+\texttt{nEvents}=200000, \texttt{randomMode=true}, \texttt{phiMode=1},
+\texttt{weighted=true}, 36 $\varphi$ bins, 41 $z$ bins, $z_{\max}=4000$~mm,
+120 energy bins, $E_{\min}=10^{-9}$~MeV, $E_{\max}=20$~MeV, and seed 12345.
+The random sample is drawn with \texttt{std::mt19937\_64}; it is not a
+reservoir and it can select the same record more than once.  The histograms are
+filled with the record weight, so the sample sum is the sum of the selected
+weights, not the total source strength.
+
+\begin{table}[t]
+\centering
+\caption{200\,000-record random samples.  Side and top are the geometric
+classification counts from \texttt{read\_wssa.C}; unknown is zero in every
+file.  The energy range is the range of the sampled records; the sum of weights
+is the sample sum, not a full-file normalisation.  All 200\,000 energies fell
+inside the histogram range.}
+\label{tab:samples}
+\footnotesize
+\begin{tabular}{@{}l r r r l l@{}}
+\toprule
+File & Side & Top & Unknown & Energy [MeV] & Sum of weights \\
+\midrule
+\texttt{Cask1\_neutrons} & \num{182891} & \num{17109} & 0
+  & $4.54\times10^{-9}$--15.41 & $7.69\times10^{11}$ \\
+\texttt{Cask1\_gamma}    & \num{199985} & \num{15} & 0
+  & $6.33\times10^{-3}$--3.18 & $1.47\times10^{15}$ \\
+\texttt{Cask2\_neutrons} & \num{189811} & \num{10189} & 0
+  & $3.38\times10^{-9}$--17.61 & $5.32\times10^{10}$ \\
+\texttt{Cask2\_gamma}    & \num{199988} & \num{12} & 0
+  & $3.17\times10^{-3}$--2.94 & $5.80\times10^{14}$ \\
+\texttt{Cask3\_neutrons} & \num{144430} & \num{55570} & 0
+  & $3.02\times10^{-9}$--15.30 & $1.98\times10^{12}$ \\
+\texttt{Cask3\_gamma}    & \num{199942} & \num{58} & 0
+  & $4.27\times10^{-3}$--3.88 & $9.33\times10^{14}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The energy histogram integral equals the sum of the filled weights in all six
+samples.  This checks the weight handling and the log-bin edges.  The top
+fraction is large only for Cask~3 neutrons (55\,570 of 200\,000, or 27.8\%);
+the gamma files have 12--58 top records per 200\,000.  The top records lie at
+$z=4089$~mm, outside the 0--4000~mm maps used for the image comparison; the
+side/top counts are tallies, not map entries.
+
+A separate sequential check on 2\,000 Cask~3 neutron records shows consecutive
+bit-identical groups.  The groups have multiplicities up to 16.  These are
+MCNP importance-splitting copies: the same history crosses the surface more than
+once and receives a different weight.  The reader keeps them; the Geant4 alias
+table samples them in proportion to their weights.  No de-duplication is
+applied.
+
+\subsection{Reference-map decoding}
+
+The reference PNGs are 1600$\times$800 images with the same layout: a plot frame
+and a vertical colour bar.  For these six images the frame is at
+$x=177$--$1346$, $y=69$--$653$, and the colour bar is at $x=1375$--$1433$.
+The decoder:
+\begin{enumerate}
+  \item detects the frame and colour bar from the long dark lines;
+  \item samples the centre of the colour bar from top to bottom and assigns
+        value 1 to the top (red) end and 0 to the bottom (blue) end;
+  \item builds a nearest-colour lookup from the bar samples and maps every
+        heat-map pixel to that ordinal value;
+  \item masks white pixels, black pixels, and colours farther than 35 RGB units
+        from the bar;
+  \item maps the remaining pixels to $\varphi\in[0,360^\circ)$ from left to
+        right and $z\in[0,4000]$~mm from bottom to top;
+  \item averages the pixels in the same bins as the ROOT histogram and computes
+        the Pearson correlation of the binned maps and of the two profiles.
+\end{enumerate}
+The decoded value is an ordinal colour-bar coordinate, not a calibrated dose.
+The reference maps are dose-rate maps; the ROOT maps are sums of MCNP weights.
+The comparison therefore tests the spatial structure and the angle convention,
+not the absolute normalisation.  All 36$\times$80 reference bins are finite, so
+the 2D correlation uses the full map.
+
+The 2D score uses \texttt{hPhiZ\_0\_4000} (36$\times$80).  The
+$\varphi$-profile score uses the native 36$\times$41 \texttt{hPhiZ} and
+\texttt{hPhiZ\_alt}; the profile is the mean over the 41 $z$ bins, normalised to
+its maximum.  The $z$-profile score uses the 36$\times$80 map and the mean over
+the 36 $\varphi$ bins.  The image is binned with the histogram's own edges, so
+the two orientation maps are compared on the same 36$\times$41 grid.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{fig_maps_Cask3.pdf}
+\caption{Cask~3 maps: (a) reference neutrons, (b) reader neutrons,
+(c) reference gamma, (d) reader gamma.  Each panel is divided by its own
+maximum and drawn on a common 0--1 scale; the reference is a dose-rate map and
+the reader map is a sum of weights.  The correlation printed in a reader panel
+is the 36$\times$80 map correlation.  The reader panels use mode~1
+(clockwise from $+y$).}
+\label{fig:maps}
+\end{figure}
+
+\subsection{Results}
+
+Table~\ref{tab:validation} lists the correlations for all six files.
+Figure~\ref{fig:maps} shows the Cask~3 maps, Figure~\ref{fig:profiles} shows the
+Cask~3 neutron profiles, and Figure~\ref{fig:scores} summarises all six files.
+
+\begin{table}[t]
+\centering
+\caption{Pearson correlations between the decoded reference image and the
+200k reader maps.  The 2D column is the 36$\times$80 map over 0--4000~mm; the
+$\varphi$ columns are the native 36$\times$41 maps; the $z$ column is the
+36$\times$80 map.  Peaks are image/reader.  The superscript marks the Cask~1
+gamma double lobe discussed below.}
+\label{tab:validation}
+\footnotesize
+\begin{tabular}{@{}l r r r r l l@{}}
+\toprule
+File & 2D & $\varphi$ mode 1 & $\varphi$ mode 0 & $z$
+     & $z$ peak [mm] & $\varphi$ peak [deg] \\
+\midrule
+\texttt{Cask1\_neutrons} & 0.982 & 0.902 & 0.702 & 0.998 & 1825/1825 & 265/265 \\
+\texttt{Cask1\_gamma}    & 0.979 & 0.994 & 0.898 & 0.994 & 1775/1625 & 255/75\textsuperscript{a} \\
+\texttt{Cask2\_neutrons} & 0.985 & 0.959 & $-0.398$ & 0.999 & 1775/1775 & 275/265 \\
+\texttt{Cask2\_gamma}    & 0.987 & 0.994 & 0.428 & 0.999 & 1775/1925 & 105/95 \\
+\texttt{Cask3\_neutrons} & 0.964 & 0.983 & $-0.718$ & 0.992 & 1775/1825 & 95/95 \\
+\texttt{Cask3\_gamma}    & 0.859 & 0.982 & $-0.394$ & 0.952 & 1775/1975 & 95/95 \\
+\bottomrule
+\end{tabular}
+\par\smallskip
+\begin{minipage}{0.96\linewidth}
+\footnotesize
+\textsuperscript{a}The Cask~1 gamma map has two near-equal maxima.  The image
+maxima are $85^\circ$ (0.9972) and $255^\circ$ (1.0000); the reader maxima are
+$75^\circ$ (1.0000) and $265^\circ$ (0.9910).  The table lists the global
+maxima.  The $\varphi$-profile correlation is 0.994, so the double lobe is
+reproduced; the 10$^\circ$ offset is one 10$^\circ$ bin.
+\end{minipage}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.86\linewidth]{fig_validation_profiles.pdf}
+\caption{Cask~3 neutrons: (a) $z$ profile and (b) $\varphi$ profile.  The
+reference image is compared with the reader map; mode~0 is shown to make the
+orientation choice explicit.  Profiles are normalised to their maxima.  The
+correlations are 0.992 for $z$ and 0.983 for $\varphi$ in mode~1.}
+\label{fig:profiles}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.95\linewidth]{fig_validation_scores.pdf}
+\caption{(a) Correlation between the reference image and the reader map for all
+six files: 2D map, $\varphi$ profile in mode~1, and $z$ profile.
+(b) $\varphi$-profile correlation for mode~1 and mode~0.  Mode~1 is higher for
+every file; the mode~0 correlation is negative for Cask~2 neutrons, Cask~3
+neutrons, and Cask~3 gamma.}
+\label{fig:scores}
+\end{figure}
+
+The main observations are:
+\begin{itemize}
+  \item \textbf{The 2D maps agree.}  Five of the six correlations are at least
+        0.964.  Cask~3 gamma is the lowest at 0.859; its $\varphi$ and $z$
+        profiles are 0.982 and 0.952, so the main structures are present and
+        the difference is in the bin-level map.
+  \item \textbf{Mode~1 is the reference convention.}  The
+        $\varphi$-profile correlation is higher in mode~1 for all six files.
+        For Cask~1 neutrons the native 2D maps are almost tied
+        (0.990 in mode~1, 0.989 in mode~0), but the $\varphi$ profile
+        separates them (0.902 versus 0.702); the projection is the more
+        sensitive orientation test.
+  \item \textbf{The Cask~1 gamma double lobe is reproduced.}  The image has
+        maxima near $85^\circ$ and $255^\circ$; the reader has maxima near
+        $75^\circ$ and $265^\circ$.  The global maximum is at $255^\circ$ in the
+        image and at $75^\circ$ in the reader, which is why the table's peak
+        column looks mismatched; the profile correlation 0.994 shows that the
+        two-lobe shape agrees.
+  \item \textbf{The gamma $z$ peak is weighting-sensitive.}  The reader peak is
+        150~mm lower than the image for Cask~1 gamma, and 150--200~mm higher for
+        Cask~2 and Cask~3 gamma.  The $z$ correlations remain 0.994, 0.999, and
+        0.952.  The reference is a dose-rate map and the reader is a sum of
+        weights, so a broad gamma distribution can move the peak without
+        changing the overall profile.  The neutron peaks agree within 50~mm.
+  \item \textbf{The comparison is morphological.}  The colour-bar decoding is
+        ordinal, the absolute dose normalisation is not used, and the top 89~mm
+        of the WSSA source is outside the 0--4000~mm maps.  The scores are a
+        consistency check, not a calibration.
+\end{itemize}
+
+\subsection{Energy spectra}
+
+Figure~\ref{fig:energy} shows the weighted energy spectra of the Cask~3
+neutron and gamma samples.  The neutron sample spans
+$3.02\times10^{-9}$--15.30~MeV; the gamma sample spans
+$4.27\times10^{-3}$--3.88~MeV.  The histograms use 120 log-spaced bins from
+$10^{-9}$ to 20~MeV and are filled with \texttt{wgt}.  In all six files the
+histogram integral equals the sample weight sum, and no sampled energy falls
+outside the range.  The energy plots characterise the files; no independent
+energy reference is supplied, so they are not a separate validation.
+
+\begin{figure}[t]
+\centering
+\begin{subfigure}{0.49\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{fig_energy_Cask3_neutrons.png}
+  \caption{Cask~3 neutrons}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.49\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{fig_energy_Cask3_gamma.png}
+  \caption{Cask~3 gamma}
+\end{subfigure}
+\caption{Weighted energy spectra from the 200k random samples.  The $x$ axis is
+logarithmic.  The neutron spectrum extends to 15.3~MeV; the gamma spectrum is
+concentrated at lower energies and extends to 3.88~MeV.  The histograms are
+sums of MCNP weights, not counts per unit energy.}
+\label{fig:energy}
+\end{figure}
+
+% ---------------------------------------------------------------------------
+\section{Part 2: Geant4 replay}\label{sec:part2}
+
+\subsection{Loader and reservoir}
+
+\texttt{SurfaceFluxSampler::LoadWSSA} uses the same \texttt{WSSAReader} in a
+single sequential pass.  It reads all \texttt{nrsw} records and keeps a uniform
+reservoir sample of at most
+\[
+  N_{\max} = \min(\texttt{wssaMaxEntries},\,\texttt{nrsw}).
+\]
+The default \texttt{wssaMaxEntries} is $10^{7}$; a value $\le0$ keeps every
+record.  The reservoir uses Algorithm~R: the first $N_{\max}$ valid records are
+kept, and each later valid record replaces a uniformly chosen slot with
+probability $N_{\max}/n_{\mathrm{valid}}$.  The random generator is seeded with
+12345.  The reservoir is uniform over the valid records, so scaling its weight
+sum by $n_{\mathrm{valid}}/N_{\mathrm{sample}}$ estimates the full-file weight:
+\[
+  \texttt{fKeptWeightTotal} =
+  \begin{cases}
+    \displaystyle \texttt{sumW}\,
+      \frac{n_{\mathrm{valid}}}{N_{\mathrm{sample}}}, & N_{\mathrm{sample}}<n_{\mathrm{valid}},\\[6pt]
+    \texttt{sumW}, & N_{\mathrm{sample}}=n_{\mathrm{valid}}.
+  \end{cases}
+\]
+The loader prints this estimate, the retained surface counts, and the number of
+skipped or marked records.
+
+A record is valid if its reconstructed direction has non-zero magnitude
+($\sqrt{u^2+v^2+w^2}>0$).  Degenerate directions are skipped.  A non-positive
+weight is clamped to zero but the record is kept and counted separately; the
+alias table gives it zero probability.  If every retained weight is zero, the
+alias builder falls back to a uniform distribution.  The positions are converted
+from cm to mm and shifted by $-H/2$; the direction is normalised.  The surface
+classification uses the header:
+\begin{itemize}
+  \item \texttt{type}=15 $\rightarrow$ side (surface~0);
+  \item \texttt{type}=4 and \texttt{coeff}$\ge0$ $\rightarrow$ top (surface~1);
+  \item \texttt{type}=4 and \texttt{coeff}$<0$ $\rightarrow$ bottom (surface~2);
+  \item any other type, or an identifier absent from the header, $\rightarrow$
+        side (surface~0), with an unknown-surface counter.
+\end{itemize}
+The header in these files has no bottom surface, so the bottom branch is not
+exercised by the six files.  The loader sets
+\texttt{fKeepRecordedPosition=true}; \texttt{Sample()} therefore keeps the
+recorded side and cap positions instead of projecting them onto the Geant4 cap.
+This is what preserves the 9~mm top-plane difference described in
+Section~\ref{sec:format}.
+
+The alias table is built from the retained weights.  \texttt{Sample()} draws a
+uniform slot, compares the fractional part with that slot's alias probability,
+and selects either the slot or its alias.  It returns \texttt{weight=1.0}: the
+input weight is carried by the alias probabilities, not by the primary weight.
+The default $10^{7}$ reservoir is bounded in memory; the retained
+\texttt{Crossing} is 40~bytes and the alias arrays add 12~bytes per entry, so
+the default sample is roughly half a gigabyte.  The six files have
+$1.19\times10^{8}$--$5.64\times10^{8}$ records, so the default cap is a
+reservoir, not a full-file cache.
+
+\subsection{Source mode and commands}
+
+The WSSA source mode reuses the existing external-surface vertex path.  The
+sampler returns a cask-local position and direction; the primary generator
+applies the selected cask rotation and translation, sets the particle from the
+PDG code, and writes the primary vertex.  The primary tree therefore stores global coordinates after
+the cask rotation, not the raw WSSA coordinates.  The cask index and the optional
+$z$ rotation are the same controls used by the CSV and TTree replay modes.
+
+\begin{table}[t]
+\centering
+\caption{WSSA replay commands.  The file, particle type, and reservoir cap are
+the required settings.  The radial and tolerance arguments of the sampler are
+not used for WSSA; the loader uses the cask height for the $z$ shift and keeps
+the recorded positions.}
+\label{tab:commands}
+\footnotesize
+\begin{tabular}{@{}l l p{7.4cm}@{}}
+\toprule
+Command & Default & Purpose \\
+\midrule
+\texttt{/dcs-monitor/surf/wssaFile} & -- & path to the \texttt{.wssa} file; selects WSSA input \\
+\texttt{/dcs-monitor/surf/wssaMaxEntries} & 10\,000\,000 & reservoir cap; $\le0$ retains all \\
+\texttt{/dcs-monitor/surf/wssaPid} & 0 & 2112 for neutrons, 22 for gammas; 0 infers from the filename \\
+\texttt{/dcs-monitor/surf/sourcePid} & 0 & PDG filter; 0 means any \\
+\texttt{/dcs-monitor/gun/sourceMode} & -- & set to \texttt{CASTOR440\_surface\_from\_WSSA} \\
+\texttt{/dcs-monitor/surf/caskNum} & 0 & cask index used for placement \\
+\texttt{/dcs-monitor/surf/sourceRotZ} & 0 & rotate the source about $+z$ (C6 hexant reuse) \\
+\texttt{/dcs-monitor/surf/smearPhi}, \texttt{smearZ}, & 0 & optional resampling widths \\
+\texttt{smearAngle}, \texttt{smearEfrac} & & \\
+\texttt{/dcs-monitor/surf/numPrimaries} & -- & set by the user for \texttt{startRun} normalisation \\
+\texttt{/dcs-monitor/surf/startRun} & -- & compute primaries from activity and kept weight \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The replay is analog.  The WSSA file already contains the MCNP source weights,
+and the alias table carries them; adding importance biasing would apply a second
+weighting and is not supported for this mode.  Do not pass \texttt{--biasing}
+with \texttt{CASTOR440\_surface\_from\_WSSA}.
+
+\subsection{Smoke tests}
+
+Two 20-event tests verify the full path.  The neutron test uses a 20-event copy
+of the CLYC template macro with \texttt{Cask3\_neutrons.wssa} and a
+10\,000-record reservoir.  The gamma test uses a cask-only macro with
+\texttt{Cask3\_gamma.wssa} and the same cap.  Both write the primary tree and
+were checked with a small ROOT macro.
+
+\begin{table}[t]
+\centering
+\caption{Smoke tests of the WSSA replay.  The load time is the single-threaded
+reader time reported by \texttt{TStopwatch} on the local NVMe storage.  The
+gamma sample retained 9\,998 side and 2 top records.  The neutron test used the
+CLYC detector; the gamma test used only the cask.  The primary tree stores
+global coordinates after the cask rotation and translation, so radius and $z$
+ranges in the tree are not the raw WSSA ranges.}
+\label{tab:tests}
+\footnotesize
+\begin{tabular}{@{}l r r r r r l r@{}}
+\toprule
+Test & Records & Retained & Load [s] & Events & PID & Energy [MeV] & $|\vec p|$ \\
+\midrule
+Neutron & \num{118939773} & \num{10000} & 49.3 & 20 & 2112
+        & $2.22\times10^{-6}$--7.73 & 1.000 \\
+Gamma   & \num{465772433} & \num{10000} & 214.5 & 20 & 22
+        & 0.172--1.859 & 1.000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The neutron test produced 20 primaries with PDG 2112, energies
+$2.22\times10^{-6}$--7.73~MeV, and unit direction vectors.  The gamma test
+produced 20 primaries with PDG 22, energies 0.172--1.859~MeV, and unit
+direction vectors.  The gamma full pass read $4.66\times10^{8}$ records in
+214.5~s, about $208~\mathrm{MB\,s^{-1}}$; the retained 10\,000 records are a
+small fraction of the file, as intended for a smoke test.  The load time
+dominates these 20-event runs; it is not a detector-throughput measurement.
+
+\subsection{Limitations}
+
+The following points bound the conclusions:
+\begin{itemize}
+  \item The reference maps are dose-rate maps; the reader and replay use MCNP
+        weights.  The image comparison is morphological.  An absolute
+        comparison would require an energy-dependent dose conversion, which was
+        deliberately not applied.
+  \item The 200k sample is a random sample, not a reservoir; it can repeat
+        records and its weight sum is not the full source strength.  The
+        correlations are stable because the maps are smooth, but they are not
+        an uncertainty budget.
+  \item The image decoding reduces the colour bar to an ordinal and bins the
+        pixels to the histogram grid.  The frame and colour-bar positions are
+        detected per image; the scores are not independent of that decoding.
+  \item The WSSA top plane is at 4089~mm and the Geant4 cap is at 4080~mm.  The
+        loader keeps the recorded positions, so records within 9~mm of the top
+        can start above the cap.  The side surface is 2.5~mm outside the fin
+        tips.  These are geometric approximations, not format errors.
+  \item The reservoir is uniform over valid records; the full-file weight
+        estimate assumes that the reservoir is representative.  The alias table
+        preserves the relative weights within the retained sample.  The
+        \texttt{fKeptWeightTotal} value is an estimate, not an exact sum over
+        the file.
+  \item The smoke tests use 20 events and a 10\,000-record cap.  They verify the
+        loader, particle codes, directions, and energy ranges; they do not
+        produce a detector yield or a production statistical uncertainty.
+  \item The replay is analog.  Combining it with importance biasing would
+        double-weight the source and is not supported.
+\end{itemize}
+
+% ---------------------------------------------------------------------------
+\section{Summary and next steps}
+
+The binary format is understood and implemented once.  The offline reader
+reproduces the supplied $\varphi$--$z$ structure: the 2D correlations are
+0.859--0.987, the mode~1 $\varphi$ profiles are 0.902--0.994, and the $z$
+profiles are 0.952--0.999.  Mode~1 (clockwise from $+y$) is the reference
+convention for all six files.  The Cask~1 gamma double lobe and the
+weighting-sensitive gamma $z$ peak are the two places where a simple peak
+comparison is misleading; the profile correlations resolve both.
+
+The Geant4 path reads the same records, retains a uniform reservoir, builds an
+alias table, and returns unit-weight primaries at the recorded positions.  The
+neutron and gamma smoke tests confirm the particle codes, unit directions, and
+energy ranges.  The gamma full pass demonstrates that the 44.7~GB file can be
+read in a few minutes with the default 10M cap.
+
+The next step is a detector-response run with
+\texttt{CASTOR440\_surface\_from\_WSSA} for the cask and particle type of
+interest, followed by a comparison of the detector tally with the reference
+dose map.  If a quantitative gamma comparison is needed, the ROOT reader can be
+extended with an energy-dependent dose weight; the current reader deliberately
+sums weights so that the same records can be replayed in Geant4 without a second
+normalisation.
+
+% ---------------------------------------------------------------------------
+\appendix
+\section{Reproduction commands}\label{app:repro}
+
+The following commands reproduce the 200k sample, the validation, and the
+report figures.  Run them from the repository root unless noted.
+
+{\small
+\begin{verbatim}
+# 1. 200k random sample for Cask 3 neutrons
+WSSA=/home/turko46/data/wti/Cask3/Cask3_neutrons.wssa
+OUT=scripts/wssa/output/Cask3_neutrons_rand200k_36x41
+root -l -b -q "scripts/wssa/read_wssa.C(\"$WSSA\",\"$OUT\",\
+200000,true,1,true,36,41,4000.0,120,1e-9,20.0,12345)"
+
+# 2. Validate one file and rebuild all report figures
+python3 report/wti-binary-reader/scripts/validate_wssa.py \
+  --image /home/turko46/data/wti/Cask3/Cask3_neutrons.png \
+  --root "$OUT.root"
+python3 report/wti-binary-reader/scripts/make_validation_figs.py
+
+# 3. Geant4 replay (from the build directory)
+cd build
+./G4DCSmonitor run_wssa_surface.mac
+\end{verbatim}
+}
+
+The validation script writes the full profile table and the score lines; the
+report uses the six copies in \texttt{report/wti-binary-reader/data/}.  The
+figure script copies the validation text, reads the 200k ROOT files, and writes
+the map, profile, score, and energy figures.  It requires ROOT, NumPy, SciPy,
+Pillow, and Matplotlib.
+
+The template macro uses Cask~3 neutrons, a 10M cap, and a beam-on count of
+1000.  Reduce the cap and the beam-on count for a quick test; set
+\texttt{wssaPid} to 22 and change the file path for a gamma run.  The gamma
+smoke test used a cask-only macro and 20 events.
+
+\end{document}

@@ -1,0 +1,97 @@
+#
+# Test macro: MCNP binary surface-source (.wssa) -> primary tree scoring
+#
+# Usage (from the build directory):
+#   ./G4DCSmonitor run_wssa_surface.mac
+#
+# Edit the wssaFile path below before running.
+#
+
+#
+# output verbosity
+# ------------------------------------------
+#/control/verbose 1
+#/run/verbose 1
+#/tracking/verbose 1
+
+# MT settings
+# ------------------------------------------
+/run/numberOfThreads 1
+
+# CLYC detector
+# ------------------------------------------
+/dcs-monitor/det/setPosition 0 0 -1400 mm
+/dcs-monitor/det/setRotation 0 0 0
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/clyc/setCrystalMaterial CLYC
+/dcs-monitor/det/clyc/setCrystalRadius 12.5 mm
+/dcs-monitor/det/clyc/setCrystalLength 25.0 mm
+/dcs-monitor/det/clyc/setCasingMaterial G4_Al
+/dcs-monitor/det/clyc/setCasingThickness 0.5 mm
+/dcs-monitor/det/clyc/setLiFColMaterial LiF
+/dcs-monitor/det/clyc/setLiFColLength 0.0 mm
+/dcs-monitor/det/clyc/setPbColMaterial G4_Pb
+/dcs-monitor/det/clyc/setPbColLength 50.0 mm
+/dcs-monitor/det/clyc/setPEColMaterial G4_POLYETHYLENE
+/dcs-monitor/det/clyc/setPEColLength 50.0 mm
+/dcs-monitor/det/clyc/setPEPlugLipLength 10.0 mm
+/dcs-monitor/det/clyc/setPEPlugInnerLength 35.0 mm
+
+# CASTOR 440/84 pos 1
+# ------------------------------------------
+/dcs-monitor/det/setPosition 0 0 0 m
+/dcs-monitor/det/setRotation -90 0 0
+/dcs-monitor/det/castor440/add
+
+# initialize the run
+# ------------------------------------------
+/run/initialize
+
+# setup long threshold for radioactive decay
+# ------------------------------------------
+/process/had/rdm/thresholdForVeryLongDecayTime 1e60 year
+
+#
+# MCNP WSSA surface source
+# ------------------------------------------
+# Set the path to the binary surface-source file here.
+# Particle type: 2112 = neutron, 22 = gamma.  If omitted (0), it is inferred
+# from the file name.
+#
+/dcs-monitor/surf/wssaFile /home/turko46/data/wti/Cask3/Cask3_neutrons.wssa
+/dcs-monitor/surf/wssaPid 2112
+
+# Uniform reservoir sample: retain at most this many records (default 10M).
+# Set to 0 to retain every record (requires enough memory).
+/dcs-monitor/surf/wssaMaxEntries 10000000
+
+# Optional: PID filter (0=any, 2112=neutron, 22=gamma)
+/dcs-monitor/surf/sourcePid 0
+
+# Optional: smearing (all off by default)
+#/dcs-monitor/surf/smearPhi 0.01
+#/dcs-monitor/surf/smearZ 1.0 mm
+#/dcs-monitor/surf/smearAngle 0.01
+#/dcs-monitor/surf/smearEfrac 0.01
+
+# Cask index for placement
+/dcs-monitor/surf/caskNum 0
+
+# Select the WSSA surface source mode
+/dcs-monitor/gun/sourceMode CASTOR440_surface_from_WSSA
+
+#
+# Scoring: write the primary vertex tree
+# ------------------------------------------
+/dcs-monitor/run/writePrimary true
+/dcs-monitor/run/writePrimaryOnlyOnHit false
+
+# root output
+# ------------------------------------------
+/analysis/setFileName wssa_surface_test
+
+#
+# start the run
+# ------------------------------------------
+# Generate a small number of primaries to verify the pipeline
+/run/beamOn 1000

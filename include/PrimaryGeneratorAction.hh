@@ -20,6 +20,7 @@ enum SourceMode {
     kCASTOR440_surface,
     kCASTOR440_surface_from_TTree,
     kCASTOR440_surface_from_CSV,
+    kCASTOR440_surface_from_WSSA,
     kBACKGROUND_SECTOR_from_TTree,
     kCASTOR440_fuel,
     kCASTOR440_fuel_biased
@@ -72,7 +73,7 @@ class PrimaryGeneratorAction : public G4VUserPrimaryGeneratorAction
     void GenerateVertexCASTOR440FuelFlux(G4Event* event);               // CASTOR fuel flux (isotropic)
     void GenerateVertexCASTOR440FuelFluxWithGeomBias(G4Event* event);   // CASTOR fuel flux (isotropic w. geom CLYC bias)
     void GenerateVertexCASTOR440SurfaceFromTree(G4Event*);              // CASTUR surface flux from TTree input based on surfaceFlux 
-    void GenerateVertexCASTOR440SurfaceFromCSV(G4Event*);               // CASTOR surface flux from MCNP CSV input
+    void GenerateVertexCASTOR440SurfaceFromExternal(G4Event*);          // CASTOR surface flux from CSV or WSSA input
     void GenerateVertexBackgroundSectorFromTree(G4Event*);              // unit-weight sector background replay
 
     // calculate/set the vertex position

@@ -89,6 +89,7 @@ add_executable(G4DCSmonitor G4DCSmonitor.cc ${sources} ${headers})
 #
 set(G4DCSmonitor_SCRIPTS
     vis.mac vis_ogl.mac vis_vrml.mac run.mac run_csv_surface.mac
+    run_wssa_surface.mac
   )
 
 foreach(_script ${G4DCSmonitor_SCRIPTS})

@@ -1,6 +1,7 @@
 build/
 .refs/
 .cache/
+scripts/wssa/output/
 main.aux
 main.fdb_latexmk
 main.fls

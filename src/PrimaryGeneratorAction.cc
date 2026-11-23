@@ -81,7 +81,8 @@ PrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
             break;
 
         case kCASTOR440_surface_from_CSV:
-            GenerateVertexCASTOR440SurfaceFromCSV(anEvent);
+        case kCASTOR440_surface_from_WSSA:
+            GenerateVertexCASTOR440SurfaceFromExternal(anEvent);
             break;
 
         case kBACKGROUND_SECTOR_from_TTree:
@@ -448,7 +449,7 @@ void PrimaryGeneratorAction::GenerateVertexCASTOR440SurfaceFromTree(G4Event* eve
 // and C6 rotation logic in Sample() is identical.
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-void PrimaryGeneratorAction::GenerateVertexCASTOR440SurfaceFromCSV(G4Event* event)
+void PrimaryGeneratorAction::GenerateVertexCASTOR440SurfaceFromExternal(G4Event* event)
 {
     auto& s = SurfaceFluxSampler::Instance();
     const G4int caskNum = s.GetPlacementCask();
@@ -469,7 +470,7 @@ void PrimaryGeneratorAction::GenerateVertexCASTOR440SurfaceFromCSV(G4Event* even
 
     if (!s.Sample(posLocal, dirLocal, ekin, weight, pid)) {
         G4Exception("PrimaryGeneratorAction", "SurfaceSampleFail",
-                    FatalException, "No matching crossings in CSV sampler.");
+                    FatalException, "No matching crossings in surface sampler.");
         return;
     }
 

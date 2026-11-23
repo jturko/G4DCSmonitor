@@ -40,6 +40,16 @@ class SurfaceFluxSampler
                  G4double caskHeight_mm,
                  G4double surfaceTolerance_mm = 2.0);
 
+    // Binary MCNP surface-source (.wssa) loader.  The file is read once in a
+    // single sequential pass; at most fWSSAMaxEntries records are retained by
+    // uniform reservoir sampling, then the alias table is built from the
+    // retained weights.  The particle type is taken from SetWSSAPid() or, if
+    // that is 0, inferred from the file name ("gamma" or "neutron").
+    void LoadWSSA(const std::string& filename,
+                  G4double caskOuterRadius_mm,
+                  G4double caskHeight_mm,
+                  G4double surfaceTolerance_mm = 2.0);
+
     bool Sample(G4ThreeVector& posLocal,
                 G4ThreeVector& dirLocal,
                 G4double&      ekin,
@@ -56,7 +66,15 @@ class SurfaceFluxSampler
     // CSV input support
     void SetCSVFile(const std::string& f) { fPendingCSVFile = f; fInputFormat = 1; }
     const std::string& GetCSVFile() const { return fPendingCSVFile; }
-    G4int  GetInputFormat() const { return fInputFormat; }   // 0=TTree, 1=CSV
+    G4int  GetInputFormat() const { return fInputFormat; }   // 0=TTree, 1=CSV, 2=WSSA
+
+    // WSSA input support
+    void SetWSSAFile(const std::string& f) { fPendingWSSAFile = f; fInputFormat = 2; }
+    const std::string& GetWSSAFile() const { return fPendingWSSAFile; }
+    void SetWSSAMaxEntries(long long n) { fWSSAMaxEntries = n; }
+    long long GetWSSAMaxEntries() const { return fWSSAMaxEntries; }
+    void SetWSSAPid(G4int p) { fWSSAPid = p; }
+    G4int GetWSSAPid() const { return fWSSAPid; }
     void SetGeometryParameters(G4double R_mm, G4double H_mm,
                                G4double tol_mm = 2.0) {
         fPendingR_mm   = R_mm;
@@ -122,7 +140,11 @@ class SurfaceFluxSampler
     std::string fPendingFile;
     std::string fPendingTree = "surfaceFlux";
     std::string fPendingCSVFile;
-    G4int       fInputFormat = 0;   // 0=TTree, 1=CSV
+    std::string fPendingWSSAFile;
+    long long   fWSSAMaxEntries = 10000000;
+    G4int       fWSSAPid        = 0;   // 0 = infer from file name
+    G4bool      fKeepRecordedPosition = false;
+    G4int       fInputFormat = 0;   // 0=TTree, 1=CSV, 2=WSSA
     G4double    fPendingR_mm   = -1.;
     G4double    fPendingH_mm   = -1.;
     G4double    fPendingTol_mm =  2.;

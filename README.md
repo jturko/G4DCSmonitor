@@ -162,6 +162,15 @@ The particle source distribution mode is controlled via
     the cask, and into the detector. Configured via the `/dcs-monitor/surf/...` driver
     (see below). This is the engine behind the two-part workflow in
     `examples/p1-surface_flux_generation` and `examples/p2-detector_response`.
+6.  **`CASTOR440_surface_from_CSV`**: Phase-space replay from MCNP surface-crossing
+    CSV data (`pid x y z u v w erg wgt`, cm and MeV). Configured with
+    `/dcs-monitor/surf/csvFile [path]`.
+7.  **`CASTOR440_surface_from_WSSA`**: Phase-space replay directly from an MCNP
+    binary surface-source (`.wssa`) file. The file is read once; a uniform reservoir
+    sample of up to `/dcs-monitor/surf/wssaMaxEntries` records is retained, and the
+    alias table is built from the retained weights. Configured with
+    `/dcs-monitor/surf/wssaFile [path]` and `/dcs-monitor/surf/wssaPid [pdg]`.
+    `macros/run_wssa_surface.mac` is a working template.
 
 ### Watt Fission-Spectrum Source
 For neutron sources, the `CASTOR440_fuel*` modes can sample energies from a Watt
@@ -174,14 +183,20 @@ spectrum (Cashwell–Everett rejection algorithm):
 | `/dcs-monitor/gun/wattB [val]`            | Watt parameter `b` (1/MeV). | 2.249 /MeV |
 
 ### Surface-Flux Replay Driver (`/dcs-monitor/surf/...`)
-Used with `sourceMode CASTOR440_surface_from_TTree`. The sampler (`SurfaceFluxSampler`,
-a master-side singleton) loads the tree once, builds a Walker alias table, and lets
-worker threads draw crossings in O(1).
+Used with `sourceMode CASTOR440_surface_from_TTree`, `CASTOR440_surface_from_CSV`,
+or `CASTOR440_surface_from_WSSA`. The sampler (`SurfaceFluxSampler`, a master-side
+singleton) loads the input once, builds a Walker alias table, and lets worker threads
+draw crossings in O(1). Setting `sourceFile`, `csvFile`, or `wssaFile` selects the
+input format. All three replay modes are analog: do not pass `--biasing`.
 
 | Command | Description |
 | :--- | :--- |
 | `sourceFile [path]`            | Path to the step-1 ROOT file (`surfaceFlux` tree). |
-| `maxEntriesLoadedFromTree [n]` | Cap entries read at load time (`<=0` = all). |
+| `csvFile [path]`               | Path to an MCNP surface-crossing CSV file. |
+| `wssaFile [path]`              | Path to an MCNP binary surface-source (`.wssa`) file. |
+| `maxEntriesLoadedFromTree [n]` | Cap entries read from the ROOT tree (`<=0` = all). |
+| `wssaMaxEntries [n]`           | Cap WSSA records retained by uniform reservoir sampling (default 10,000,000; `<=0` = all). |
+| `wssaPid [pdg]`                | PDG code in the WSSA file: `2112`=n, `22`=γ; `0` infers from the file name. |
 | `sourcePid [pid]`              | PDG filter: `0`=any, `2112`=n, `22`=γ. |
 | `smearPhi [rad]`, `smearZ [len]`, `smearAngle [rad]`, `smearEfrac [frac]` | Resampling smear widths. |
 | `caskNum [c]`                  | Cask whose geometry/placement to replay into. |
@@ -189,6 +204,15 @@ worker threads draw crossings in O(1).
 | `numPrimaries [n]`            | Number of primaries that produced the input tree. |
 | `decayRate [1/s]`            | Activity of the source. |
 | `startRun [t] [unit]`        | Compute N primaries from rate × time × (kept weight / numPrimaries) and launch `/run/beamOn`. |
+
+For the WSSA input, positions are converted from cm to mm and from the floor-based
+MCNP frame to the cask-centred Geant4 frame (`z_mm - H/2`). The recorded crossing
+positions are kept; the WSSA cylinder and top plane extend to 4089 mm while the
+Geant4 cask is 4080 mm high, so records within 9 mm of the top can start slightly
+above the Geant4 cap. Direction cosines are read from the file; the third component
+is reconstructed as `w = copysign(sqrt(1 - u² - v²), b)`, following the format
+description. Duplicate records are kept, and the alias table samples them in
+proportion to their weights.
 
 ## Variance Reduction (Biasing)
 
