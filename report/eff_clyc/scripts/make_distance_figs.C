@@ -179,15 +179,15 @@ void EfficiencyVsDistance(const std::map<Key, ExpPoint>& exp)
         gsim[j]->SetLineColor(kColor[j]);
         gsim[j]->SetMarkerColor(kColor[j]);
         gsim[j]->SetMarkerStyle(20);
-        gsim[j]->SetMarkerSize(1.1);
+        gsim[j]->SetMarkerSize(1.6);
         gsim[j]->SetLineWidth(2);
 
         gexp[j] = new TGraphErrors(kNDist, xExp, ye, nullptr, ee);
         gexp[j]->SetLineColor(kColor[j]);
         gexp[j]->SetMarkerColor(kColor[j]);
         gexp[j]->SetMarkerStyle(24);
-        gexp[j]->SetMarkerSize(1.15);
-        gexp[j]->SetLineWidth(0);
+        gexp[j]->SetMarkerSize(1.6);
+        gexp[j]->SetLineWidth(2);
     }
 
     for (int j = 0; j < kNE; ++j) {
@@ -227,7 +227,7 @@ void EfficiencyRatio(const std::map<Key, ExpPoint>& exp)
 
     auto* frame = Frame("frame_ratio_clcy2", 180., 420., 0.7, 1.6,
                         "#font[132]{#it{d}}_{nom} [mm]",
-                        "#font[132]{#it{R}} = #epsilon_{sim}/#epsilon_{exp}");
+                        "#font[132]{#it{R}} = #font[132]{#it{#epsilon}}_{sim}/#font[132]{#it{#epsilon}}_{exp}");
     frame->Draw();
 
     auto* band = new TBox(180., 0.9, 420., 1.1);
@@ -242,10 +242,18 @@ void EfficiencyRatio(const std::map<Key, ExpPoint>& exp)
     one->SetLineColor(kGray + 2);
     one->Draw();
 
+    // Stagger the three gamma lines across x so that their markers and error bars
+    // at each nominal distance do not overlap:
+    //   j=0 (661.64 keV):  -kXStagger (-3 mm)
+    //   j=1 (1173.23 keV): 0 mm
+    //   j=2 (1332.51 keV): +kXStagger (+3 mm)
+    const double xOffsets[kNE] = {-kXStagger, 0., kXStagger};
+
     TGraphErrors* grat[kNE];
     for (int j = 0; j < kNE; ++j) {
-        double y[kNDist], ey[kNDist];
+        double x[kNDist], y[kNDist], ey[kNDist];
         for (int i = 0; i < kNDist; ++i) {
+            x[i] = kDist[i] + xOffsets[j];
             const std::string src = (j == 0 ? "CS" : "Co");
             const auto it = exp.find(Key(static_cast<int>(kDist[i]), src, kE[j]));
             const double m = (it == exp.end() ? 0. : it->second.eff);
@@ -255,11 +263,11 @@ void EfficiencyRatio(const std::map<Key, ExpPoint>& exp)
                 std::pow(kSimErr[i][j] / kSim[i][j], 2) +
                 std::pow(em / m, 2)) : 0.);
         }
-        grat[j] = new TGraphErrors(kNDist, kDist, y, nullptr, ey);
+        grat[j] = new TGraphErrors(kNDist, x, y, nullptr, ey);
         grat[j]->SetLineColor(kColor[j]);
         grat[j]->SetMarkerColor(kColor[j]);
         grat[j]->SetMarkerStyle(20);
-        grat[j]->SetMarkerSize(1.1);
+        grat[j]->SetMarkerSize(1.6);
         grat[j]->SetLineWidth(2);
     }
 
