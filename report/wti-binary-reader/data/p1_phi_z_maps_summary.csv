@@ -1,0 +1,3 @@
+particle,files_used,files_missing,rate_per_s,expected_rate_per_s,ratio,map_max_uSv_h,max_phi_deg,max_z_mm
+gamma,70,0,74819664.6,75041588.6,0.9970426531,4.273892222,22.5,2025
+neutron,70,0,16074829.04,16086638.02,0.9992659139,31.98921079,22.5,1975
