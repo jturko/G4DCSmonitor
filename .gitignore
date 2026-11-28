@@ -2,6 +2,13 @@ build/
 .refs/
 .cache/
 scripts/wssa/output/
+scripts/wssa/__pycache__/
+scripts/wssa/*_C.d
+scripts/wssa/*_C.so
+scripts/wssa/*_ACLiC_dict_rdict.pcm
+report/wti-binary-reader/scripts/*_C.d
+report/wti-binary-reader/scripts/*_C.so
+report/wti-binary-reader/scripts/*_ACLiC_dict_rdict.pcm
 main.aux
 main.fdb_latexmk
 main.fls
