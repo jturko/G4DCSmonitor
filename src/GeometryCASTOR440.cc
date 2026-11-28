@@ -29,7 +29,8 @@ GeometryCASTOR440::GeometryCASTOR440() :
     fPrimaryLid1Log(nullptr), fPrimaryLid2Log(nullptr),
     fSecondaryLidLog(nullptr), fProtectiveLidLog(nullptr),
     fFuelCellLog(nullptr), fModeratorRodLog(nullptr),
-    fFinLog(nullptr), fFinCutLog(nullptr), fTrunnionLog(nullptr)
+    fFinLog(nullptr), fFinCutLog(nullptr), fTrunnionLog(nullptr),
+    fTrunnionsEnabled(true)
 {
     // ---------------- CASTOR 440/84 body (drawing-confirmed) ----------------
     fCaskHeight       = 4080. * mm;     // body length
@@ -487,25 +488,28 @@ G4int GeometryCASTOR440::Build()
     }
 
     // --- 4 TRUNNIONS through the shaved fin pads ---
-    auto* trunSolid = new G4Tubs("Trunnion", 0., fTrunnionRadius,
-                                 fTrunnionLength/2.0, 0., 360.*deg);
-    fTrunnionLog = new G4LogicalVolume(trunSolid, steel, "TrunnionLog");
-    fTrunnionLog->SetVisAttributes(new G4VisAttributes(G4Colour(0.40,0.40,0.40)));
-    const G4double trR = fCaskOuterRadius + fTrunnionLength/2.0;
-    const G4double trPhi[2] = { 0.*deg, 180.*deg };
-    for (G4int iz = 0; iz < 2; ++iz)
-        for (G4int ip = 0; ip < 2; ++ip) {
-            auto* r = new G4RotationMatrix(); r->rotateY(90.*deg); r->rotateZ(trPhi[ip]);
-            G4ThreeVector trPos(trR*std::cos(trPhi[ip]), trR*std::sin(trPhi[ip]), fTrunnionZ[iz]);
-            fCASTORAssembly->AddPlacedVolume(fTrunnionLog, trPos, r);
-        }
+    if (fTrunnionsEnabled) {
+        auto* trunSolid = new G4Tubs("Trunnion", 0., fTrunnionRadius,
+                                     fTrunnionLength/2.0, 0., 360.*deg);
+        fTrunnionLog = new G4LogicalVolume(trunSolid, steel, "TrunnionLog");
+        fTrunnionLog->SetVisAttributes(new G4VisAttributes(G4Colour(0.40,0.40,0.40)));
+        const G4double trR = fCaskOuterRadius + fTrunnionLength/2.0;
+        const G4double trPhi[2] = { 0.*deg, 180.*deg };
+        for (G4int iz = 0; iz < 2; ++iz)
+            for (G4int ip = 0; ip < 2; ++ip) {
+                auto* r = new G4RotationMatrix(); r->rotateY(90.*deg); r->rotateZ(trPhi[ip]);
+                G4ThreeVector trPos(trR*std::cos(trPhi[ip]), trR*std::sin(trPhi[ip]), fTrunnionZ[iz]);
+                fCASTORAssembly->AddPlacedVolume(fTrunnionLog, trPos, r);
+            }
+    }
 
     G4ThreeVector castorBodyPos(0.,0.,0.);
     fCASTORAssembly->AddPlacedVolume(fCASTORBodyLog, castorBodyPos, norot);
 
     G4cout << " -> CASTOR440/84 done: " << fNModRods << " PE holes, lid stack "
            << fLidThickness/mm << " mm, " << nFins << " fins (" << nCut
-           << " shaved), 4 trunnions, " << (int)fFuelPositions.size()
+           << " shaved), " << (fTrunnionsEnabled ? 4 : 0)
+           << " trunnions, " << (int)fFuelPositions.size()
            << " assemblies" << G4endl;
     return 1;
 }

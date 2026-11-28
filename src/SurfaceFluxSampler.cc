@@ -519,6 +519,7 @@ void SurfaceFluxSampler::LoadWSSA(const std::string& filename,
     }
 
     const wssa::Header& h = reader.header();
+    fWSSANp = std::fabs(static_cast<G4double>(h.np));
     if (h.nrsw <= 0 || h.particleRecordBytes <= 0) {
         G4Exception("SurfaceFluxSampler::LoadWSSA", "NoRecords", FatalException,
                     "WSSA file contains no particle records.");
@@ -563,6 +564,9 @@ void SurfaceFluxSampler::LoadWSSA(const std::string& filename,
     const long long Nmax = (fWSSAMaxEntries > 0)
         ? std::min<long long>(fWSSAMaxEntries, h.nrsw)
         : h.nrsw;
+    const long long Nread = (fWSSAReadLimit > 0)
+        ? std::min<long long>(fWSSAReadLimit, h.nrsw)
+        : h.nrsw;
 
     std::vector<Crossing> reservoir;
     reservoir.reserve(static_cast<std::size_t>(
@@ -577,10 +581,10 @@ void SurfaceFluxSampler::LoadWSSA(const std::string& filename,
 
     TStopwatch sw; sw.Start();
     wssa::Record rec;
-    for (int64_t i = 0; i < h.nrsw; ++i) {
+    for (int64_t i = 0; i < Nread; ++i) {
         if (!reader.next(rec, err)) {
             G4ExceptionDescription ed;
-            ed << "WSSA read stopped after " << i << " of " << h.nrsw
+            ed << "WSSA read stopped after " << i << " of " << Nread
                << " records: " << err;
             G4Exception("SurfaceFluxSampler::LoadWSSA", "ReadFail",
                         FatalException, ed);
@@ -637,7 +641,7 @@ void SurfaceFluxSampler::LoadWSSA(const std::string& filename,
 
         if (i > 0 && (i % 10000000LL) == 0) {
             G4cout << "[SurfaceFluxSampler::LoadWSSA] read " << i
-                   << " / " << h.nrsw << " records (" << reservoir.size()
+                   << " / " << Nread << " records (" << reservoir.size()
                    << " retained)" << G4endl;
         }
     }
@@ -674,9 +678,14 @@ void SurfaceFluxSampler::LoadWSSA(const std::string& filename,
     sw.Stop();
     G4cout << "[SurfaceFluxSampler::LoadWSSA] Loaded " << fAll.data.size()
            << " of " << nValid << " valid records (file declares " << h.nrsw
-           << ", pid=" << pdg << ") in " << sw.RealTime() << " s\n"
-           << "   retained weight sum = " << sumW
-           << ", estimated full-file weight = " << fKeptWeightTotal << '\n'
+           << ", read " << Nread << ", pid=" << pdg << ", |np|=" << fWSSANp
+           << ") in " << sw.RealTime() << " s\n"
+           << "   retained weight sum = " << sumW;
+    if (Nread == h.nrsw)
+        G4cout << ", estimated full-file weight = " << fKeptWeightTotal;
+    else
+        G4cout << " (partial read; full-file weight not estimated)";
+    G4cout << '\n'
            << "   surfaces: side=" << nSide << ", top=" << nTop
            << ", bottom=" << nBottom << '\n';
     if (nDegenerate || nUnknownSurf || nNonPositiveW) {
@@ -853,28 +862,66 @@ void SurfaceFluxSampler::StartRun(G4double measurement_time)
                     "No usable surface crossings loaded.");
         return;
     }
-    if (fKeptWeightTotal <= 0. || fNumPrimaries <= 0 ||
-        fDecayRate <= 0. || measurement_time <= 0.) {
+    if (fKeptWeightTotal <= 0. || measurement_time <= 0.) {
         G4ExceptionDescription ed;
         ed << "Invalid input(s): keptWeightTotal=" << fKeptWeightTotal
-           << ", numPrimaries=" << fNumPrimaries
-           << ", decayRate[1/s]=" << fDecayRate
            << ", measTime[s]=" << measurement_time / CLHEP::s;
         G4Exception("SurfaceFluxSampler::StartRun", "BadParams",
                     FatalException, ed);
         return;
     }
 
-    fLastMeasurementTime = measurement_time;
-    const G4double ratio = fKeptWeightTotal / static_cast<G4double>(fNumPrimaries);
-    const G4double numDecays    = (measurement_time / CLHEP::s) * fDecayRate;
-    const G4double numPrimaries = numDecays * ratio;
+    // The normalization is source dependent.  For a p1 TTree the weight sum
+    // belongs to fNumPrimaries simulated source primaries:
+    //   N = T * decayRate * (sum_w / N_sim).
+    // For WSSA the weights are either absolute particles/s (WTI statement) or
+    // per source history.  Do not silently apply the p1 divisor to WSSA.
+    const G4double tSec = measurement_time / CLHEP::s;
+    G4double numPrimaries = 0.0;
+    if (fInputFormat == 2) {
+        if (fWSSAAbsoluteWeight) {
+            numPrimaries = tSec * fKeptWeightTotal;
+            G4cout << "[SurfaceFluxSampler::StartRun] WSSA absolute weights: "
+                   << "sum(w)=" << fKeptWeightTotal
+                   << " particles/s, T=" << tSec << " s\n";
+        } else {
+            if (fWSSANp <= 0. || fDecayRate <= 0.) {
+                G4ExceptionDescription ed;
+                ed << "WSSA per-history mode needs |np| > 0 and decayRate > 0; "
+                   << "|np|=" << fWSSANp
+                   << ", decayRate[1/s]=" << fDecayRate;
+                G4Exception("SurfaceFluxSampler::StartRun", "BadParams",
+                            FatalException, ed);
+                return;
+            }
+            const G4double perHistory = fKeptWeightTotal / fWSSANp;
+            numPrimaries = tSec * fDecayRate * perHistory;
+            G4cout << "[SurfaceFluxSampler::StartRun] WSSA per-history weights: "
+                   << "sum(w)/|np|=" << perHistory
+                   << ", source rate=" << fDecayRate << " 1/s, T=" << tSec
+                   << " s\n";
+        }
+    } else {
+        if (fNumPrimaries <= 0 || fDecayRate <= 0.) {
+            G4ExceptionDescription ed;
+            ed << "Invalid input(s): numPrimaries=" << fNumPrimaries
+               << ", decayRate[1/s]=" << fDecayRate;
+            G4Exception("SurfaceFluxSampler::StartRun", "BadParams",
+                        FatalException, ed);
+            return;
+        }
+        const G4double ratio =
+            fKeptWeightTotal / static_cast<G4double>(fNumPrimaries);
+        numPrimaries = tSec * fDecayRate * ratio;
+        G4cout << "[SurfaceFluxSampler::StartRun] p1/TTree: ratio = " << ratio
+               << "  (" << fKeptWeightTotal << " weighted crossings / "
+               << fNumPrimaries << " primaries)\n"
+               << "  decays in " << tSec << " s = " << tSec * fDecayRate
+               << '\n';
+    }
 
-    G4cout << "[SurfaceFluxSampler::StartRun] ratio = " << ratio
-           << "  (" << fKeptWeightTotal << " weighted crossings / "
-           << fNumPrimaries << " primaries)\n"
-           << "  decays in " << measurement_time / CLHEP::s << " s = " << numDecays << '\n'
-           << "  primaries to generate = " << numPrimaries << G4endl;
+    fLastMeasurementTime = measurement_time;
+    G4cout << "  primaries to generate = " << numPrimaries << G4endl;
 
     if (numPrimaries < 1.0) {
         G4Exception("SurfaceFluxSampler::StartRun", "TooFew", JustWarning,

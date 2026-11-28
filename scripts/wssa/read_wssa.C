@@ -18,20 +18,30 @@
 // Arguments:
 //   FILE.wssa   input file
 //   OUT_PREFIX  output prefix (empty -> derived from the input file name)
-//   N           number of samples or records (default 5000)
+//   N           number of samples or records (default 5000).
+//               In sequential mode (randomMode=false), N=0 means every record.
 //   randomMode  true  -> N random record indices across the whole file
-//               false -> the first N records in file order
+//               false -> the first N records in file order (N=0 -> all)
 //   phiMode     1 = clockwise from +y (matches the reference PNG convention;
 //                   default)
 //               0 = atan2 counter-clockwise from +x
 //               2 = clockwise from +x
 //   weighted    true -> fill with wgt, false -> fill with 1 per record
 //   nPhiBins, nZBins, zMaxMM, nEBins, eMinMeV, eMaxMeV
+//   doseParticle  "auto" (infer from the filename), "gamma"/"photon", or "neutron"
+//
+// In addition to the particle/s map, the reader fills a map weighted by the
+// ICRP 74 / ICRU 57 H*(10) fluence-to-ambient-dose coefficient at each record
+// energy.  The map stores w*H*(10)(E) in pSv cm^2/s with no per-maximum or
+// per-history scaling.  It is not an absolute uSv/h calibration because the
+// WSSA source strength and the reference source strength are not necessarily
+// the same.
 //
 // The "alt" canvas always uses the complementary phi convention (0 <-> 1)
 // so both orientations can be compared with the reference image.
 
 #include "../../include/WSSAReader.hh"
+#include "ICRP74H10.hh"
 
 #include "TCanvas.h"
 #include "TFile.h"
@@ -44,6 +54,7 @@
 #include "TString.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <iomanip>
 #include <iostream>
@@ -123,6 +134,23 @@ SurfaceKind ClassifySurface(const wssa::Record& r,
     return SurfaceKind::Unknown;
 }
 
+// Absolute cosine between the record direction and the surface normal.
+// The WSSA record stores only u and v; w() reconstructs the third cosine and
+// carries its sign.  For the side surface the outward normal is radial; for
+// the caps it is axial.
+double SurfaceCosine(const wssa::Record& r, SurfaceKind kind)
+{
+    if (kind == SurfaceKind::Side) {
+        const double rho = std::hypot(r.x, r.y);
+        if (rho > 0.0)
+            return std::fabs((r.u * r.x + r.v * r.y) / rho);
+        return 1.0;
+    }
+    if (kind == SurfaceKind::Top)
+        return std::fabs(r.w());
+    return 1.0;
+}
+
 void StyleCanvas(TCanvas& c)
 {
     c.SetRightMargin(0.18);
@@ -199,7 +227,8 @@ void read_wssa(const char* input,
                int nEBins = 120,
                double eMinMeV = 1e-9,
                double eMaxMeV = 20.0,
-               unsigned long long seed = 12345)
+               unsigned long long seed = 12345,
+               const char* doseParticle = "auto")
 {
     gStyle->SetOptStat(0);
     gStyle->SetPalette(kRainBow);
@@ -222,6 +251,19 @@ void read_wssa(const char* input,
     }
 
     const wssa::Header& h = reader.header();
+
+    std::string doseName = doseParticle ? doseParticle : "auto";
+    std::transform(doseName.begin(), doseName.end(), doseName.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    if (doseName == "auto" || doseName.empty()) {
+        std::string lower = in;
+        std::transform(lower.begin(), lower.end(), lower.begin(),
+                       [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        doseName = (lower.find("neutron") != std::string::npos) ? "neutron" : "photon";
+    }
+    const icrp74h10::Particle doseKind =
+        (doseName == "neutron" || doseName == "neutrons")
+            ? icrp74h10::kNeutron : icrp74h10::kPhoton;
 
     // Derived surface geometry (for classification and reporting only).
     double rSurfCm = 0.0;
@@ -272,6 +314,12 @@ void read_wssa(const char* input,
     }
     auto* hE = new TH1D("hE", ";energy [MeV];sum of weights",
                         nEBins, eEdges.data());
+    // Linear 20 keV bins for the gamma spectra.  The log-spaced hE is kept for
+    // the neutron spectra and for the integral check; gamma lines are not
+    // resolvable when log bins are drawn on a linear axis.
+    auto* hE_linear = new TH1D("hE_linear",
+                               ";energy [MeV];sum of weights / 20 keV",
+                               200, 0.0, 4.0);
     auto* hPhiZ = new TH2D("hPhiZ",
                            ";angle [deg];cask height [mm];sum of weights",
                            nPhiBins, 0.0, 360.0, nZBins, 0.0, zMaxMM);
@@ -281,6 +329,22 @@ void read_wssa(const char* input,
     auto* hPhiZ_0_4000 = new TH2D("hPhiZ_0_4000",
                                   ";angle [deg];cask height [mm];sum of weights",
                                   nPhiBins, 0.0, 360.0, 80, 0.0, 4000.0);
+    // Finer map.  The validation groups it 5 x 5 onto the reference's native
+    // 72 x 80 grid (5 deg x 50 mm); hPhiZ_0_4000 is the 36 x 80 presentation
+    // map and hPhiZ/hPhiZ_alt are the 36 x 41 mode maps.
+    auto* hPhiZ_fine = new TH2D("hPhiZ_fine",
+                                ";angle [deg];cask height [mm];sum of weights",
+                                nPhiBins * 10, 0.0, 360.0, 400, 0.0, 4000.0);
+    auto* hPhiZ_dose_fine = new TH2D(
+        "hPhiZ_dose_fine",
+        ";angle [deg];cask height [mm];H^{*}(10)-weighted sum [pSv cm^{2}/s]",
+        nPhiBins * 10, 0.0, 360.0, 400, 0.0, 4000.0);
+    // F2 estimator: the same dose weight divided by |cos(theta)| to convert
+    // the crossing weight into a fluence contribution.
+    auto* hPhiZ_dose_flux_fine = new TH2D(
+        "hPhiZ_dose_flux_fine",
+        ";angle [deg];cask height [mm];H^{*}(10) F2 sum [pSv cm^{2}/s]",
+        nPhiBins * 10, 0.0, 360.0, 400, 0.0, 4000.0);
     auto* hPhiZ_side = new TH2D("hPhiZ_side",
                                 ";angle [deg];cask height [mm];sum of weights",
                                 nPhiBins, 0.0, 360.0, nZBins, 0.0, zMaxMM);
@@ -296,9 +360,13 @@ void read_wssa(const char* input,
                         nZBins, 0.0, zMaxMM);
 
     hE->SetDirectory(nullptr);
+    hE_linear->SetDirectory(nullptr);
     hPhiZ->SetDirectory(nullptr);
     hPhiZ_alt->SetDirectory(nullptr);
     hPhiZ_0_4000->SetDirectory(nullptr);
+    hPhiZ_fine->SetDirectory(nullptr);
+    hPhiZ_dose_fine->SetDirectory(nullptr);
+    hPhiZ_dose_flux_fine->SetDirectory(nullptr);
     hPhiZ_side->SetDirectory(nullptr);
     hPhiZ_top->SetDirectory(nullptr);
     hPhiZ_unknown->SetDirectory(nullptr);
@@ -313,6 +381,10 @@ void read_wssa(const char* input,
     double minE = 1e300, maxE = -1e300;
     double minZ = 1e300, maxZ = -1e300;
     double sumW = 0.0;
+    double sumDoseWeight = 0.0;
+    double sumDoseFluxWeight = 0.0;
+    const double npAbs = (h.np != 0)
+        ? std::fabs(static_cast<double>(h.np)) : 1.0;
 
     DupDiagnostics dup;
 
@@ -325,6 +397,8 @@ void read_wssa(const char* input,
         const double E = r.erg;
         const double z_mm = z_cm * 10.0;   // MCNP z is floor-based, in cm
         const double w = weighted ? r.wgt : 1.0;
+        const double doseWeight = (E > 0.0)
+            ? w * icrp74h10::h10(E, doseKind) : 0.0;
 
         if (E > 0.0) {
             minE = std::min(minE, E);
@@ -333,22 +407,33 @@ void read_wssa(const char* input,
         minZ = std::min(minZ, z_mm);
         maxZ = std::max(maxZ, z_mm);
         sumW += w;
+        sumDoseWeight += doseWeight;
 
         const double phi = PhiForMode(x, y, phiMode);
         const double phiAlt = PhiForMode(x, y, altMode);
+        const SurfaceKind kind = ClassifySurface(r, coeffById);
+        const double mu = std::max(std::fabs(SurfaceCosine(r, kind)), 1.0e-6);
+        const double doseFluxWeight = doseWeight / mu;
+        sumDoseFluxWeight += doseFluxWeight;
 
         if (E > 0.0 && E >= eMinMeV && E <= eMaxMeV) {
             hE->Fill(E, w);
             ++nEnergyInRange;
         }
+        if (doseKind == icrp74h10::kPhoton && E > 0.0 && E <= 4.0)
+            hE_linear->Fill(E, w);
 
         hPhiZ->Fill(phi, z_mm, w);
         hPhiZ_alt->Fill(phiAlt, z_mm, w);
         hPhiZ_0_4000->Fill(phi, z_mm, w);
+        hPhiZ_fine->Fill(phi, z_mm, w);
+        if (doseWeight > 0.0) {
+            hPhiZ_dose_fine->Fill(phi, z_mm, doseWeight);
+            hPhiZ_dose_flux_fine->Fill(phi, z_mm, doseFluxWeight);
+        }
         hPhi->Fill(phi, w);
         hZ->Fill(z_mm, w);
 
-        const SurfaceKind kind = ClassifySurface(r, coeffById);
         if (kind == SurfaceKind::Side) {
             ++nSide;
             hPhiZ_side->Fill(phi, z_mm, w);
@@ -420,7 +505,10 @@ void read_wssa(const char* input,
               << "  energy range [MeV] : " << minE << " ... " << maxE << "\n"
               << "  z range [mm]       : " << minZ << " ... " << maxZ << "\n"
               << "  sum of weights     : " << std::setprecision(10) << sumW
-              << "\n";
+              << "\n"
+              << "  H*(10) weight sum  : " << sumDoseWeight
+              << "  (" << ((doseKind == icrp74h10::kNeutron) ? "neutron" : "photon")
+              << ")\n";
 
     if (!randomMode) {
         std::cout << "\n=== contiguous identical-record groups ===\n"
@@ -484,9 +572,13 @@ void read_wssa(const char* input,
 
     TFile f((out + ".root").c_str(), "RECREATE");
     hE->Write();
+    hE_linear->Write();
     hPhiZ->Write();
     hPhiZ_alt->Write();
     hPhiZ_0_4000->Write();
+    hPhiZ_fine->Write();
+    hPhiZ_dose_fine->Write();
+    hPhiZ_dose_flux_fine->Write();
     hPhiZ_side->Write();
     hPhiZ_top->Write();
     hPhiZ_unknown->Write();
@@ -494,14 +586,40 @@ void read_wssa(const char* input,
     hZ->Write();
 
     std::ostringstream meta;
-    meta << "input=" << in << "; nrsw=" << h.nrsw
+    meta << std::setprecision(12)
+         << "input=" << in << "; nrsw=" << h.nrsw
          << "; njss=" << h.njss << "; kq=" << h.kq
          << "; processed=" << nProcessed
          << "; randomMode=" << (randomMode ? 1 : 0)
          << "; phiMode=" << phiMode
-         << "; weighted=" << (weighted ? 1 : 0);
+         << "; weighted=" << (weighted ? 1 : 0)
+         << "; np=" << h.np
+         << "; npAbs=" << npAbs
+         << "; sumW=" << sumW
+         << "; sumDoseWeight=" << sumDoseWeight
+         << "; sumDoseFluxWeight=" << sumDoseFluxWeight
+         << "; doseParticle="
+         << ((doseKind == icrp74h10::kNeutron) ? "neutron" : "photon")
+         << "; nSide=" << nSide
+         << "; nTop=" << nTop
+         << "; nUnknown=" << nUnknown
+         << "; nEnergyInRange=" << nEnergyInRange
+         << "; minE=" << minE
+         << "; maxE=" << maxE
+         << "; minZ=" << minZ
+         << "; maxZ=" << maxZ
+         << "; nPhiBins=" << nPhiBins
+         << "; nZBins=" << nZBins
+         << "; zMaxMM=" << zMaxMM
+         << "; nEBins=" << nEBins
+         << "; eMinMeV=" << eMinMeV
+         << "; eMaxMeV=" << eMaxMeV;
     TNamed info("wssa_info", meta.str().c_str());
     info.Write();
+    TNamed doseInfo("icrp74_h10_info",
+                    "ICRP 74/ICRU 57 H*(10) fluence-to-dose coefficients; "
+                    "pSv cm^2; log-log interpolation; OpenMC ICRP74 data");
+    doseInfo.Write();
     f.Close();
 
     std::cout << "\nWrote " << out << ".root and image files\n";

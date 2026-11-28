@@ -158,6 +158,7 @@ class DetectorConstruction : public G4VUserDetectorConstruction
 
         // CASTOR 440
         void AddCASTOR440();
+        void SetCASTOR440Trunnions(G4bool v) { fCASTOR440Trunnions = v; }
         const std::vector<G4LogicalVolume*> GetLCASTOR440s() { return fLCASTOR440s; }
 
         // Experimental hall
@@ -305,6 +306,7 @@ class DetectorConstruction : public G4VUserDetectorConstruction
         std::vector<G4ThreeVector>        fCASTOR440Positions;
         std::vector<G4RotationMatrix*>    fCASTOR440Rotations;
         std::vector<G4LogicalVolume*>     fLCASTOR440s;
+        G4bool                            fCASTOR440Trunnions = true;
         
         std::vector<GeometryHemiShield*>  fHemiShieldDetectors;
         std::vector<G4ThreeVector>        fHemiShieldPositions;

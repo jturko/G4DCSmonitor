@@ -8,6 +8,7 @@
 #include "G4UIcmdWithAnInteger.hh"
 #include "G4UIcmdWithADouble.hh"
 #include "G4UIcmdWithADoubleAndUnit.hh"
+#include "G4UIcmdWithABool.hh"
 #include "G4RunManager.hh"
 #include "G4SystemOfUnits.hh"
 #include "G4Exception.hh"
@@ -41,11 +42,29 @@ SurfaceFluxSamplerMessenger::SurfaceFluxSamplerMessenger()
     fWSSAMaxEntriesCmd->SetParameterName("nEntries", false);
     fWSSAMaxEntriesCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
 
+    fWSSAReadLimitCmd = new G4UIcmdWithAnInteger("/dcs-monitor/surf/wssaReadLimit", this);
+    fWSSAReadLimitCmd->SetGuidance(
+        "Stop reading the WSSA file after this many records.\n"
+        "  <= 0 (default) : read the whole file\n"
+        "  >  0           : read only the first nRecords (debugging only)");
+    fWSSAReadLimitCmd->SetParameterName("nRecords", false);
+    fWSSAReadLimitCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+
     fWSSAPidCmd = new G4UIcmdWithAnInteger("/dcs-monitor/surf/wssaPid", this);
     fWSSAPidCmd->SetGuidance(
         "PDG code of the particles stored in the WSSA file: "
         "2112=neutron, 22=gamma. 0 = infer from the file name.");
     fWSSAPidCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+
+    fWSSAAbsoluteCmd = new G4UIcmdWithABool(
+        "/dcs-monitor/surf/wssaAbsoluteWeight", this);
+    fWSSAAbsoluteCmd->SetGuidance(
+        "Interpret WSSA wgt as absolute particles/s (true, WTI statement) or "
+        "as per-source-history weights (false).\n"
+        "Absolute: StartRun uses N = T * sum(w).\n"
+        "Per-history: StartRun uses N = T * decayRate * sum(w)/|np|.");
+    fWSSAAbsoluteCmd->SetParameterName("flag", false);
+    fWSSAAbsoluteCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
 
     fMaxEntriesLoadedFromTreeCmd = new G4UIcmdWithAnInteger("/dcs-monitor/surf/maxEntriesLoadedFromTree", this);
     fMaxEntriesLoadedFromTreeCmd->SetGuidance(
@@ -131,10 +150,12 @@ SurfaceFluxSamplerMessenger::~SurfaceFluxSamplerMessenger()
     delete fSmearZCmd;
     delete fSmearPhiCmd;
     delete fPidCmd;
+    delete fWSSAAbsoluteCmd;
     delete fFileCmd;
     delete fCSVFileCmd;
     delete fWSSAFileCmd;
     delete fWSSAMaxEntriesCmd;
+    delete fWSSAReadLimitCmd;
     delete fWSSAPidCmd;
     delete fDir;
     delete fMaxEntriesLoadedFromTreeCmd;
@@ -158,8 +179,16 @@ void SurfaceFluxSamplerMessenger::SetNewValue(G4UIcommand* cmd, G4String val)
         s.SetWSSAMaxEntries(fWSSAMaxEntriesCmd->GetNewIntValue(val));
         return;
     }
+    if (cmd == fWSSAReadLimitCmd) {
+        s.SetWSSAReadLimit(fWSSAReadLimitCmd->GetNewIntValue(val));
+        return;
+    }
     if (cmd == fWSSAPidCmd) {
         s.SetWSSAPid(fWSSAPidCmd->GetNewIntValue(val));
+        return;
+    }
+    if (cmd == fWSSAAbsoluteCmd) {
+        s.SetWSSAAbsoluteWeight(fWSSAAbsoluteCmd->GetNewBoolValue(val));
         return;
     }
     if (cmd == fPidCmd)         { /* PID filter is consumed by Sample(); store on sampler */ 

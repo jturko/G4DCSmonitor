@@ -73,8 +73,17 @@ class SurfaceFluxSampler
     const std::string& GetWSSAFile() const { return fPendingWSSAFile; }
     void SetWSSAMaxEntries(long long n) { fWSSAMaxEntries = n; }
     long long GetWSSAMaxEntries() const { return fWSSAMaxEntries; }
+    void SetWSSAReadLimit(long long n) { fWSSAReadLimit = n; }
+    long long GetWSSAReadLimit() const { return fWSSAReadLimit; }
     void SetWSSAPid(G4int p) { fWSSAPid = p; }
     G4int GetWSSAPid() const { return fWSSAPid; }
+    // WSSA normalization.  true: the file weights are absolute particles/s
+    // (WTI statement); StartRun uses N = T * sum(w).  false: the weights are
+    // per source history; StartRun uses N = T * S * sum(w)/|np|, where S is
+    // /dcs-monitor/surf/decayRate.
+    void SetWSSAAbsoluteWeight(G4bool v) { fWSSAAbsoluteWeight = v; }
+    G4bool GetWSSAAbsoluteWeight() const { return fWSSAAbsoluteWeight; }
+    G4double GetWSSANp() const { return fWSSANp; }
     void SetGeometryParameters(G4double R_mm, G4double H_mm,
                                G4double tol_mm = 2.0) {
         fPendingR_mm   = R_mm;
@@ -142,7 +151,10 @@ class SurfaceFluxSampler
     std::string fPendingCSVFile;
     std::string fPendingWSSAFile;
     long long   fWSSAMaxEntries = 10000000;
+    long long   fWSSAReadLimit  = 0;
     G4int       fWSSAPid        = 0;   // 0 = infer from file name
+    G4bool      fWSSAAbsoluteWeight = true;
+    G4double    fWSSANp        = 0.;   // |header np|
     G4bool      fKeepRecordedPosition = false;
     G4int       fInputFormat = 0;   // 0=TTree, 1=CSV, 2=WSSA
     G4double    fPendingR_mm   = -1.;

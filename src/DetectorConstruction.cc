@@ -836,7 +836,9 @@ void DetectorConstruction::SetPlasticSideShieldMaterialName(G4String v){ IFPL PL
 
 void DetectorConstruction::AddCASTOR440() 
 {
-    fCASTOR440Detectors.push_back(new GeometryCASTOR440());
+    auto* cask = new GeometryCASTOR440();
+    cask->SetTrunnionsEnabled(fCASTOR440Trunnions);
+    fCASTOR440Detectors.push_back(cask);
     fCASTOR440Positions.push_back(fPosition);
     
     G4RotationMatrix* rot = new G4RotationMatrix();

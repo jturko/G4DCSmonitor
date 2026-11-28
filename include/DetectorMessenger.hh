@@ -123,6 +123,7 @@ class DetectorMessenger : public G4UImessenger
 
     // castor 440
     G4UIcmdWithoutParameter* fAddCASTOR440Cmd = nullptr;
+    G4UIcmdWithABool*        fSetCASTOR440TrunnionsCmd = nullptr;
 
     // sector scoring z layering
     G4UIcmdWithAnInteger* fSetSectorZLayersCmd = nullptr;

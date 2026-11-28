@@ -168,6 +168,12 @@ DetectorMessenger::DetectorMessenger(DetectorConstruction* Det) : fDetector(Det)
     fAddCASTOR440Cmd = new G4UIcmdWithoutParameter("/dcs-monitor/det/castor440/add", this);
     fAddCASTOR440Cmd->AvailableForStates(G4State_PreInit);
 
+    fSetCASTOR440TrunnionsCmd = new G4UIcmdWithABool("/dcs-monitor/det/castor440/setTrunnions", this);
+    fSetCASTOR440TrunnionsCmd->SetGuidance("Enable or disable the four steel trunnions on subsequently added CASTOR 440 casks.");
+    fSetCASTOR440TrunnionsCmd->SetParameterName("enabled", false);
+    fSetCASTOR440TrunnionsCmd->SetDefaultValue(true);
+    fSetCASTOR440TrunnionsCmd->AvailableForStates(G4State_PreInit);
+
     // sector scoring z layering
     fSetSectorZLayersCmd = new G4UIcmdWithAnInteger("/dcs-monitor/det/setSectorZLayers", this);
     fSetSectorZLayersCmd->SetGuidance("Number of z layers in the sector scoring shell (1..32).");
@@ -268,6 +274,7 @@ DetectorMessenger::~DetectorMessenger()
         
     // CASTOR 440
     delete fAddCASTOR440Cmd;
+    delete fSetCASTOR440TrunnionsCmd;
 
     // sector scoring z layering
     delete fSetSectorZLayersCmd;
@@ -356,6 +363,8 @@ void DetectorMessenger::SetNewValue(G4UIcommand* command, G4String value)
 
     // CASTOR 440
     if(command == fAddCASTOR440Cmd)                 fDetector->AddCASTOR440();
+    if(command == fSetCASTOR440TrunnionsCmd)
+        fDetector->SetCASTOR440Trunnions(fSetCASTOR440TrunnionsCmd->GetNewBoolValue(value));
 
     // sector scoring z layering
     if(command == fSetSectorZLayersCmd)

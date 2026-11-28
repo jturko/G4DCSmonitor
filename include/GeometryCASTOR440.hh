@@ -26,6 +26,9 @@ class GeometryCASTOR440
     G4LogicalVolume*   GetFinCutLog()  { return fFinCutLog;      }
     G4VPhysicalVolume* GetCASTORPhys() { return fCASTORBodyPhys; }
 
+    void   SetTrunnionsEnabled(G4bool v) { fTrunnionsEnabled = v; }
+    G4bool GetTrunnionsEnabled() const   { return fTrunnionsEnabled; }
+
     void          GenerateFuelPositions();
     void          GenerateRodPositions();
     G4ThreeVector GetFuelPosition(G4int index) const;
@@ -96,6 +99,7 @@ class GeometryCASTOR440
     G4double fFinThickness, fFinSpacing;
 
     // ---- trunnions ----
+    G4bool   fTrunnionsEnabled;
     G4double fTrunnionRadius, fTrunnionLength, fTrunnionAxialInset;
     G4double fTrunnionZ[2];
 

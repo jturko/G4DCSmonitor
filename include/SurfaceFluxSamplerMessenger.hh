@@ -9,6 +9,7 @@ class G4UIcmdWithAString;
 class G4UIcmdWithAnInteger;
 class G4UIcmdWithADouble;
 class G4UIcmdWithADoubleAndUnit;
+class G4UIcmdWithABool;
 
 class SurfaceFluxSamplerMessenger : public G4UImessenger
 {
@@ -30,7 +31,9 @@ class SurfaceFluxSamplerMessenger : public G4UImessenger
     G4UIcmdWithAString*        fCSVFileCmd       = nullptr;
     G4UIcmdWithAString*        fWSSAFileCmd      = nullptr;
     G4UIcmdWithAnInteger*      fWSSAMaxEntriesCmd = nullptr;
+    G4UIcmdWithAnInteger*      fWSSAReadLimitCmd = nullptr;
     G4UIcmdWithAnInteger*      fWSSAPidCmd       = nullptr;
+    G4UIcmdWithABool*          fWSSAAbsoluteCmd  = nullptr;
     G4UIcmdWithAnInteger*      fMaxEntriesLoadedFromTreeCmd = nullptr;
     G4UIcmdWithAnInteger*      fPidCmd           = nullptr;
     G4UIcmdWithADouble*        fSmearPhiCmd      = nullptr;

@@ -1,0 +1,1997 @@
+# WSSA benchmark: cask1_gamma, 384 CLYC detector positions
+/control/verbose 0
+/run/verbose 0
+/tracking/verbose 0
+/event/verbose 0
+/process/verbose 0
+
+/run/numberOfThreads 32
+
+/dcs-monitor/det/setPosition 0 0 0 mm
+/dcs-monitor/det/setRotation 0 0 0
+/dcs-monitor/det/castor440/setTrunnions false
+/dcs-monitor/det/castor440/add
+
+# CLYC detector defaults
+/dcs-monitor/det/clyc/setCrystalMaterial CLYC
+/dcs-monitor/det/clyc/setCrystalRadius 12.5 mm
+/dcs-monitor/det/clyc/setCrystalLength 25.0 mm
+/dcs-monitor/det/clyc/setCasingMaterial G4_Al
+/dcs-monitor/det/clyc/setCasingThickness 0.5 mm
+/dcs-monitor/det/clyc/setPbColMaterial G4_Pb
+/dcs-monitor/det/clyc/setPbColLength 50.0 mm
+/dcs-monitor/det/clyc/setPEColMaterial G4_POLYETHYLENE
+/dcs-monitor/det/clyc/setPEColLength 50.0 mm
+/dcs-monitor/det/clyc/setPEPlugLipLength 10.0 mm
+/dcs-monitor/det/clyc/setPEPlugInnerLength 35.0 mm
+
+# sensor CLYC-2, height 430 mm
+/dcs-monitor/det/setPosition 0.000000 1350.000000 -1610.000000 mm
+/dcs-monitor/det/setRotation 0 -90 90
+/dcs-monitor/det/meta/setScanPhi 0
+/dcs-monitor/det/meta/setScanZ 430 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 349.405711 1303.999865 -1610.000000 mm
+/dcs-monitor/det/setRotation 0 -90 75
+/dcs-monitor/det/meta/setScanPhi 15
+/dcs-monitor/det/meta/setScanZ 430 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 675.000000 1169.134295 -1610.000000 mm
+/dcs-monitor/det/setRotation 0 -90 60
+/dcs-monitor/det/meta/setScanPhi 30
+/dcs-monitor/det/meta/setScanZ 430 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 954.594155 954.594155 -1610.000000 mm
+/dcs-monitor/det/setRotation 0 -90 45
+/dcs-monitor/det/meta/setScanPhi 45
+/dcs-monitor/det/meta/setScanZ 430 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1169.134295 675.000000 -1610.000000 mm
+/dcs-monitor/det/setRotation 0 -90 30
+/dcs-monitor/det/meta/setScanPhi 60
+/dcs-monitor/det/meta/setScanZ 430 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1303.999865 349.405711 -1610.000000 mm
+/dcs-monitor/det/setRotation 0 -90 15
+/dcs-monitor/det/meta/setScanPhi 75
+/dcs-monitor/det/meta/setScanZ 430 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1350.000000 0.000000 -1610.000000 mm
+/dcs-monitor/det/setRotation 0 -90 0
+/dcs-monitor/det/meta/setScanPhi 90
+/dcs-monitor/det/meta/setScanZ 430 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1303.999865 -349.405711 -1610.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -15
+/dcs-monitor/det/meta/setScanPhi 105
+/dcs-monitor/det/meta/setScanZ 430 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1169.134295 -675.000000 -1610.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -30
+/dcs-monitor/det/meta/setScanPhi 120
+/dcs-monitor/det/meta/setScanZ 430 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 954.594155 -954.594155 -1610.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -45
+/dcs-monitor/det/meta/setScanPhi 135
+/dcs-monitor/det/meta/setScanZ 430 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 675.000000 -1169.134295 -1610.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -60
+/dcs-monitor/det/meta/setScanPhi 150
+/dcs-monitor/det/meta/setScanZ 430 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 349.405711 -1303.999865 -1610.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -75
+/dcs-monitor/det/meta/setScanPhi 165
+/dcs-monitor/det/meta/setScanZ 430 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 0.000000 -1350.000000 -1610.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -90
+/dcs-monitor/det/meta/setScanPhi 180
+/dcs-monitor/det/meta/setScanZ 430 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -349.405711 -1303.999865 -1610.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -105
+/dcs-monitor/det/meta/setScanPhi 195
+/dcs-monitor/det/meta/setScanZ 430 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -675.000000 -1169.134295 -1610.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -120
+/dcs-monitor/det/meta/setScanPhi 210
+/dcs-monitor/det/meta/setScanZ 430 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -954.594155 -954.594155 -1610.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -135
+/dcs-monitor/det/meta/setScanPhi 225
+/dcs-monitor/det/meta/setScanZ 430 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1169.134295 -675.000000 -1610.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -150
+/dcs-monitor/det/meta/setScanPhi 240
+/dcs-monitor/det/meta/setScanZ 430 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1303.999865 -349.405711 -1610.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -165
+/dcs-monitor/det/meta/setScanPhi 255
+/dcs-monitor/det/meta/setScanZ 430 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1350.000000 -0.000000 -1610.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -180
+/dcs-monitor/det/meta/setScanPhi 270
+/dcs-monitor/det/meta/setScanZ 430 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1303.999865 349.405711 -1610.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -195
+/dcs-monitor/det/meta/setScanPhi 285
+/dcs-monitor/det/meta/setScanZ 430 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1169.134295 675.000000 -1610.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -210
+/dcs-monitor/det/meta/setScanPhi 300
+/dcs-monitor/det/meta/setScanZ 430 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -954.594155 954.594155 -1610.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -225
+/dcs-monitor/det/meta/setScanPhi 315
+/dcs-monitor/det/meta/setScanZ 430 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -675.000000 1169.134295 -1610.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -240
+/dcs-monitor/det/meta/setScanPhi 330
+/dcs-monitor/det/meta/setScanZ 430 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -349.405711 1303.999865 -1610.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -255
+/dcs-monitor/det/meta/setScanPhi 345
+/dcs-monitor/det/meta/setScanZ 430 mm
+/dcs-monitor/det/clyc/add
+
+# sensor CLYC-1, height 630 mm
+/dcs-monitor/det/setPosition 0.000000 1350.000000 -1410.000000 mm
+/dcs-monitor/det/setRotation 0 -90 90
+/dcs-monitor/det/meta/setScanPhi 0
+/dcs-monitor/det/meta/setScanZ 630 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 349.405711 1303.999865 -1410.000000 mm
+/dcs-monitor/det/setRotation 0 -90 75
+/dcs-monitor/det/meta/setScanPhi 15
+/dcs-monitor/det/meta/setScanZ 630 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 675.000000 1169.134295 -1410.000000 mm
+/dcs-monitor/det/setRotation 0 -90 60
+/dcs-monitor/det/meta/setScanPhi 30
+/dcs-monitor/det/meta/setScanZ 630 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 954.594155 954.594155 -1410.000000 mm
+/dcs-monitor/det/setRotation 0 -90 45
+/dcs-monitor/det/meta/setScanPhi 45
+/dcs-monitor/det/meta/setScanZ 630 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1169.134295 675.000000 -1410.000000 mm
+/dcs-monitor/det/setRotation 0 -90 30
+/dcs-monitor/det/meta/setScanPhi 60
+/dcs-monitor/det/meta/setScanZ 630 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1303.999865 349.405711 -1410.000000 mm
+/dcs-monitor/det/setRotation 0 -90 15
+/dcs-monitor/det/meta/setScanPhi 75
+/dcs-monitor/det/meta/setScanZ 630 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1350.000000 0.000000 -1410.000000 mm
+/dcs-monitor/det/setRotation 0 -90 0
+/dcs-monitor/det/meta/setScanPhi 90
+/dcs-monitor/det/meta/setScanZ 630 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1303.999865 -349.405711 -1410.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -15
+/dcs-monitor/det/meta/setScanPhi 105
+/dcs-monitor/det/meta/setScanZ 630 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1169.134295 -675.000000 -1410.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -30
+/dcs-monitor/det/meta/setScanPhi 120
+/dcs-monitor/det/meta/setScanZ 630 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 954.594155 -954.594155 -1410.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -45
+/dcs-monitor/det/meta/setScanPhi 135
+/dcs-monitor/det/meta/setScanZ 630 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 675.000000 -1169.134295 -1410.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -60
+/dcs-monitor/det/meta/setScanPhi 150
+/dcs-monitor/det/meta/setScanZ 630 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 349.405711 -1303.999865 -1410.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -75
+/dcs-monitor/det/meta/setScanPhi 165
+/dcs-monitor/det/meta/setScanZ 630 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 0.000000 -1350.000000 -1410.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -90
+/dcs-monitor/det/meta/setScanPhi 180
+/dcs-monitor/det/meta/setScanZ 630 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -349.405711 -1303.999865 -1410.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -105
+/dcs-monitor/det/meta/setScanPhi 195
+/dcs-monitor/det/meta/setScanZ 630 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -675.000000 -1169.134295 -1410.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -120
+/dcs-monitor/det/meta/setScanPhi 210
+/dcs-monitor/det/meta/setScanZ 630 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -954.594155 -954.594155 -1410.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -135
+/dcs-monitor/det/meta/setScanPhi 225
+/dcs-monitor/det/meta/setScanZ 630 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1169.134295 -675.000000 -1410.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -150
+/dcs-monitor/det/meta/setScanPhi 240
+/dcs-monitor/det/meta/setScanZ 630 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1303.999865 -349.405711 -1410.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -165
+/dcs-monitor/det/meta/setScanPhi 255
+/dcs-monitor/det/meta/setScanZ 630 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1350.000000 -0.000000 -1410.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -180
+/dcs-monitor/det/meta/setScanPhi 270
+/dcs-monitor/det/meta/setScanZ 630 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1303.999865 349.405711 -1410.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -195
+/dcs-monitor/det/meta/setScanPhi 285
+/dcs-monitor/det/meta/setScanZ 630 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1169.134295 675.000000 -1410.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -210
+/dcs-monitor/det/meta/setScanPhi 300
+/dcs-monitor/det/meta/setScanZ 630 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -954.594155 954.594155 -1410.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -225
+/dcs-monitor/det/meta/setScanPhi 315
+/dcs-monitor/det/meta/setScanZ 630 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -675.000000 1169.134295 -1410.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -240
+/dcs-monitor/det/meta/setScanPhi 330
+/dcs-monitor/det/meta/setScanZ 630 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -349.405711 1303.999865 -1410.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -255
+/dcs-monitor/det/meta/setScanPhi 345
+/dcs-monitor/det/meta/setScanZ 630 mm
+/dcs-monitor/det/clyc/add
+
+# sensor CLYC-2, height 780 mm
+/dcs-monitor/det/setPosition 0.000000 1350.000000 -1260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 90
+/dcs-monitor/det/meta/setScanPhi 0
+/dcs-monitor/det/meta/setScanZ 780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 349.405711 1303.999865 -1260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 75
+/dcs-monitor/det/meta/setScanPhi 15
+/dcs-monitor/det/meta/setScanZ 780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 675.000000 1169.134295 -1260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 60
+/dcs-monitor/det/meta/setScanPhi 30
+/dcs-monitor/det/meta/setScanZ 780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 954.594155 954.594155 -1260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 45
+/dcs-monitor/det/meta/setScanPhi 45
+/dcs-monitor/det/meta/setScanZ 780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1169.134295 675.000000 -1260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 30
+/dcs-monitor/det/meta/setScanPhi 60
+/dcs-monitor/det/meta/setScanZ 780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1303.999865 349.405711 -1260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 15
+/dcs-monitor/det/meta/setScanPhi 75
+/dcs-monitor/det/meta/setScanZ 780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1350.000000 0.000000 -1260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 0
+/dcs-monitor/det/meta/setScanPhi 90
+/dcs-monitor/det/meta/setScanZ 780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1303.999865 -349.405711 -1260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -15
+/dcs-monitor/det/meta/setScanPhi 105
+/dcs-monitor/det/meta/setScanZ 780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1169.134295 -675.000000 -1260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -30
+/dcs-monitor/det/meta/setScanPhi 120
+/dcs-monitor/det/meta/setScanZ 780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 954.594155 -954.594155 -1260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -45
+/dcs-monitor/det/meta/setScanPhi 135
+/dcs-monitor/det/meta/setScanZ 780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 675.000000 -1169.134295 -1260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -60
+/dcs-monitor/det/meta/setScanPhi 150
+/dcs-monitor/det/meta/setScanZ 780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 349.405711 -1303.999865 -1260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -75
+/dcs-monitor/det/meta/setScanPhi 165
+/dcs-monitor/det/meta/setScanZ 780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 0.000000 -1350.000000 -1260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -90
+/dcs-monitor/det/meta/setScanPhi 180
+/dcs-monitor/det/meta/setScanZ 780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -349.405711 -1303.999865 -1260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -105
+/dcs-monitor/det/meta/setScanPhi 195
+/dcs-monitor/det/meta/setScanZ 780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -675.000000 -1169.134295 -1260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -120
+/dcs-monitor/det/meta/setScanPhi 210
+/dcs-monitor/det/meta/setScanZ 780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -954.594155 -954.594155 -1260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -135
+/dcs-monitor/det/meta/setScanPhi 225
+/dcs-monitor/det/meta/setScanZ 780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1169.134295 -675.000000 -1260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -150
+/dcs-monitor/det/meta/setScanPhi 240
+/dcs-monitor/det/meta/setScanZ 780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1303.999865 -349.405711 -1260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -165
+/dcs-monitor/det/meta/setScanPhi 255
+/dcs-monitor/det/meta/setScanZ 780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1350.000000 -0.000000 -1260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -180
+/dcs-monitor/det/meta/setScanPhi 270
+/dcs-monitor/det/meta/setScanZ 780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1303.999865 349.405711 -1260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -195
+/dcs-monitor/det/meta/setScanPhi 285
+/dcs-monitor/det/meta/setScanZ 780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1169.134295 675.000000 -1260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -210
+/dcs-monitor/det/meta/setScanPhi 300
+/dcs-monitor/det/meta/setScanZ 780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -954.594155 954.594155 -1260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -225
+/dcs-monitor/det/meta/setScanPhi 315
+/dcs-monitor/det/meta/setScanZ 780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -675.000000 1169.134295 -1260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -240
+/dcs-monitor/det/meta/setScanPhi 330
+/dcs-monitor/det/meta/setScanZ 780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -349.405711 1303.999865 -1260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -255
+/dcs-monitor/det/meta/setScanPhi 345
+/dcs-monitor/det/meta/setScanZ 780 mm
+/dcs-monitor/det/clyc/add
+
+# sensor CLYC-1, height 980 mm
+/dcs-monitor/det/setPosition 0.000000 1350.000000 -1060.000000 mm
+/dcs-monitor/det/setRotation 0 -90 90
+/dcs-monitor/det/meta/setScanPhi 0
+/dcs-monitor/det/meta/setScanZ 980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 349.405711 1303.999865 -1060.000000 mm
+/dcs-monitor/det/setRotation 0 -90 75
+/dcs-monitor/det/meta/setScanPhi 15
+/dcs-monitor/det/meta/setScanZ 980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 675.000000 1169.134295 -1060.000000 mm
+/dcs-monitor/det/setRotation 0 -90 60
+/dcs-monitor/det/meta/setScanPhi 30
+/dcs-monitor/det/meta/setScanZ 980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 954.594155 954.594155 -1060.000000 mm
+/dcs-monitor/det/setRotation 0 -90 45
+/dcs-monitor/det/meta/setScanPhi 45
+/dcs-monitor/det/meta/setScanZ 980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1169.134295 675.000000 -1060.000000 mm
+/dcs-monitor/det/setRotation 0 -90 30
+/dcs-monitor/det/meta/setScanPhi 60
+/dcs-monitor/det/meta/setScanZ 980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1303.999865 349.405711 -1060.000000 mm
+/dcs-monitor/det/setRotation 0 -90 15
+/dcs-monitor/det/meta/setScanPhi 75
+/dcs-monitor/det/meta/setScanZ 980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1350.000000 0.000000 -1060.000000 mm
+/dcs-monitor/det/setRotation 0 -90 0
+/dcs-monitor/det/meta/setScanPhi 90
+/dcs-monitor/det/meta/setScanZ 980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1303.999865 -349.405711 -1060.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -15
+/dcs-monitor/det/meta/setScanPhi 105
+/dcs-monitor/det/meta/setScanZ 980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1169.134295 -675.000000 -1060.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -30
+/dcs-monitor/det/meta/setScanPhi 120
+/dcs-monitor/det/meta/setScanZ 980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 954.594155 -954.594155 -1060.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -45
+/dcs-monitor/det/meta/setScanPhi 135
+/dcs-monitor/det/meta/setScanZ 980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 675.000000 -1169.134295 -1060.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -60
+/dcs-monitor/det/meta/setScanPhi 150
+/dcs-monitor/det/meta/setScanZ 980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 349.405711 -1303.999865 -1060.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -75
+/dcs-monitor/det/meta/setScanPhi 165
+/dcs-monitor/det/meta/setScanZ 980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 0.000000 -1350.000000 -1060.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -90
+/dcs-monitor/det/meta/setScanPhi 180
+/dcs-monitor/det/meta/setScanZ 980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -349.405711 -1303.999865 -1060.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -105
+/dcs-monitor/det/meta/setScanPhi 195
+/dcs-monitor/det/meta/setScanZ 980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -675.000000 -1169.134295 -1060.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -120
+/dcs-monitor/det/meta/setScanPhi 210
+/dcs-monitor/det/meta/setScanZ 980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -954.594155 -954.594155 -1060.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -135
+/dcs-monitor/det/meta/setScanPhi 225
+/dcs-monitor/det/meta/setScanZ 980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1169.134295 -675.000000 -1060.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -150
+/dcs-monitor/det/meta/setScanPhi 240
+/dcs-monitor/det/meta/setScanZ 980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1303.999865 -349.405711 -1060.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -165
+/dcs-monitor/det/meta/setScanPhi 255
+/dcs-monitor/det/meta/setScanZ 980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1350.000000 -0.000000 -1060.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -180
+/dcs-monitor/det/meta/setScanPhi 270
+/dcs-monitor/det/meta/setScanZ 980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1303.999865 349.405711 -1060.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -195
+/dcs-monitor/det/meta/setScanPhi 285
+/dcs-monitor/det/meta/setScanZ 980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1169.134295 675.000000 -1060.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -210
+/dcs-monitor/det/meta/setScanPhi 300
+/dcs-monitor/det/meta/setScanZ 980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -954.594155 954.594155 -1060.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -225
+/dcs-monitor/det/meta/setScanPhi 315
+/dcs-monitor/det/meta/setScanZ 980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -675.000000 1169.134295 -1060.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -240
+/dcs-monitor/det/meta/setScanPhi 330
+/dcs-monitor/det/meta/setScanZ 980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -349.405711 1303.999865 -1060.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -255
+/dcs-monitor/det/meta/setScanPhi 345
+/dcs-monitor/det/meta/setScanZ 980 mm
+/dcs-monitor/det/clyc/add
+
+# sensor CLYC-2, height 1180 mm
+/dcs-monitor/det/setPosition 0.000000 1350.000000 -860.000000 mm
+/dcs-monitor/det/setRotation 0 -90 90
+/dcs-monitor/det/meta/setScanPhi 0
+/dcs-monitor/det/meta/setScanZ 1180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 349.405711 1303.999865 -860.000000 mm
+/dcs-monitor/det/setRotation 0 -90 75
+/dcs-monitor/det/meta/setScanPhi 15
+/dcs-monitor/det/meta/setScanZ 1180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 675.000000 1169.134295 -860.000000 mm
+/dcs-monitor/det/setRotation 0 -90 60
+/dcs-monitor/det/meta/setScanPhi 30
+/dcs-monitor/det/meta/setScanZ 1180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 954.594155 954.594155 -860.000000 mm
+/dcs-monitor/det/setRotation 0 -90 45
+/dcs-monitor/det/meta/setScanPhi 45
+/dcs-monitor/det/meta/setScanZ 1180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1169.134295 675.000000 -860.000000 mm
+/dcs-monitor/det/setRotation 0 -90 30
+/dcs-monitor/det/meta/setScanPhi 60
+/dcs-monitor/det/meta/setScanZ 1180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1303.999865 349.405711 -860.000000 mm
+/dcs-monitor/det/setRotation 0 -90 15
+/dcs-monitor/det/meta/setScanPhi 75
+/dcs-monitor/det/meta/setScanZ 1180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1350.000000 0.000000 -860.000000 mm
+/dcs-monitor/det/setRotation 0 -90 0
+/dcs-monitor/det/meta/setScanPhi 90
+/dcs-monitor/det/meta/setScanZ 1180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1303.999865 -349.405711 -860.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -15
+/dcs-monitor/det/meta/setScanPhi 105
+/dcs-monitor/det/meta/setScanZ 1180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1169.134295 -675.000000 -860.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -30
+/dcs-monitor/det/meta/setScanPhi 120
+/dcs-monitor/det/meta/setScanZ 1180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 954.594155 -954.594155 -860.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -45
+/dcs-monitor/det/meta/setScanPhi 135
+/dcs-monitor/det/meta/setScanZ 1180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 675.000000 -1169.134295 -860.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -60
+/dcs-monitor/det/meta/setScanPhi 150
+/dcs-monitor/det/meta/setScanZ 1180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 349.405711 -1303.999865 -860.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -75
+/dcs-monitor/det/meta/setScanPhi 165
+/dcs-monitor/det/meta/setScanZ 1180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 0.000000 -1350.000000 -860.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -90
+/dcs-monitor/det/meta/setScanPhi 180
+/dcs-monitor/det/meta/setScanZ 1180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -349.405711 -1303.999865 -860.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -105
+/dcs-monitor/det/meta/setScanPhi 195
+/dcs-monitor/det/meta/setScanZ 1180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -675.000000 -1169.134295 -860.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -120
+/dcs-monitor/det/meta/setScanPhi 210
+/dcs-monitor/det/meta/setScanZ 1180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -954.594155 -954.594155 -860.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -135
+/dcs-monitor/det/meta/setScanPhi 225
+/dcs-monitor/det/meta/setScanZ 1180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1169.134295 -675.000000 -860.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -150
+/dcs-monitor/det/meta/setScanPhi 240
+/dcs-monitor/det/meta/setScanZ 1180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1303.999865 -349.405711 -860.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -165
+/dcs-monitor/det/meta/setScanPhi 255
+/dcs-monitor/det/meta/setScanZ 1180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1350.000000 -0.000000 -860.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -180
+/dcs-monitor/det/meta/setScanPhi 270
+/dcs-monitor/det/meta/setScanZ 1180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1303.999865 349.405711 -860.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -195
+/dcs-monitor/det/meta/setScanPhi 285
+/dcs-monitor/det/meta/setScanZ 1180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1169.134295 675.000000 -860.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -210
+/dcs-monitor/det/meta/setScanPhi 300
+/dcs-monitor/det/meta/setScanZ 1180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -954.594155 954.594155 -860.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -225
+/dcs-monitor/det/meta/setScanPhi 315
+/dcs-monitor/det/meta/setScanZ 1180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -675.000000 1169.134295 -860.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -240
+/dcs-monitor/det/meta/setScanPhi 330
+/dcs-monitor/det/meta/setScanZ 1180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -349.405711 1303.999865 -860.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -255
+/dcs-monitor/det/meta/setScanPhi 345
+/dcs-monitor/det/meta/setScanZ 1180 mm
+/dcs-monitor/det/clyc/add
+
+# sensor CLYC-1, height 1380 mm
+/dcs-monitor/det/setPosition 0.000000 1350.000000 -660.000000 mm
+/dcs-monitor/det/setRotation 0 -90 90
+/dcs-monitor/det/meta/setScanPhi 0
+/dcs-monitor/det/meta/setScanZ 1380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 349.405711 1303.999865 -660.000000 mm
+/dcs-monitor/det/setRotation 0 -90 75
+/dcs-monitor/det/meta/setScanPhi 15
+/dcs-monitor/det/meta/setScanZ 1380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 675.000000 1169.134295 -660.000000 mm
+/dcs-monitor/det/setRotation 0 -90 60
+/dcs-monitor/det/meta/setScanPhi 30
+/dcs-monitor/det/meta/setScanZ 1380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 954.594155 954.594155 -660.000000 mm
+/dcs-monitor/det/setRotation 0 -90 45
+/dcs-monitor/det/meta/setScanPhi 45
+/dcs-monitor/det/meta/setScanZ 1380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1169.134295 675.000000 -660.000000 mm
+/dcs-monitor/det/setRotation 0 -90 30
+/dcs-monitor/det/meta/setScanPhi 60
+/dcs-monitor/det/meta/setScanZ 1380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1303.999865 349.405711 -660.000000 mm
+/dcs-monitor/det/setRotation 0 -90 15
+/dcs-monitor/det/meta/setScanPhi 75
+/dcs-monitor/det/meta/setScanZ 1380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1350.000000 0.000000 -660.000000 mm
+/dcs-monitor/det/setRotation 0 -90 0
+/dcs-monitor/det/meta/setScanPhi 90
+/dcs-monitor/det/meta/setScanZ 1380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1303.999865 -349.405711 -660.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -15
+/dcs-monitor/det/meta/setScanPhi 105
+/dcs-monitor/det/meta/setScanZ 1380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1169.134295 -675.000000 -660.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -30
+/dcs-monitor/det/meta/setScanPhi 120
+/dcs-monitor/det/meta/setScanZ 1380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 954.594155 -954.594155 -660.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -45
+/dcs-monitor/det/meta/setScanPhi 135
+/dcs-monitor/det/meta/setScanZ 1380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 675.000000 -1169.134295 -660.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -60
+/dcs-monitor/det/meta/setScanPhi 150
+/dcs-monitor/det/meta/setScanZ 1380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 349.405711 -1303.999865 -660.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -75
+/dcs-monitor/det/meta/setScanPhi 165
+/dcs-monitor/det/meta/setScanZ 1380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 0.000000 -1350.000000 -660.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -90
+/dcs-monitor/det/meta/setScanPhi 180
+/dcs-monitor/det/meta/setScanZ 1380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -349.405711 -1303.999865 -660.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -105
+/dcs-monitor/det/meta/setScanPhi 195
+/dcs-monitor/det/meta/setScanZ 1380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -675.000000 -1169.134295 -660.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -120
+/dcs-monitor/det/meta/setScanPhi 210
+/dcs-monitor/det/meta/setScanZ 1380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -954.594155 -954.594155 -660.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -135
+/dcs-monitor/det/meta/setScanPhi 225
+/dcs-monitor/det/meta/setScanZ 1380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1169.134295 -675.000000 -660.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -150
+/dcs-monitor/det/meta/setScanPhi 240
+/dcs-monitor/det/meta/setScanZ 1380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1303.999865 -349.405711 -660.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -165
+/dcs-monitor/det/meta/setScanPhi 255
+/dcs-monitor/det/meta/setScanZ 1380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1350.000000 -0.000000 -660.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -180
+/dcs-monitor/det/meta/setScanPhi 270
+/dcs-monitor/det/meta/setScanZ 1380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1303.999865 349.405711 -660.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -195
+/dcs-monitor/det/meta/setScanPhi 285
+/dcs-monitor/det/meta/setScanZ 1380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1169.134295 675.000000 -660.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -210
+/dcs-monitor/det/meta/setScanPhi 300
+/dcs-monitor/det/meta/setScanZ 1380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -954.594155 954.594155 -660.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -225
+/dcs-monitor/det/meta/setScanPhi 315
+/dcs-monitor/det/meta/setScanZ 1380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -675.000000 1169.134295 -660.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -240
+/dcs-monitor/det/meta/setScanPhi 330
+/dcs-monitor/det/meta/setScanZ 1380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -349.405711 1303.999865 -660.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -255
+/dcs-monitor/det/meta/setScanPhi 345
+/dcs-monitor/det/meta/setScanZ 1380 mm
+/dcs-monitor/det/clyc/add
+
+# sensor CLYC-2, height 1580 mm
+/dcs-monitor/det/setPosition 0.000000 1350.000000 -460.000000 mm
+/dcs-monitor/det/setRotation 0 -90 90
+/dcs-monitor/det/meta/setScanPhi 0
+/dcs-monitor/det/meta/setScanZ 1580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 349.405711 1303.999865 -460.000000 mm
+/dcs-monitor/det/setRotation 0 -90 75
+/dcs-monitor/det/meta/setScanPhi 15
+/dcs-monitor/det/meta/setScanZ 1580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 675.000000 1169.134295 -460.000000 mm
+/dcs-monitor/det/setRotation 0 -90 60
+/dcs-monitor/det/meta/setScanPhi 30
+/dcs-monitor/det/meta/setScanZ 1580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 954.594155 954.594155 -460.000000 mm
+/dcs-monitor/det/setRotation 0 -90 45
+/dcs-monitor/det/meta/setScanPhi 45
+/dcs-monitor/det/meta/setScanZ 1580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1169.134295 675.000000 -460.000000 mm
+/dcs-monitor/det/setRotation 0 -90 30
+/dcs-monitor/det/meta/setScanPhi 60
+/dcs-monitor/det/meta/setScanZ 1580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1303.999865 349.405711 -460.000000 mm
+/dcs-monitor/det/setRotation 0 -90 15
+/dcs-monitor/det/meta/setScanPhi 75
+/dcs-monitor/det/meta/setScanZ 1580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1350.000000 0.000000 -460.000000 mm
+/dcs-monitor/det/setRotation 0 -90 0
+/dcs-monitor/det/meta/setScanPhi 90
+/dcs-monitor/det/meta/setScanZ 1580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1303.999865 -349.405711 -460.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -15
+/dcs-monitor/det/meta/setScanPhi 105
+/dcs-monitor/det/meta/setScanZ 1580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1169.134295 -675.000000 -460.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -30
+/dcs-monitor/det/meta/setScanPhi 120
+/dcs-monitor/det/meta/setScanZ 1580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 954.594155 -954.594155 -460.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -45
+/dcs-monitor/det/meta/setScanPhi 135
+/dcs-monitor/det/meta/setScanZ 1580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 675.000000 -1169.134295 -460.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -60
+/dcs-monitor/det/meta/setScanPhi 150
+/dcs-monitor/det/meta/setScanZ 1580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 349.405711 -1303.999865 -460.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -75
+/dcs-monitor/det/meta/setScanPhi 165
+/dcs-monitor/det/meta/setScanZ 1580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 0.000000 -1350.000000 -460.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -90
+/dcs-monitor/det/meta/setScanPhi 180
+/dcs-monitor/det/meta/setScanZ 1580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -349.405711 -1303.999865 -460.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -105
+/dcs-monitor/det/meta/setScanPhi 195
+/dcs-monitor/det/meta/setScanZ 1580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -675.000000 -1169.134295 -460.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -120
+/dcs-monitor/det/meta/setScanPhi 210
+/dcs-monitor/det/meta/setScanZ 1580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -954.594155 -954.594155 -460.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -135
+/dcs-monitor/det/meta/setScanPhi 225
+/dcs-monitor/det/meta/setScanZ 1580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1169.134295 -675.000000 -460.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -150
+/dcs-monitor/det/meta/setScanPhi 240
+/dcs-monitor/det/meta/setScanZ 1580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1303.999865 -349.405711 -460.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -165
+/dcs-monitor/det/meta/setScanPhi 255
+/dcs-monitor/det/meta/setScanZ 1580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1350.000000 -0.000000 -460.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -180
+/dcs-monitor/det/meta/setScanPhi 270
+/dcs-monitor/det/meta/setScanZ 1580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1303.999865 349.405711 -460.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -195
+/dcs-monitor/det/meta/setScanPhi 285
+/dcs-monitor/det/meta/setScanZ 1580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1169.134295 675.000000 -460.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -210
+/dcs-monitor/det/meta/setScanPhi 300
+/dcs-monitor/det/meta/setScanZ 1580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -954.594155 954.594155 -460.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -225
+/dcs-monitor/det/meta/setScanPhi 315
+/dcs-monitor/det/meta/setScanZ 1580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -675.000000 1169.134295 -460.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -240
+/dcs-monitor/det/meta/setScanPhi 330
+/dcs-monitor/det/meta/setScanZ 1580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -349.405711 1303.999865 -460.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -255
+/dcs-monitor/det/meta/setScanPhi 345
+/dcs-monitor/det/meta/setScanZ 1580 mm
+/dcs-monitor/det/clyc/add
+
+# sensor CLYC-1, height 1780 mm
+/dcs-monitor/det/setPosition 0.000000 1350.000000 -260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 90
+/dcs-monitor/det/meta/setScanPhi 0
+/dcs-monitor/det/meta/setScanZ 1780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 349.405711 1303.999865 -260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 75
+/dcs-monitor/det/meta/setScanPhi 15
+/dcs-monitor/det/meta/setScanZ 1780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 675.000000 1169.134295 -260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 60
+/dcs-monitor/det/meta/setScanPhi 30
+/dcs-monitor/det/meta/setScanZ 1780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 954.594155 954.594155 -260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 45
+/dcs-monitor/det/meta/setScanPhi 45
+/dcs-monitor/det/meta/setScanZ 1780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1169.134295 675.000000 -260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 30
+/dcs-monitor/det/meta/setScanPhi 60
+/dcs-monitor/det/meta/setScanZ 1780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1303.999865 349.405711 -260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 15
+/dcs-monitor/det/meta/setScanPhi 75
+/dcs-monitor/det/meta/setScanZ 1780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1350.000000 0.000000 -260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 0
+/dcs-monitor/det/meta/setScanPhi 90
+/dcs-monitor/det/meta/setScanZ 1780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1303.999865 -349.405711 -260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -15
+/dcs-monitor/det/meta/setScanPhi 105
+/dcs-monitor/det/meta/setScanZ 1780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1169.134295 -675.000000 -260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -30
+/dcs-monitor/det/meta/setScanPhi 120
+/dcs-monitor/det/meta/setScanZ 1780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 954.594155 -954.594155 -260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -45
+/dcs-monitor/det/meta/setScanPhi 135
+/dcs-monitor/det/meta/setScanZ 1780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 675.000000 -1169.134295 -260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -60
+/dcs-monitor/det/meta/setScanPhi 150
+/dcs-monitor/det/meta/setScanZ 1780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 349.405711 -1303.999865 -260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -75
+/dcs-monitor/det/meta/setScanPhi 165
+/dcs-monitor/det/meta/setScanZ 1780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 0.000000 -1350.000000 -260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -90
+/dcs-monitor/det/meta/setScanPhi 180
+/dcs-monitor/det/meta/setScanZ 1780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -349.405711 -1303.999865 -260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -105
+/dcs-monitor/det/meta/setScanPhi 195
+/dcs-monitor/det/meta/setScanZ 1780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -675.000000 -1169.134295 -260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -120
+/dcs-monitor/det/meta/setScanPhi 210
+/dcs-monitor/det/meta/setScanZ 1780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -954.594155 -954.594155 -260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -135
+/dcs-monitor/det/meta/setScanPhi 225
+/dcs-monitor/det/meta/setScanZ 1780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1169.134295 -675.000000 -260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -150
+/dcs-monitor/det/meta/setScanPhi 240
+/dcs-monitor/det/meta/setScanZ 1780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1303.999865 -349.405711 -260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -165
+/dcs-monitor/det/meta/setScanPhi 255
+/dcs-monitor/det/meta/setScanZ 1780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1350.000000 -0.000000 -260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -180
+/dcs-monitor/det/meta/setScanPhi 270
+/dcs-monitor/det/meta/setScanZ 1780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1303.999865 349.405711 -260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -195
+/dcs-monitor/det/meta/setScanPhi 285
+/dcs-monitor/det/meta/setScanZ 1780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1169.134295 675.000000 -260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -210
+/dcs-monitor/det/meta/setScanPhi 300
+/dcs-monitor/det/meta/setScanZ 1780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -954.594155 954.594155 -260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -225
+/dcs-monitor/det/meta/setScanPhi 315
+/dcs-monitor/det/meta/setScanZ 1780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -675.000000 1169.134295 -260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -240
+/dcs-monitor/det/meta/setScanPhi 330
+/dcs-monitor/det/meta/setScanZ 1780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -349.405711 1303.999865 -260.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -255
+/dcs-monitor/det/meta/setScanPhi 345
+/dcs-monitor/det/meta/setScanZ 1780 mm
+/dcs-monitor/det/clyc/add
+
+# sensor CLYC-2, height 1980 mm
+/dcs-monitor/det/setPosition 0.000000 1350.000000 -60.000000 mm
+/dcs-monitor/det/setRotation 0 -90 90
+/dcs-monitor/det/meta/setScanPhi 0
+/dcs-monitor/det/meta/setScanZ 1980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 349.405711 1303.999865 -60.000000 mm
+/dcs-monitor/det/setRotation 0 -90 75
+/dcs-monitor/det/meta/setScanPhi 15
+/dcs-monitor/det/meta/setScanZ 1980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 675.000000 1169.134295 -60.000000 mm
+/dcs-monitor/det/setRotation 0 -90 60
+/dcs-monitor/det/meta/setScanPhi 30
+/dcs-monitor/det/meta/setScanZ 1980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 954.594155 954.594155 -60.000000 mm
+/dcs-monitor/det/setRotation 0 -90 45
+/dcs-monitor/det/meta/setScanPhi 45
+/dcs-monitor/det/meta/setScanZ 1980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1169.134295 675.000000 -60.000000 mm
+/dcs-monitor/det/setRotation 0 -90 30
+/dcs-monitor/det/meta/setScanPhi 60
+/dcs-monitor/det/meta/setScanZ 1980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1303.999865 349.405711 -60.000000 mm
+/dcs-monitor/det/setRotation 0 -90 15
+/dcs-monitor/det/meta/setScanPhi 75
+/dcs-monitor/det/meta/setScanZ 1980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1350.000000 0.000000 -60.000000 mm
+/dcs-monitor/det/setRotation 0 -90 0
+/dcs-monitor/det/meta/setScanPhi 90
+/dcs-monitor/det/meta/setScanZ 1980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1303.999865 -349.405711 -60.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -15
+/dcs-monitor/det/meta/setScanPhi 105
+/dcs-monitor/det/meta/setScanZ 1980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1169.134295 -675.000000 -60.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -30
+/dcs-monitor/det/meta/setScanPhi 120
+/dcs-monitor/det/meta/setScanZ 1980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 954.594155 -954.594155 -60.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -45
+/dcs-monitor/det/meta/setScanPhi 135
+/dcs-monitor/det/meta/setScanZ 1980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 675.000000 -1169.134295 -60.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -60
+/dcs-monitor/det/meta/setScanPhi 150
+/dcs-monitor/det/meta/setScanZ 1980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 349.405711 -1303.999865 -60.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -75
+/dcs-monitor/det/meta/setScanPhi 165
+/dcs-monitor/det/meta/setScanZ 1980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 0.000000 -1350.000000 -60.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -90
+/dcs-monitor/det/meta/setScanPhi 180
+/dcs-monitor/det/meta/setScanZ 1980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -349.405711 -1303.999865 -60.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -105
+/dcs-monitor/det/meta/setScanPhi 195
+/dcs-monitor/det/meta/setScanZ 1980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -675.000000 -1169.134295 -60.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -120
+/dcs-monitor/det/meta/setScanPhi 210
+/dcs-monitor/det/meta/setScanZ 1980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -954.594155 -954.594155 -60.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -135
+/dcs-monitor/det/meta/setScanPhi 225
+/dcs-monitor/det/meta/setScanZ 1980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1169.134295 -675.000000 -60.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -150
+/dcs-monitor/det/meta/setScanPhi 240
+/dcs-monitor/det/meta/setScanZ 1980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1303.999865 -349.405711 -60.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -165
+/dcs-monitor/det/meta/setScanPhi 255
+/dcs-monitor/det/meta/setScanZ 1980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1350.000000 -0.000000 -60.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -180
+/dcs-monitor/det/meta/setScanPhi 270
+/dcs-monitor/det/meta/setScanZ 1980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1303.999865 349.405711 -60.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -195
+/dcs-monitor/det/meta/setScanPhi 285
+/dcs-monitor/det/meta/setScanZ 1980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1169.134295 675.000000 -60.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -210
+/dcs-monitor/det/meta/setScanPhi 300
+/dcs-monitor/det/meta/setScanZ 1980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -954.594155 954.594155 -60.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -225
+/dcs-monitor/det/meta/setScanPhi 315
+/dcs-monitor/det/meta/setScanZ 1980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -675.000000 1169.134295 -60.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -240
+/dcs-monitor/det/meta/setScanPhi 330
+/dcs-monitor/det/meta/setScanZ 1980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -349.405711 1303.999865 -60.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -255
+/dcs-monitor/det/meta/setScanPhi 345
+/dcs-monitor/det/meta/setScanZ 1980 mm
+/dcs-monitor/det/clyc/add
+
+# sensor CLYC-1, height 2180 mm
+/dcs-monitor/det/setPosition 0.000000 1350.000000 140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 90
+/dcs-monitor/det/meta/setScanPhi 0
+/dcs-monitor/det/meta/setScanZ 2180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 349.405711 1303.999865 140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 75
+/dcs-monitor/det/meta/setScanPhi 15
+/dcs-monitor/det/meta/setScanZ 2180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 675.000000 1169.134295 140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 60
+/dcs-monitor/det/meta/setScanPhi 30
+/dcs-monitor/det/meta/setScanZ 2180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 954.594155 954.594155 140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 45
+/dcs-monitor/det/meta/setScanPhi 45
+/dcs-monitor/det/meta/setScanZ 2180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1169.134295 675.000000 140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 30
+/dcs-monitor/det/meta/setScanPhi 60
+/dcs-monitor/det/meta/setScanZ 2180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1303.999865 349.405711 140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 15
+/dcs-monitor/det/meta/setScanPhi 75
+/dcs-monitor/det/meta/setScanZ 2180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1350.000000 0.000000 140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 0
+/dcs-monitor/det/meta/setScanPhi 90
+/dcs-monitor/det/meta/setScanZ 2180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1303.999865 -349.405711 140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -15
+/dcs-monitor/det/meta/setScanPhi 105
+/dcs-monitor/det/meta/setScanZ 2180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1169.134295 -675.000000 140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -30
+/dcs-monitor/det/meta/setScanPhi 120
+/dcs-monitor/det/meta/setScanZ 2180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 954.594155 -954.594155 140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -45
+/dcs-monitor/det/meta/setScanPhi 135
+/dcs-monitor/det/meta/setScanZ 2180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 675.000000 -1169.134295 140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -60
+/dcs-monitor/det/meta/setScanPhi 150
+/dcs-monitor/det/meta/setScanZ 2180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 349.405711 -1303.999865 140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -75
+/dcs-monitor/det/meta/setScanPhi 165
+/dcs-monitor/det/meta/setScanZ 2180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 0.000000 -1350.000000 140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -90
+/dcs-monitor/det/meta/setScanPhi 180
+/dcs-monitor/det/meta/setScanZ 2180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -349.405711 -1303.999865 140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -105
+/dcs-monitor/det/meta/setScanPhi 195
+/dcs-monitor/det/meta/setScanZ 2180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -675.000000 -1169.134295 140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -120
+/dcs-monitor/det/meta/setScanPhi 210
+/dcs-monitor/det/meta/setScanZ 2180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -954.594155 -954.594155 140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -135
+/dcs-monitor/det/meta/setScanPhi 225
+/dcs-monitor/det/meta/setScanZ 2180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1169.134295 -675.000000 140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -150
+/dcs-monitor/det/meta/setScanPhi 240
+/dcs-monitor/det/meta/setScanZ 2180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1303.999865 -349.405711 140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -165
+/dcs-monitor/det/meta/setScanPhi 255
+/dcs-monitor/det/meta/setScanZ 2180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1350.000000 -0.000000 140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -180
+/dcs-monitor/det/meta/setScanPhi 270
+/dcs-monitor/det/meta/setScanZ 2180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1303.999865 349.405711 140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -195
+/dcs-monitor/det/meta/setScanPhi 285
+/dcs-monitor/det/meta/setScanZ 2180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1169.134295 675.000000 140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -210
+/dcs-monitor/det/meta/setScanPhi 300
+/dcs-monitor/det/meta/setScanZ 2180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -954.594155 954.594155 140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -225
+/dcs-monitor/det/meta/setScanPhi 315
+/dcs-monitor/det/meta/setScanZ 2180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -675.000000 1169.134295 140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -240
+/dcs-monitor/det/meta/setScanPhi 330
+/dcs-monitor/det/meta/setScanZ 2180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -349.405711 1303.999865 140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -255
+/dcs-monitor/det/meta/setScanPhi 345
+/dcs-monitor/det/meta/setScanZ 2180 mm
+/dcs-monitor/det/clyc/add
+
+# sensor CLYC-2, height 2380 mm
+/dcs-monitor/det/setPosition 0.000000 1350.000000 340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 90
+/dcs-monitor/det/meta/setScanPhi 0
+/dcs-monitor/det/meta/setScanZ 2380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 349.405711 1303.999865 340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 75
+/dcs-monitor/det/meta/setScanPhi 15
+/dcs-monitor/det/meta/setScanZ 2380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 675.000000 1169.134295 340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 60
+/dcs-monitor/det/meta/setScanPhi 30
+/dcs-monitor/det/meta/setScanZ 2380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 954.594155 954.594155 340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 45
+/dcs-monitor/det/meta/setScanPhi 45
+/dcs-monitor/det/meta/setScanZ 2380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1169.134295 675.000000 340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 30
+/dcs-monitor/det/meta/setScanPhi 60
+/dcs-monitor/det/meta/setScanZ 2380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1303.999865 349.405711 340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 15
+/dcs-monitor/det/meta/setScanPhi 75
+/dcs-monitor/det/meta/setScanZ 2380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1350.000000 0.000000 340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 0
+/dcs-monitor/det/meta/setScanPhi 90
+/dcs-monitor/det/meta/setScanZ 2380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1303.999865 -349.405711 340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -15
+/dcs-monitor/det/meta/setScanPhi 105
+/dcs-monitor/det/meta/setScanZ 2380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1169.134295 -675.000000 340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -30
+/dcs-monitor/det/meta/setScanPhi 120
+/dcs-monitor/det/meta/setScanZ 2380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 954.594155 -954.594155 340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -45
+/dcs-monitor/det/meta/setScanPhi 135
+/dcs-monitor/det/meta/setScanZ 2380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 675.000000 -1169.134295 340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -60
+/dcs-monitor/det/meta/setScanPhi 150
+/dcs-monitor/det/meta/setScanZ 2380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 349.405711 -1303.999865 340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -75
+/dcs-monitor/det/meta/setScanPhi 165
+/dcs-monitor/det/meta/setScanZ 2380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 0.000000 -1350.000000 340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -90
+/dcs-monitor/det/meta/setScanPhi 180
+/dcs-monitor/det/meta/setScanZ 2380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -349.405711 -1303.999865 340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -105
+/dcs-monitor/det/meta/setScanPhi 195
+/dcs-monitor/det/meta/setScanZ 2380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -675.000000 -1169.134295 340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -120
+/dcs-monitor/det/meta/setScanPhi 210
+/dcs-monitor/det/meta/setScanZ 2380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -954.594155 -954.594155 340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -135
+/dcs-monitor/det/meta/setScanPhi 225
+/dcs-monitor/det/meta/setScanZ 2380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1169.134295 -675.000000 340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -150
+/dcs-monitor/det/meta/setScanPhi 240
+/dcs-monitor/det/meta/setScanZ 2380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1303.999865 -349.405711 340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -165
+/dcs-monitor/det/meta/setScanPhi 255
+/dcs-monitor/det/meta/setScanZ 2380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1350.000000 -0.000000 340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -180
+/dcs-monitor/det/meta/setScanPhi 270
+/dcs-monitor/det/meta/setScanZ 2380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1303.999865 349.405711 340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -195
+/dcs-monitor/det/meta/setScanPhi 285
+/dcs-monitor/det/meta/setScanZ 2380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1169.134295 675.000000 340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -210
+/dcs-monitor/det/meta/setScanPhi 300
+/dcs-monitor/det/meta/setScanZ 2380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -954.594155 954.594155 340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -225
+/dcs-monitor/det/meta/setScanPhi 315
+/dcs-monitor/det/meta/setScanZ 2380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -675.000000 1169.134295 340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -240
+/dcs-monitor/det/meta/setScanPhi 330
+/dcs-monitor/det/meta/setScanZ 2380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -349.405711 1303.999865 340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -255
+/dcs-monitor/det/meta/setScanPhi 345
+/dcs-monitor/det/meta/setScanZ 2380 mm
+/dcs-monitor/det/clyc/add
+
+# sensor CLYC-1, height 2580 mm
+/dcs-monitor/det/setPosition 0.000000 1350.000000 540.000000 mm
+/dcs-monitor/det/setRotation 0 -90 90
+/dcs-monitor/det/meta/setScanPhi 0
+/dcs-monitor/det/meta/setScanZ 2580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 349.405711 1303.999865 540.000000 mm
+/dcs-monitor/det/setRotation 0 -90 75
+/dcs-monitor/det/meta/setScanPhi 15
+/dcs-monitor/det/meta/setScanZ 2580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 675.000000 1169.134295 540.000000 mm
+/dcs-monitor/det/setRotation 0 -90 60
+/dcs-monitor/det/meta/setScanPhi 30
+/dcs-monitor/det/meta/setScanZ 2580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 954.594155 954.594155 540.000000 mm
+/dcs-monitor/det/setRotation 0 -90 45
+/dcs-monitor/det/meta/setScanPhi 45
+/dcs-monitor/det/meta/setScanZ 2580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1169.134295 675.000000 540.000000 mm
+/dcs-monitor/det/setRotation 0 -90 30
+/dcs-monitor/det/meta/setScanPhi 60
+/dcs-monitor/det/meta/setScanZ 2580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1303.999865 349.405711 540.000000 mm
+/dcs-monitor/det/setRotation 0 -90 15
+/dcs-monitor/det/meta/setScanPhi 75
+/dcs-monitor/det/meta/setScanZ 2580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1350.000000 0.000000 540.000000 mm
+/dcs-monitor/det/setRotation 0 -90 0
+/dcs-monitor/det/meta/setScanPhi 90
+/dcs-monitor/det/meta/setScanZ 2580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1303.999865 -349.405711 540.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -15
+/dcs-monitor/det/meta/setScanPhi 105
+/dcs-monitor/det/meta/setScanZ 2580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1169.134295 -675.000000 540.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -30
+/dcs-monitor/det/meta/setScanPhi 120
+/dcs-monitor/det/meta/setScanZ 2580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 954.594155 -954.594155 540.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -45
+/dcs-monitor/det/meta/setScanPhi 135
+/dcs-monitor/det/meta/setScanZ 2580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 675.000000 -1169.134295 540.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -60
+/dcs-monitor/det/meta/setScanPhi 150
+/dcs-monitor/det/meta/setScanZ 2580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 349.405711 -1303.999865 540.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -75
+/dcs-monitor/det/meta/setScanPhi 165
+/dcs-monitor/det/meta/setScanZ 2580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 0.000000 -1350.000000 540.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -90
+/dcs-monitor/det/meta/setScanPhi 180
+/dcs-monitor/det/meta/setScanZ 2580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -349.405711 -1303.999865 540.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -105
+/dcs-monitor/det/meta/setScanPhi 195
+/dcs-monitor/det/meta/setScanZ 2580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -675.000000 -1169.134295 540.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -120
+/dcs-monitor/det/meta/setScanPhi 210
+/dcs-monitor/det/meta/setScanZ 2580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -954.594155 -954.594155 540.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -135
+/dcs-monitor/det/meta/setScanPhi 225
+/dcs-monitor/det/meta/setScanZ 2580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1169.134295 -675.000000 540.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -150
+/dcs-monitor/det/meta/setScanPhi 240
+/dcs-monitor/det/meta/setScanZ 2580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1303.999865 -349.405711 540.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -165
+/dcs-monitor/det/meta/setScanPhi 255
+/dcs-monitor/det/meta/setScanZ 2580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1350.000000 -0.000000 540.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -180
+/dcs-monitor/det/meta/setScanPhi 270
+/dcs-monitor/det/meta/setScanZ 2580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1303.999865 349.405711 540.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -195
+/dcs-monitor/det/meta/setScanPhi 285
+/dcs-monitor/det/meta/setScanZ 2580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1169.134295 675.000000 540.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -210
+/dcs-monitor/det/meta/setScanPhi 300
+/dcs-monitor/det/meta/setScanZ 2580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -954.594155 954.594155 540.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -225
+/dcs-monitor/det/meta/setScanPhi 315
+/dcs-monitor/det/meta/setScanZ 2580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -675.000000 1169.134295 540.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -240
+/dcs-monitor/det/meta/setScanPhi 330
+/dcs-monitor/det/meta/setScanZ 2580 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -349.405711 1303.999865 540.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -255
+/dcs-monitor/det/meta/setScanPhi 345
+/dcs-monitor/det/meta/setScanZ 2580 mm
+/dcs-monitor/det/clyc/add
+
+# sensor CLYC-2, height 2780 mm
+/dcs-monitor/det/setPosition 0.000000 1350.000000 740.000000 mm
+/dcs-monitor/det/setRotation 0 -90 90
+/dcs-monitor/det/meta/setScanPhi 0
+/dcs-monitor/det/meta/setScanZ 2780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 349.405711 1303.999865 740.000000 mm
+/dcs-monitor/det/setRotation 0 -90 75
+/dcs-monitor/det/meta/setScanPhi 15
+/dcs-monitor/det/meta/setScanZ 2780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 675.000000 1169.134295 740.000000 mm
+/dcs-monitor/det/setRotation 0 -90 60
+/dcs-monitor/det/meta/setScanPhi 30
+/dcs-monitor/det/meta/setScanZ 2780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 954.594155 954.594155 740.000000 mm
+/dcs-monitor/det/setRotation 0 -90 45
+/dcs-monitor/det/meta/setScanPhi 45
+/dcs-monitor/det/meta/setScanZ 2780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1169.134295 675.000000 740.000000 mm
+/dcs-monitor/det/setRotation 0 -90 30
+/dcs-monitor/det/meta/setScanPhi 60
+/dcs-monitor/det/meta/setScanZ 2780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1303.999865 349.405711 740.000000 mm
+/dcs-monitor/det/setRotation 0 -90 15
+/dcs-monitor/det/meta/setScanPhi 75
+/dcs-monitor/det/meta/setScanZ 2780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1350.000000 0.000000 740.000000 mm
+/dcs-monitor/det/setRotation 0 -90 0
+/dcs-monitor/det/meta/setScanPhi 90
+/dcs-monitor/det/meta/setScanZ 2780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1303.999865 -349.405711 740.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -15
+/dcs-monitor/det/meta/setScanPhi 105
+/dcs-monitor/det/meta/setScanZ 2780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1169.134295 -675.000000 740.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -30
+/dcs-monitor/det/meta/setScanPhi 120
+/dcs-monitor/det/meta/setScanZ 2780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 954.594155 -954.594155 740.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -45
+/dcs-monitor/det/meta/setScanPhi 135
+/dcs-monitor/det/meta/setScanZ 2780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 675.000000 -1169.134295 740.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -60
+/dcs-monitor/det/meta/setScanPhi 150
+/dcs-monitor/det/meta/setScanZ 2780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 349.405711 -1303.999865 740.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -75
+/dcs-monitor/det/meta/setScanPhi 165
+/dcs-monitor/det/meta/setScanZ 2780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 0.000000 -1350.000000 740.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -90
+/dcs-monitor/det/meta/setScanPhi 180
+/dcs-monitor/det/meta/setScanZ 2780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -349.405711 -1303.999865 740.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -105
+/dcs-monitor/det/meta/setScanPhi 195
+/dcs-monitor/det/meta/setScanZ 2780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -675.000000 -1169.134295 740.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -120
+/dcs-monitor/det/meta/setScanPhi 210
+/dcs-monitor/det/meta/setScanZ 2780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -954.594155 -954.594155 740.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -135
+/dcs-monitor/det/meta/setScanPhi 225
+/dcs-monitor/det/meta/setScanZ 2780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1169.134295 -675.000000 740.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -150
+/dcs-monitor/det/meta/setScanPhi 240
+/dcs-monitor/det/meta/setScanZ 2780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1303.999865 -349.405711 740.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -165
+/dcs-monitor/det/meta/setScanPhi 255
+/dcs-monitor/det/meta/setScanZ 2780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1350.000000 -0.000000 740.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -180
+/dcs-monitor/det/meta/setScanPhi 270
+/dcs-monitor/det/meta/setScanZ 2780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1303.999865 349.405711 740.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -195
+/dcs-monitor/det/meta/setScanPhi 285
+/dcs-monitor/det/meta/setScanZ 2780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1169.134295 675.000000 740.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -210
+/dcs-monitor/det/meta/setScanPhi 300
+/dcs-monitor/det/meta/setScanZ 2780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -954.594155 954.594155 740.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -225
+/dcs-monitor/det/meta/setScanPhi 315
+/dcs-monitor/det/meta/setScanZ 2780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -675.000000 1169.134295 740.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -240
+/dcs-monitor/det/meta/setScanPhi 330
+/dcs-monitor/det/meta/setScanZ 2780 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -349.405711 1303.999865 740.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -255
+/dcs-monitor/det/meta/setScanPhi 345
+/dcs-monitor/det/meta/setScanZ 2780 mm
+/dcs-monitor/det/clyc/add
+
+# sensor CLYC-1, height 2980 mm
+/dcs-monitor/det/setPosition 0.000000 1350.000000 940.000000 mm
+/dcs-monitor/det/setRotation 0 -90 90
+/dcs-monitor/det/meta/setScanPhi 0
+/dcs-monitor/det/meta/setScanZ 2980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 349.405711 1303.999865 940.000000 mm
+/dcs-monitor/det/setRotation 0 -90 75
+/dcs-monitor/det/meta/setScanPhi 15
+/dcs-monitor/det/meta/setScanZ 2980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 675.000000 1169.134295 940.000000 mm
+/dcs-monitor/det/setRotation 0 -90 60
+/dcs-monitor/det/meta/setScanPhi 30
+/dcs-monitor/det/meta/setScanZ 2980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 954.594155 954.594155 940.000000 mm
+/dcs-monitor/det/setRotation 0 -90 45
+/dcs-monitor/det/meta/setScanPhi 45
+/dcs-monitor/det/meta/setScanZ 2980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1169.134295 675.000000 940.000000 mm
+/dcs-monitor/det/setRotation 0 -90 30
+/dcs-monitor/det/meta/setScanPhi 60
+/dcs-monitor/det/meta/setScanZ 2980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1303.999865 349.405711 940.000000 mm
+/dcs-monitor/det/setRotation 0 -90 15
+/dcs-monitor/det/meta/setScanPhi 75
+/dcs-monitor/det/meta/setScanZ 2980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1350.000000 0.000000 940.000000 mm
+/dcs-monitor/det/setRotation 0 -90 0
+/dcs-monitor/det/meta/setScanPhi 90
+/dcs-monitor/det/meta/setScanZ 2980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1303.999865 -349.405711 940.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -15
+/dcs-monitor/det/meta/setScanPhi 105
+/dcs-monitor/det/meta/setScanZ 2980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1169.134295 -675.000000 940.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -30
+/dcs-monitor/det/meta/setScanPhi 120
+/dcs-monitor/det/meta/setScanZ 2980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 954.594155 -954.594155 940.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -45
+/dcs-monitor/det/meta/setScanPhi 135
+/dcs-monitor/det/meta/setScanZ 2980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 675.000000 -1169.134295 940.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -60
+/dcs-monitor/det/meta/setScanPhi 150
+/dcs-monitor/det/meta/setScanZ 2980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 349.405711 -1303.999865 940.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -75
+/dcs-monitor/det/meta/setScanPhi 165
+/dcs-monitor/det/meta/setScanZ 2980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 0.000000 -1350.000000 940.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -90
+/dcs-monitor/det/meta/setScanPhi 180
+/dcs-monitor/det/meta/setScanZ 2980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -349.405711 -1303.999865 940.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -105
+/dcs-monitor/det/meta/setScanPhi 195
+/dcs-monitor/det/meta/setScanZ 2980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -675.000000 -1169.134295 940.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -120
+/dcs-monitor/det/meta/setScanPhi 210
+/dcs-monitor/det/meta/setScanZ 2980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -954.594155 -954.594155 940.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -135
+/dcs-monitor/det/meta/setScanPhi 225
+/dcs-monitor/det/meta/setScanZ 2980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1169.134295 -675.000000 940.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -150
+/dcs-monitor/det/meta/setScanPhi 240
+/dcs-monitor/det/meta/setScanZ 2980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1303.999865 -349.405711 940.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -165
+/dcs-monitor/det/meta/setScanPhi 255
+/dcs-monitor/det/meta/setScanZ 2980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1350.000000 -0.000000 940.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -180
+/dcs-monitor/det/meta/setScanPhi 270
+/dcs-monitor/det/meta/setScanZ 2980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1303.999865 349.405711 940.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -195
+/dcs-monitor/det/meta/setScanPhi 285
+/dcs-monitor/det/meta/setScanZ 2980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1169.134295 675.000000 940.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -210
+/dcs-monitor/det/meta/setScanPhi 300
+/dcs-monitor/det/meta/setScanZ 2980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -954.594155 954.594155 940.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -225
+/dcs-monitor/det/meta/setScanPhi 315
+/dcs-monitor/det/meta/setScanZ 2980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -675.000000 1169.134295 940.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -240
+/dcs-monitor/det/meta/setScanPhi 330
+/dcs-monitor/det/meta/setScanZ 2980 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -349.405711 1303.999865 940.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -255
+/dcs-monitor/det/meta/setScanPhi 345
+/dcs-monitor/det/meta/setScanZ 2980 mm
+/dcs-monitor/det/clyc/add
+
+# sensor CLYC-2, height 3180 mm
+/dcs-monitor/det/setPosition 0.000000 1350.000000 1140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 90
+/dcs-monitor/det/meta/setScanPhi 0
+/dcs-monitor/det/meta/setScanZ 3180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 349.405711 1303.999865 1140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 75
+/dcs-monitor/det/meta/setScanPhi 15
+/dcs-monitor/det/meta/setScanZ 3180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 675.000000 1169.134295 1140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 60
+/dcs-monitor/det/meta/setScanPhi 30
+/dcs-monitor/det/meta/setScanZ 3180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 954.594155 954.594155 1140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 45
+/dcs-monitor/det/meta/setScanPhi 45
+/dcs-monitor/det/meta/setScanZ 3180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1169.134295 675.000000 1140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 30
+/dcs-monitor/det/meta/setScanPhi 60
+/dcs-monitor/det/meta/setScanZ 3180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1303.999865 349.405711 1140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 15
+/dcs-monitor/det/meta/setScanPhi 75
+/dcs-monitor/det/meta/setScanZ 3180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1350.000000 0.000000 1140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 0
+/dcs-monitor/det/meta/setScanPhi 90
+/dcs-monitor/det/meta/setScanZ 3180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1303.999865 -349.405711 1140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -15
+/dcs-monitor/det/meta/setScanPhi 105
+/dcs-monitor/det/meta/setScanZ 3180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1169.134295 -675.000000 1140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -30
+/dcs-monitor/det/meta/setScanPhi 120
+/dcs-monitor/det/meta/setScanZ 3180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 954.594155 -954.594155 1140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -45
+/dcs-monitor/det/meta/setScanPhi 135
+/dcs-monitor/det/meta/setScanZ 3180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 675.000000 -1169.134295 1140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -60
+/dcs-monitor/det/meta/setScanPhi 150
+/dcs-monitor/det/meta/setScanZ 3180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 349.405711 -1303.999865 1140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -75
+/dcs-monitor/det/meta/setScanPhi 165
+/dcs-monitor/det/meta/setScanZ 3180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 0.000000 -1350.000000 1140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -90
+/dcs-monitor/det/meta/setScanPhi 180
+/dcs-monitor/det/meta/setScanZ 3180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -349.405711 -1303.999865 1140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -105
+/dcs-monitor/det/meta/setScanPhi 195
+/dcs-monitor/det/meta/setScanZ 3180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -675.000000 -1169.134295 1140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -120
+/dcs-monitor/det/meta/setScanPhi 210
+/dcs-monitor/det/meta/setScanZ 3180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -954.594155 -954.594155 1140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -135
+/dcs-monitor/det/meta/setScanPhi 225
+/dcs-monitor/det/meta/setScanZ 3180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1169.134295 -675.000000 1140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -150
+/dcs-monitor/det/meta/setScanPhi 240
+/dcs-monitor/det/meta/setScanZ 3180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1303.999865 -349.405711 1140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -165
+/dcs-monitor/det/meta/setScanPhi 255
+/dcs-monitor/det/meta/setScanZ 3180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1350.000000 -0.000000 1140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -180
+/dcs-monitor/det/meta/setScanPhi 270
+/dcs-monitor/det/meta/setScanZ 3180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1303.999865 349.405711 1140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -195
+/dcs-monitor/det/meta/setScanPhi 285
+/dcs-monitor/det/meta/setScanZ 3180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1169.134295 675.000000 1140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -210
+/dcs-monitor/det/meta/setScanPhi 300
+/dcs-monitor/det/meta/setScanZ 3180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -954.594155 954.594155 1140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -225
+/dcs-monitor/det/meta/setScanPhi 315
+/dcs-monitor/det/meta/setScanZ 3180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -675.000000 1169.134295 1140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -240
+/dcs-monitor/det/meta/setScanPhi 330
+/dcs-monitor/det/meta/setScanZ 3180 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -349.405711 1303.999865 1140.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -255
+/dcs-monitor/det/meta/setScanPhi 345
+/dcs-monitor/det/meta/setScanZ 3180 mm
+/dcs-monitor/det/clyc/add
+
+# sensor CLYC-1, height 3380 mm
+/dcs-monitor/det/setPosition 0.000000 1350.000000 1340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 90
+/dcs-monitor/det/meta/setScanPhi 0
+/dcs-monitor/det/meta/setScanZ 3380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 349.405711 1303.999865 1340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 75
+/dcs-monitor/det/meta/setScanPhi 15
+/dcs-monitor/det/meta/setScanZ 3380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 675.000000 1169.134295 1340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 60
+/dcs-monitor/det/meta/setScanPhi 30
+/dcs-monitor/det/meta/setScanZ 3380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 954.594155 954.594155 1340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 45
+/dcs-monitor/det/meta/setScanPhi 45
+/dcs-monitor/det/meta/setScanZ 3380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1169.134295 675.000000 1340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 30
+/dcs-monitor/det/meta/setScanPhi 60
+/dcs-monitor/det/meta/setScanZ 3380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1303.999865 349.405711 1340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 15
+/dcs-monitor/det/meta/setScanPhi 75
+/dcs-monitor/det/meta/setScanZ 3380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1350.000000 0.000000 1340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 0
+/dcs-monitor/det/meta/setScanPhi 90
+/dcs-monitor/det/meta/setScanZ 3380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1303.999865 -349.405711 1340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -15
+/dcs-monitor/det/meta/setScanPhi 105
+/dcs-monitor/det/meta/setScanZ 3380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 1169.134295 -675.000000 1340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -30
+/dcs-monitor/det/meta/setScanPhi 120
+/dcs-monitor/det/meta/setScanZ 3380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 954.594155 -954.594155 1340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -45
+/dcs-monitor/det/meta/setScanPhi 135
+/dcs-monitor/det/meta/setScanZ 3380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 675.000000 -1169.134295 1340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -60
+/dcs-monitor/det/meta/setScanPhi 150
+/dcs-monitor/det/meta/setScanZ 3380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 349.405711 -1303.999865 1340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -75
+/dcs-monitor/det/meta/setScanPhi 165
+/dcs-monitor/det/meta/setScanZ 3380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition 0.000000 -1350.000000 1340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -90
+/dcs-monitor/det/meta/setScanPhi 180
+/dcs-monitor/det/meta/setScanZ 3380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -349.405711 -1303.999865 1340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -105
+/dcs-monitor/det/meta/setScanPhi 195
+/dcs-monitor/det/meta/setScanZ 3380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -675.000000 -1169.134295 1340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -120
+/dcs-monitor/det/meta/setScanPhi 210
+/dcs-monitor/det/meta/setScanZ 3380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -954.594155 -954.594155 1340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -135
+/dcs-monitor/det/meta/setScanPhi 225
+/dcs-monitor/det/meta/setScanZ 3380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1169.134295 -675.000000 1340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -150
+/dcs-monitor/det/meta/setScanPhi 240
+/dcs-monitor/det/meta/setScanZ 3380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1303.999865 -349.405711 1340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -165
+/dcs-monitor/det/meta/setScanPhi 255
+/dcs-monitor/det/meta/setScanZ 3380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1350.000000 -0.000000 1340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -180
+/dcs-monitor/det/meta/setScanPhi 270
+/dcs-monitor/det/meta/setScanZ 3380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1303.999865 349.405711 1340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -195
+/dcs-monitor/det/meta/setScanPhi 285
+/dcs-monitor/det/meta/setScanZ 3380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -1169.134295 675.000000 1340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -210
+/dcs-monitor/det/meta/setScanPhi 300
+/dcs-monitor/det/meta/setScanZ 3380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -954.594155 954.594155 1340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -225
+/dcs-monitor/det/meta/setScanPhi 315
+/dcs-monitor/det/meta/setScanZ 3380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -675.000000 1169.134295 1340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -240
+/dcs-monitor/det/meta/setScanPhi 330
+/dcs-monitor/det/meta/setScanZ 3380 mm
+/dcs-monitor/det/clyc/add
+/dcs-monitor/det/setPosition -349.405711 1303.999865 1340.000000 mm
+/dcs-monitor/det/setRotation 0 -90 -255
+/dcs-monitor/det/meta/setScanPhi 345
+/dcs-monitor/det/meta/setScanZ 3380 mm
+/dcs-monitor/det/clyc/add
+
+/run/initialize
+
+/random/setSeeds 1101 1102
+
+/dcs-monitor/surf/wssaFile /home/turko46/data/wti/Cask1/Cask1_gamma.wssa
+/dcs-monitor/surf/wssaPid 22
+/dcs-monitor/surf/wssaMaxEntries 0
+/dcs-monitor/surf/caskNum 0
+/dcs-monitor/gun/sourceMode CASTOR440_surface_from_WSSA
+
+/dcs-monitor/run/writePrimary false
+/dcs-monitor/run/writePrimaryOnlyOnHit false
+/dcs-monitor/run/writeSurfaceFlux false
+/dcs-monitor/run/writeFluxMap false
+
+/analysis/setFileName benchmark_cask1_gamma
+
+/run/beamOn 405872062
