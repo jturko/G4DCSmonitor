@@ -197,13 +197,14 @@ input format. All three replay modes are analog: do not pass `--biasing`.
 | `maxEntriesLoadedFromTree [n]` | Cap entries read from the ROOT tree (`<=0` = all). |
 | `wssaMaxEntries [n]`           | Cap WSSA records retained by uniform reservoir sampling (default 10,000,000; `<=0` = all). |
 | `wssaPid [pdg]`                | PDG code in the WSSA file: `2112`=n, `22`=γ; `0` infers from the file name. |
+| `wssaAbsoluteWeight [bool]`    | WSSA `StartRun` normalization: `true` = weights are absolute particles/s, `N = T * sum(w)` (WTI statement); `false` = per-source-history weights, `N = T * decayRate * sum(w)/|np|`. Default `true`. |
 | `sourcePid [pid]`              | PDG filter: `0`=any, `2112`=n, `22`=γ. |
 | `smearPhi [rad]`, `smearZ [len]`, `smearAngle [rad]`, `smearEfrac [frac]` | Resampling smear widths. |
 | `caskNum [c]`                  | Cask whose geometry/placement to replay into. |
 | `sourceRotZ [deg]`            | Rotate the source about +z (C6 hexant reuse). |
 | `numPrimaries [n]`            | Number of primaries that produced the input tree. |
-| `decayRate [1/s]`            | Activity of the source. |
-| `startRun [t] [unit]`        | Compute N primaries from rate × time × (kept weight / numPrimaries) and launch `/run/beamOn`. |
+| `decayRate [1/s]`            | Source rate: p1 activity; WSSA per-history source histories per second. |
+| `startRun [t] [unit]`        | Compute N primaries from the source-dependent normalization and launch `/run/beamOn`: p1/CSV uses `T * decayRate * keptWeight/numPrimaries`; WSSA uses `T * sum(w)` or `T * decayRate * sum(w)/|np|` as selected by `wssaAbsoluteWeight`. |
 
 For the WSSA input, positions are converted from cm to mm and from the floor-based
 MCNP frame to the cask-centred Geant4 frame (`z_mm - H/2`). The recorded crossing

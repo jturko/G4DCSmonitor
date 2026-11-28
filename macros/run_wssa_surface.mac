@@ -61,6 +61,11 @@
 /dcs-monitor/surf/wssaFile /home/turko46/data/wti/Cask3/Cask3_neutrons.wssa
 /dcs-monitor/surf/wssaPid 2112
 
+# StartRun normalization (not used by the direct /run/beamOn test below):
+#   true  = WSSA wgt absolute particles/s; N = T * sum(w)
+#   false = per-source-history wgt; N = T * decayRate * sum(w)/|np|
+#/dcs-monitor/surf/wssaAbsoluteWeight true
+
 # Uniform reservoir sample: retain at most this many records (default 10M).
 # Set to 0 to retain every record (requires enough memory).
 /dcs-monitor/surf/wssaMaxEntries 10000000
